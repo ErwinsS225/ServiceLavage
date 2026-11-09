@@ -716,5 +716,7 @@ Sous réserve de D1 et D2, la première action concrète est **L1-T1** : valider
 
 | Tâche | Blocage |
 | --- | --- |
-| L4 — Tests de composant + intégration CI | — |
-| L5 — Finitions | — |
+| Tests de composant avec un DOM (React Testing Library) | Aucun test ne monte un composant dans un vrai DOM : les écrans sont vérifiés par analyse statique et rendu SSR. Nécessiterait `jsdom` + RTL, non installables hors npm. |
+| Parcours authentifié réel | Jamais exécuté avec un compte de production. `CocoWash` existe, le plan `pro` est attribué, mais aucun identifiant n'a été fourni. |
+| 3 réglages Auth | Dashboard uniquement : `password_min_length`, `password_hibp_enabled`, `rate_limit_email_sent`. |
+| D5 — CI bloquante sur PR | La CI tourne déjà et bloque ; la question portait sur l'exigence de statut pour la fusion, à arbitrer côté dépôt GitHub. |
