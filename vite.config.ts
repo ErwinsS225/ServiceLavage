@@ -62,6 +62,10 @@ function offlineShell(): Plugin {
     name: 'offline-shell',
     apply: 'build',
     writeBundle(options, bundle) {
+      // A server-side or library build has no index.html and therefore no
+      // service worker to generate; only the client bundle does. Checking the
+      // bundle is more reliable than options.ssr, which is not typed here.
+      if (!bundle['index.html']) return;
       const dir = options.dir || 'dist';
       const files = ['index.html', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png',
         ...Object.keys(bundle).filter(file => file.startsWith('assets/') && /\.(js|css)$/.test(file))];

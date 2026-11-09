@@ -1,0 +1,118 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import { PGlite } from '@electric-sql/pglite';
+
+/**
+ * The sign-up, sign-in, forgot-password and reset screens are the first thing
+ * every user sees, and they are the only place where a mistake costs an
+ * account. These tests pin the behaviour that is easy to break silently:
+ * the right autocomplete hints, no password ever revealed by default, and a
+ * recovery flow that cannot leak whether an address is registered.
+ *
+ * Rendering is done through Vite's SSR build because the components are TSX.
+ */
+const FILES = {
+  credentials: 'src/components/auth/AuthCredentialsForm.tsx',
+  forgot: 'src/components/auth/AuthForgotForm.tsx',
+  reset: 'src/components/auth/AuthResetForm.tsx',
+  layout: 'src/components/auth/AuthLayout.tsx',
+};
+
+test('the sign-in form asks the browser for an existing password only', async () => {
+  const source = await readFile(FILES.credentials, 'utf8');
+  assert.match(source, /autoComplete=\{signup \? 'new-password' : 'current-password'\}/);
+  assert.match(source, /signInWithPassword/);
+  // A wrong password must not echo Supabase's English message to a French UI.
+  assert.match(source, /Invalid login credentials/);
+  assert.match(source, /Adresse e-mail ou mot de passe incorrect/);
+});
+
+test('the password is hidden until the user explicitly reveals it', async () => {
+  for (const file of [FILES.credentials, FILES.reset]) {
+    const source = await readFile(file, 'utf8');
+    assert.match(source, /useState\(false\)/, `${file}: reveal must start hidden`);
+    assert.match(source, /type=\{reveal \? 'text' : 'password'\}/, `${file}: password type must be conditional`);
+    assert.match(source, /aria-pressed=\{reveal\}/, `${file}: the toggle must expose its state`);
+  }
+});
+
+test('the forgot-password flow never confirms whether an account exists', async () => {
+  const source = await readFile(FILES.forgot, 'utf8');
+  assert.match(source, /RECOVERY_SENT_MESSAGE/);
+  assert.match(source, /authRedirectUrl\(window\.location\.origin\)/);
+  // The same message is shown on success, regardless of the address.
+  assert.doesNotMatch(source, /aucun compte|n'existe pas|introuvable/i);
+});
+
+test('the reset form checks the confirmation locally before calling the server', async () => {
+  const source = await readFile(FILES.reset, 'utf8');
+  const validateAt = source.indexOf('validateNewPassword');
+  const updateAt = source.indexOf('updateUser');
+  assert.ok(validateAt > 0, 'validateNewPassword must be used');
+  assert.ok(validateAt < updateAt, 'validation must run before the server call');
+  assert.match(source, /MIN_PASSWORD_LENGTH/);
+});
+
+test('the layout panel is decorative and hidden on small screens', async () => {
+  const source = await readFile(FILES.layout, 'utf8');
+  assert.match(source, /alt=""/);
+  assert.match(source, /aria-hidden="true"/);
+  assert.match(source, /hidden lg:block/, 'the visual panel must not push the form down on mobile');
+  assert.match(source, /grid-cols-\[45%_55%\]/);
+});
+
+test('every auth input is labelled and errors are announced', async () => {
+  const layout = await readFile(FILES.layout, 'utf8');
+  assert.match(layout, /<label className="block">/, 'AuthField must wrap the control in a label');
+  assert.match(layout, /role="alert"/, 'field errors must be announced');
+
+  for (const file of Object.values(FILES).filter(file => !file.endsWith('AuthLayout.tsx'))) {
+    const source = await readFile(file, 'utf8');
+    const labels = (source.match(/<AuthField/g) ?? []).length;
+    assert.ok(labels > 0, `${file}: no AuthField found`);
+  }
+});
+
+test('the auth pages do not hard-code the Supabase project', async () => {
+  for (const file of Object.values(FILES)) {
+    const source = await readFile(file, 'utf8');
+    assert.doesNotMatch(source, /[a-z]{20}\.supabase\.co/, `${file}: project reference must stay in env`);
+  }
+});
+
+/**
+ * The RPC revoke (L1-T5) removed the plain create_station_order from
+ * `authenticated`. Sign-up is unaffected, but the guard keeps a reminder that
+ * a new account has no station and therefore reads an empty list, not an error.
+ */
+test('a brand new account sees no station and no error', async () => {
+  const db = new PGlite();
+  try {
+    await db.exec(`
+      create role anon nologin;
+      create role authenticated nologin;
+      create role service_role nologin bypassrls;
+      create schema auth;
+      create table auth.users (id uuid primary key, email text, email_confirmed_at timestamptz);
+      create function auth.uid() returns uuid language sql stable as
+        $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
+      grant usage on schema public, auth to anon, authenticated, service_role;
+      grant execute on function auth.uid() to anon, authenticated, service_role;
+      alter default privileges in schema public grant all on tables to anon, authenticated, service_role;
+    `);
+    const { readdir } = await import('node:fs/promises');
+    for (const file of (await readdir('supabase/migrations')).filter(name => name.endsWith('.sql')).sort()) {
+      await db.exec(await readFile(`supabase/migrations/${file}`, 'utf8'));
+    }
+
+    const userId = '33333333-3333-4333-8333-333333333333';
+    await db.exec(`insert into auth.users(id,email,email_confirmed_at) values ('${userId}','new@example.invalid',now())`);
+    await db.exec(`set local role authenticated`);
+    await db.exec(`select set_config('request.jwt.claim.sub','${userId}',true)`);
+    const { rows } = await db.query<{ n: number }>('select count(*)::int as n from public.stations');
+    assert.equal(rows[0]?.n, 0, 'a new account must read an empty station list');
+  } finally {
+    await db.close();
+  }
+});

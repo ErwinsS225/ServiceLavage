@@ -47,6 +47,8 @@ Les tests PGlite appliquent les migrations sur une base en mémoire et émulent 
 
 - `src/components/OwnerPortal.tsx` : authentification, récupération de mot de passe et accès aux modules réels.
 - `src/components/ErrorBoundary.tsx` : écran de secours si un composant lève une erreur.
+- `src/components/auth/` : pages de connexion, d'inscription, de mot de passe oublié et de réinitialisation.
+  `AuthLayout` porte le cadre scindé (photo à gauche, formulaire à droite) ; les quatre formulaires n'en portent que la logique.
 - `src/components/Station*.tsx` : prestations, clients et services.
 - `src/lib/` : client Supabase, logique monétaire et file locale expérimentale.
 - `supabase/migrations/` et `supabase/tests/` : schéma, règles et tests SQL.

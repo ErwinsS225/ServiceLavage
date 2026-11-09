@@ -36,7 +36,12 @@ test('public/ contains only files meant to be public', async () => {
   const files = (await readdir('public', { recursive: true }))
     .filter(entry => /\.\w+$/.test(entry))
     .sort();
-  assert.deepEqual(files, ['icons/icon-192.png', 'icons/icon-512.png', 'manifest.webmanifest']);
+  assert.deepEqual(files, [
+    'assets/auth-side.jpg',
+    'icons/icon-192.png',
+    'icons/icon-512.png',
+    'manifest.webmanifest',
+  ]);
 });
 
 test('no product documentation is served from public/', async () => {
