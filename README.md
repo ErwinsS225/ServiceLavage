@@ -55,6 +55,7 @@ Les tests PGlite appliquent les migrations sur une base en mémoire et émulent 
 - `src/context/AppContext.tsx` et `src/data/mockData.ts` : ancien prototype, non monté par l'application actuelle.
 - `docs/` : audit, implémentation, sécurité, authentification, migrations et fonctionnement hors ligne.
 - `docs/archive/` : documents historiques, **non servis** par l'application.
+- `archive/legacy-2026-11/` : interface React d'origine (≈ 9 200 lignes), **non compilée et non servie**. Voir `archive/README.md`.
 
 ## Sécurité du serveur de développement
 

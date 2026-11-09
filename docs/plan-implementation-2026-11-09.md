@@ -706,6 +706,7 @@ Sous réserve de D1 et D2, la première action concrète est **L1-T1** : valider
 | 2026-11-09 | **L3-T5** — Boutons sans `type` | ✅ 38/38 explicites dans le code actif + `tests/buttonTypes.test.ts` (3 tests) |
 | 2026-11-09 | **L3-T6** — Content Security Policy | ✅ 12 directives, origine Supabase injectée au build (jamais en dur) + `tests/contentSecurityPolicy.test.ts` (4 tests) |
 | 2026-11-09 | **L3-T8** — `.aistudio/` hors Git | ✅ 1 fichier retiré du suivi + `.gitignore`. Toujours dans l'historique (`dc7f314`) : non réécrit |
+| 2026-11-09 | **L3-T2** — Archiver le legacy | ✅ 33 fichiers / ≈ 9 200 lignes vers `archive/legacy-2026-11/`, exclus de `tsconfig`. **`noUnusedLocals` + `noUnusedParameters` activés** (129 → 0 erreur). Bundle 499,84 → 492,10 Ko |
 | 2026-11-09 | **Refonte des pages d’authentification** | ✅ Cadre scindé (photo + formulaire), 4 écrans (connexion, inscription, oubli, réinitialisation), messages d'erreur en français, `aria-invalid`, `tests/authForms.test.ts` (8 tests) |
 | 2026-11-09 | **Correctif `offlineShell`** | ✅ Le plugin plantait sur tout build SSR (pas d'`index.html`) ; il sort maintenant si le bundle n'en contient pas |
 | 2026-11-09 | **L5** — `bun.lock` et `metadata.json` | ✅ Supprimés : lockfile Bun obsolète (nommait encore `react-example` et `@google/genai`) et manifeste déclarant une capacité Gemini sans usage |
@@ -715,6 +716,5 @@ Sous réserve de D1 et D2, la première action concrète est **L1-T1** : valider
 
 | Tâche | Blocage |
 | --- | --- |
-| L3-T2 — Archiver le legacy (88 % de `src/`) | Nécessite une PR isolée ; débloque `noUnusedLocals` |
 | L4 — Tests de composant + intégration CI | — |
 | L5 — Finitions | — |
