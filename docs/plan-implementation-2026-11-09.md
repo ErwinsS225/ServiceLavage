@@ -706,6 +706,7 @@ Sous réserve de D1 et D2, la première action concrète est **L1-T1** : valider
 | 2026-11-09 | **L3-T5** — Boutons sans `type` | ✅ 38/38 explicites dans le code actif + `tests/buttonTypes.test.ts` (3 tests) |
 | 2026-11-09 | **L3-T6** — Content Security Policy | ✅ 12 directives, origine Supabase injectée au build (jamais en dur) + `tests/contentSecurityPolicy.test.ts` (4 tests) |
 | 2026-11-09 | **L3-T8** — `.aistudio/` hors Git | ✅ 1 fichier retiré du suivi + `.gitignore`. Toujours dans l'historique (`dc7f314`) : non réécrit |
+| 2026-11-09 | **L5** — `bun.lock` et `metadata.json` | ✅ Supprimés : lockfile Bun obsolète (nommait encore `react-example` et `@google/genai`) et manifeste déclarant une capacité Gemini sans usage |
 | 2026-11-09 | **L1-T5** — Refermer la RPC non idempotente | ✅ Migration `20261109184205` déployée. `create_station_order` → `auth_can=false`, variante idempotente intacte. `supabase/tests/revoke_legacy_order_rpc.sql` |
 
 ### Reste à faire
@@ -715,5 +716,3 @@ Sous réserve de D1 et D2, la première action concrète est **L1-T1** : valider
 | L3-T2 — Archiver le legacy (88 % de `src/`) | Nécessite une PR isolée ; débloque `noUnusedLocals` |
 | L4 — Tests de composant + intégration CI | — |
 | L5 — Finitions | — |
-| `bun.lock` | À supprimer (décision mainteneur) |
-| `metadata.json` — capacité Gemini | À retirer |
