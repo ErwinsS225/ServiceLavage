@@ -9,6 +9,7 @@ type Station = { id: string; name: string };
 
 export function OwnerPortal() {
   const [session, setSession] = useState<Session | null>(null);
+  const [online, setOnline] = useState(() => navigator.onLine);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [signup, setSignup] = useState(false);
@@ -20,6 +21,13 @@ export function OwnerPortal() {
   const [tab, setTab] = useState<'orders' | 'services' | 'customers'>('orders');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    const update = () => setOnline(navigator.onLine);
+    window.addEventListener('online', update);
+    window.addEventListener('offline', update);
+    return () => { window.removeEventListener('online', update); window.removeEventListener('offline', update); };
+  }, []);
 
   useEffect(() => {
     if (!supabase) { setLoading(false); return; }
@@ -80,6 +88,7 @@ export function OwnerPortal() {
   return <main className="min-h-screen bg-[#111317] text-gray-100 flex items-center justify-center p-6">
     <section className="w-full max-w-lg rounded-2xl border border-[#303640] bg-[#16181d] p-8 space-y-5">
       <h1 className="text-2xl font-bold">LavAuto · Espace propriétaire</h1>
+      {!online && <p role="status" className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-300">Connexion indisponible. L’application peut s’ouvrir hors ligne après une première visite, mais les données et les modifications ne sont pas encore disponibles hors ligne et aucune synchronisation automatique n’est active.</p>}
       {!supabase ? <p>Configuration Supabase manquante. Renseignez les variables VITE_SUPABASE_URL et VITE_SUPABASE_PUBLISHABLE_KEY.</p>
         : loading ? <p>Chargement…</p>
         : session ? <>
