@@ -32,7 +32,7 @@ select set_config('request.jwt.claim.sub', current_setting('test.owner_a'), true
 do $$
 declare sa uuid := current_setting('test.station_a')::uuid; sb uuid := current_setting('test.station_b')::uuid;
   svc_a uuid := current_setting('test.service_a')::uuid; svc_b uuid := current_setting('test.service_b')::uuid;
-  cb uuid := current_setting('test.customer_b')::uuid; req uuid := gen_random_uuid(); first_order uuid; second_order uuid;
+  cb uuid := current_setting('test.customer_b')::uuid; req uuid := gen_random_uuid(); first_order uuid; second_order uuid; new_order uuid;
   affected integer; denied boolean := false;
 begin
   if not exists (select 1 from public.stations where id = sa) or exists (select 1 from public.stations where id = sb)
@@ -59,6 +59,34 @@ begin
   if first_order <> second_order or (select count(*) from public.station_orders where id = first_order) <> 1 then
     raise exception 'Idempotent order retry failed';
   end if;
+  -- Pricing is snapshotted on creation; retries reuse it and new orders use the server's latest price.
+  update public.station_services set price_xof = 2500, name = 'Nouveau tarif' where id = svc_a;
+  second_order := public.create_station_order_idempotent(req, sa, null, 'Vehicle', null, array[svc_a]);
+  if second_order <> first_order or (select total_xof from public.station_orders where id = first_order) <> 1000
+    or (select price_xof from public.station_order_items where order_id = first_order) <> 1000
+    or (select service_name from public.station_order_items where order_id = first_order) <> 'A' then
+    raise exception 'Order price/name snapshot changed on retry';
+  end if;
+  new_order := public.create_station_order_idempotent(gen_random_uuid(), sa, null, 'Second', null, array[svc_a]);
+  if (select total_xof from public.station_orders where id = new_order) <> 2500 then
+    raise exception 'New order did not use current server price';
+  end if;
+  denied := false;
+  begin perform public.transition_station_order(first_order, 'termine');
+  exception when invalid_parameter_value then denied := true; end;
+  if not denied then raise exception 'Invalid status transition succeeded'; end if;
+  perform public.transition_station_order(first_order, 'en_cours');
+  perform public.transition_station_order(first_order, 'termine');
+  if (select status from public.station_orders where id = first_order) <> 'termine' then raise exception 'Valid transition failed'; end if;
+  denied := false;
+  begin perform public.transition_station_order(first_order, 'en_cours');
+  exception when invalid_parameter_value then denied := true; end;
+  if not denied then raise exception 'Completed order reopened'; end if;
+  update public.station_services set is_active = false where id = svc_a;
+  denied := false;
+  begin perform public.create_station_order_idempotent(gen_random_uuid(), sa, null, 'Inactive', null, array[svc_a]);
+  exception when invalid_parameter_value then denied := true; end;
+  if not denied then raise exception 'Inactive service accepted'; end if;
   denied := false;
   begin perform public.create_station_order_idempotent(req, sa, null, 'Different', null, array[svc_a]);
   exception when invalid_parameter_value then denied := true; end;

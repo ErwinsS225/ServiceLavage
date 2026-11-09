@@ -20,3 +20,9 @@ Le tarif appliqué est celui en vigueur sur le serveur à la synchronisation ; l
 2. Ajouter une supervision et une résolution explicite des entrées en erreur, la reprise globale pour toutes les stations accessibles, et évaluer un stockage IndexedDB transactionnel, des protections de données personnelles et des migrations de format.
 3. Étendre les écritures hors ligne aux clients et au catalogue avec clés d'idempotence serveur et gestion des dépendances ; ne jamais dépendre d'une seule transaction localStorage sur plusieurs clés.
 4. Ne pas permettre d'encaissements hors ligne avant conception d'un journal de paiements fiable, des règles de remboursement et des tests de concurrence et d'idempotence.
+
+## Fiabilisation du lot 3
+
+La file est rejouée dans l'ordre et seuls les éléments acquittés sont retirés. Un échec conserve l'entrée concernée et les suivantes ; les succès précédents restent acquis. Une clé de requête est réutilisée après une réponse perdue. Les enregistrements locaux invalides restent conservés et signalés, sans tentative d'envoi. Si une prestation ne peut pas être synchronisée (par exemple service devenu inactif), ne pas la ressaisir sans vérification : une interface de résolution des conflits reste à construire.
+
+Des tests unitaires simulent une réponse perdue et un échec de synchronisation. Des tests SQL en base PGlite jetable couvrent les prix figés, l'application du prix serveur courant, les transitions et le rejet d'un service inactif. Ces tests ne remplacent ni un essai réseau en navigateur, ni des tests de concurrence avec Supabase/PostgREST et des comptes réels de test.

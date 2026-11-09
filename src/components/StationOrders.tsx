@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { formatXof } from '../lib/money';
-import { listQueuedOrders, saveQueuedOrder, removeQueuedOrder, type QueuedOrder } from '../lib/offlineOrders';
+import { listQueuedOrders, saveQueuedOrder, synchronizeOrders, type QueuedOrder } from '../lib/offlineOrders';
 
 type Service = { id: string; name: string; price_xof: number };
 type Customer = { id: string; name: string; phone: string };
@@ -34,13 +34,12 @@ export function StationOrders({ stationId, userId }: { stationId: string; userId
   }
 
   async function syncQueue() {
-    if (!navigator.onLine) return;
+    if (!navigator.onLine) { setError('Connexion indisponible : les prestations restent en attente sur cet appareil.'); return; }
     if (syncing.current) { syncAgain.current = true; return; }
     syncing.current = true;
+    setError('');
     try {
-      const queued = refreshQueue();
-      let completed = 0;
-      for (const order of queued) {
+      const result = await synchronizeOrders(localStorage, userId, stationId, async order => {
         const { data: currentSession } = await supabase!.auth.getSession();
         if (currentSession.session?.user.id !== userId) throw new Error('Reconnectez-vous au compte propriétaire pour synchroniser.');
         const { error } = await supabase!.rpc('create_station_order_idempotent', {
@@ -48,11 +47,10 @@ export function StationOrders({ stationId, userId }: { stationId: string; userId
           p_vehicle_info: order.vehicle, p_plate_number: order.plate, p_service_ids: order.serviceIds,
         });
         if (error) throw new Error(`Synchronisation en attente : ${error.message}`);
-        removeQueuedOrder(localStorage, order);
-        completed++;
-      }
+      });
       refreshQueue();
-      if (completed) { setMessage(`${completed} prestation(s) synchronisée(s). Le tarif serveur a été appliqué.`); setReload(v => v + 1); }
+      if (result.completed) { setMessage(`${result.completed} prestation(s) synchronisée(s). Le tarif serveur a été appliqué.`); setReload(v => v + 1); }
+      if (result.error) throw result.error;
     } catch (err) {
       try { refreshQueue(); } catch { /* keep original error */ }
       setError(err instanceof Error ? err.message : 'Synchronisation impossible. Les opérations restent sur cet appareil.');
