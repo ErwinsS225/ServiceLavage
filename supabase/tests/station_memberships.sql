@@ -71,8 +71,8 @@ begin
   if not exists (select 1 from public.station_memberships where user_id = auth.uid() and role = 'gerant' and revoked_at is null) then
     raise exception 'Membership not created';
   end if;
-  if exists (select 1 from public.station_services where station_id = current_setting('test.station')::uuid) then
-    raise exception 'Experimental membership granted operational access';
+  if not exists (select 1 from public.station_services where station_id = current_setting('test.station')::uuid) then
+    raise exception 'Active gerant membership did not grant catalogue read access';
   end if;
   denied := false;
   begin perform public.accept_station_invitation(current_setting('test.second')::uuid);

@@ -6,8 +6,10 @@ import { StationServices } from './StationServices';
 import { StationOrders } from './StationOrders';
 import { StationInventory } from './StationInventory';
 import { SubscriptionPlans } from './SubscriptionPlans';
+import { StationStaff } from './StationStaff';
 
-type Station = { id: string; name: string };
+type Station = { id: string; name: string; owner_id?: string };
+type StationRole = 'owner' | 'gerant' | 'caissier' | 'laveur';
 
 export function OwnerPortal() {
   const [session, setSession] = useState<Session | null>(null);
@@ -20,7 +22,12 @@ export function OwnerPortal() {
   const [name, setName] = useState('');
   const [stations, setStations] = useState<Station[]>([]);
   const [stationId, setStationId] = useState('');
-  const [tab, setTab] = useState<'orders' | 'services' | 'customers' | 'inventory' | 'subscription'>('orders');
+  const [stationRole, setStationRole] = useState<StationRole | null>(null);
+  const [roleLoading, setRoleLoading] = useState(false);
+  const [rolesReady, setRolesReady] = useState(false);
+  const [stationReload, setStationReload] = useState(0);
+  const [inviteCode, setInviteCode] = useState('');
+  const [tab, setTab] = useState<'orders' | 'services' | 'customers' | 'inventory' | 'staff' | 'subscription'>('orders');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
@@ -47,16 +54,28 @@ export function OwnerPortal() {
   }, []);
 
   useEffect(() => {
-    if (!session || !supabase) { setStations([]); setStationId(''); return; }
+    if (!session || !supabase) { setStations([]); setStationId(''); setStationRole(null); return; }
     setStations([]);
     setStationId('');
     let active = true;
-    const cacheKey = `servicelavage:stations:v1:${session.user.id}`;
+    const cacheKey = `servicelavage:stations:v2:${session.user.id}`;
     try {
       const cached = localStorage.getItem(cacheKey);
-      if (cached) setStations(JSON.parse(cached));
+      if (cached) {
+        const saved: unknown = JSON.parse(cached);
+        if (Array.isArray(saved)) setStations(saved.filter((item): item is Station => !!item && typeof item.id === 'string' && typeof item.name === 'string'));
+      } else {
+        // Version-one cache was populated only from the owner-only stations RLS.
+        const legacy = localStorage.getItem(`servicelavage:stations:v1:${session.user.id}`);
+        const saved: unknown = legacy ? JSON.parse(legacy) : null;
+        if (Array.isArray(saved)) {
+          const migrated = saved.filter((item): item is Station => !!item && typeof item.id === 'string' && typeof item.name === 'string').map(item => ({ ...item, owner_id: session.user.id }));
+          setStations(migrated);
+          localStorage.setItem(cacheKey, JSON.stringify(migrated));
+        }
+      }
     } catch { setError('Impossible de lire les stations locales.'); }
-    Promise.resolve(supabase.from('stations').select('id,name').order('created_at')).then(({ data, error }) => {
+    Promise.resolve(supabase.from('stations').select('id,name,owner_id').order('created_at')).then(({ data, error }) => {
       if (!active) return;
       if (error) setError('Stations hors ligne : les données enregistrées sur cet appareil sont utilisées si disponibles.');
       else {
@@ -65,7 +84,57 @@ export function OwnerPortal() {
       }
     }).catch(() => { if (active) setError('Chargement des stations impossible.'); });
     return () => { active = false; };
-  }, [session?.user.id]);
+  }, [session?.user.id, stationReload]);
+
+  useEffect(() => {
+    if (!session || !supabase) { setStationRole(null); setRoleLoading(false); setRolesReady(false); return; }
+    if (!stationId) {
+      setStationRole(stations.length === 0 ? 'owner' : null);
+      setRoleLoading(false);
+      setRolesReady(false);
+      return;
+    }
+    setStationRole(null); setRoleLoading(true); setRolesReady(false);
+    let active = true;
+    const resolveOwnerFallback = async () => {
+      try {
+        const { data } = await supabase!.from('stations').select('owner_id').eq('id', stationId).maybeSingle();
+        if (!active) return;
+        setStationRole(data?.owner_id === session.user.id ? 'owner' : null);
+      } catch { if (active) setStationRole(null); }
+      finally { if (active) { setRolesReady(false); setRoleLoading(false); } }
+    };
+    if (!online) {
+      const cachedStation = stations.find(station => station.id === stationId);
+      setStationRole(cachedStation?.owner_id === session.user.id ? 'owner' : null);
+      setRolesReady(false);
+      setRoleLoading(false);
+      return () => { active = false; };
+    }
+    Promise.resolve(supabase.rpc('current_station_role', { p_station_id: stationId })).then(({ data, error }) => {
+      if (!active) return;
+      if (error) { void resolveOwnerFallback(); return; }
+      setRolesReady(true);
+      setStationRole(data === 'owner' || data === 'gerant' || data === 'caissier' || data === 'laveur' ? data : null);
+      setRoleLoading(false);
+    }).catch(() => { if (active) void resolveOwnerFallback(); });
+    return () => { active = false; };
+  }, [session?.user.id, stationId, stations, online]);
+
+  async function acceptInvitation(e: React.FormEvent) {
+    e.preventDefault();
+    const code = inviteCode.trim();
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(code)) {
+      setError('Saisissez la référence UUID reçue du propriétaire.'); return;
+    }
+    setBusy(true); setError(''); setMessage('');
+    try {
+      const { error } = await supabase!.rpc('accept_station_invitation', { p_invitation_id: code });
+      if (error) setError(`Invitation non acceptée : ${error.message}`);
+      else { setInviteCode(''); setMessage('Invitation acceptée. Choisissez la station dans la liste.'); setStationReload(value => value + 1); }
+    } catch { setError('Impossible de vérifier cette invitation.'); }
+    finally { setBusy(false); }
+  }
 
   async function authenticate(e: React.FormEvent) {
     e.preventDefault();
@@ -87,9 +156,9 @@ export function OwnerPortal() {
     setBusy(true); setError(''); setMessage('');
     try {
       const { data, error } = await supabase.from('stations')
-        .insert({ name: name.trim(), owner_id: session.user.id }).select('id,name').single();
+        .insert({ name: name.trim(), owner_id: session.user.id }).select('id,name,owner_id').single();
       if (error) setError(error.message);
-      else { setStations(prev => [...prev, data]); setStationId(data.id); setName(''); setMessage('Station créée.'); }
+      else { setStations(prev => [...prev, data]); setStationId(data.id); setStationRole('owner'); setName(''); setMessage('Station créée.'); }
     } catch { setError('Impossible de créer la station. Vérifiez votre connexion.'); }
     finally { setBusy(false); }
   }
@@ -106,23 +175,31 @@ export function OwnerPortal() {
           <p className="text-sm text-gray-400">Connecté : {session.user.email}</p>
           <h2 className="font-bold">Mes stations</h2>
           {stations.length ? <ul className="space-y-2">{stations.map(s => <li className="rounded-xl bg-[#20242e] p-3" key={s.id}>{s.name}</li>)}</ul> : <p className="text-sm text-gray-400">Aucune station enregistrée.</p>}
-          <form onSubmit={createStation} className="flex gap-2"><input className={input} value={name} onChange={e => setName(e.target.value)} placeholder="Nom de la station" maxLength={120} required /><button className={button} disabled={busy}>Créer</button></form>
+          {(stationRole === 'owner' || stations.length === 0) && <form onSubmit={createStation} className="flex gap-2"><input className={input} value={name} onChange={e => setName(e.target.value)} placeholder="Nom de la station" maxLength={120} required /><button className={button} disabled={busy}>Créer</button></form>}
           {stations.length > 0 && <label className="block text-sm">Station active
             <select className={`${input} mt-1`} value={stationId} onChange={e => setStationId(e.target.value)}>
               <option value="">Choisir une station</option>{stations.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
           </label>}
-          <nav aria-label="Modules" className="flex flex-wrap gap-2">
-              {([['orders', 'Prestations'], ['services', 'Catalogue'], ['customers', 'Clients'], ['inventory', 'Inventaire'], ['subscription', 'Abonnements']] as const).map(([key, label]) => <button key={key} type="button" onClick={() => setTab(key)} aria-current={tab === key ? 'page' : undefined} className={`rounded-xl px-3 py-2 text-sm ${tab === key ? 'bg-cyan-500 text-gray-950' : 'bg-[#20242e] text-gray-300'}`}>{label}</button>)}
-          </nav>
-          {tab === 'subscription' && <SubscriptionPlans />}
-          {stationId && <>
-            {tab === 'orders' && <StationOrders key={`orders:${session.user.id}:${stationId}`} stationId={stationId} userId={session.user.id} />}
-            {tab === 'services' && <StationServices key={`services:${session.user.id}:${stationId}`} stationId={stationId} />}
-            {tab === 'customers' && <StationCustomers key={`customers:${session.user.id}:${stationId}`} stationId={stationId} />}
-            {tab === 'inventory' && <StationInventory key={`inventory:${session.user.id}:${stationId}`} stationId={stationId} />}
-          </>}
-          <p className="text-sm text-amber-300">La caisse, les paiements et les autres modules ne sont pas encore disponibles.</p>
+          <form onSubmit={acceptInvitation} className="space-y-2 rounded-xl border border-[#343b48] p-3"><label className="block text-sm">Accepter une invitation d’employé<input className={`${input} mt-1`} value={inviteCode} onChange={event => setInviteCode(event.target.value)} placeholder="Référence communiquée par le propriétaire" /></label><button type="submit" disabled={busy || !online} className="text-sm text-cyan-300 underline disabled:opacity-50">Vérifier et accepter</button><p className="text-xs text-gray-400">L’adresse de connexion doit être confirmée. L’acceptation est validée côté serveur.</p></form>
+          {stationId && roleLoading ? <p role="status">Vérification des accès…</p> : stationId && !stationRole ? <p role="alert" className="text-sm text-amber-300">Votre compte n’a pas d’accès actif à cette station. Demandez une invitation au propriétaire.</p> : <>{(() => {
+            const tabs = [
+              ...(stationRole === 'owner' || stationRole === 'gerant' || stationRole === 'laveur' ? [['orders', 'Prestations'] as const] : []),
+              ...(stationRole === 'owner' || stationRole === 'gerant' ? [['services', 'Catalogue'] as const] : []),
+              ...(stationRole === 'owner' || stationRole === 'gerant' || stationRole === 'caissier' ? [['customers', 'Clients'] as const] : []),
+              ...(stationRole === 'owner' || stationRole === 'gerant' ? [['inventory', 'Inventaire'] as const] : []),
+              ...(stationRole === 'owner' || stationRole === 'gerant' ? [['staff', 'Personnel'] as const] : []),
+              ...(stationRole === 'owner' ? [['subscription', 'Abonnements'] as const] : []),
+            ];
+            return <><nav aria-label="Modules autorisés" className="flex flex-wrap gap-2">{tabs.map(([key, label]) => <button key={key} type="button" onClick={() => setTab(key)} aria-current={tab === key ? 'page' : undefined} className={`rounded-xl px-3 py-2 text-sm ${tab === key ? 'bg-cyan-500 text-gray-950' : 'bg-[#20242e] text-gray-300'}`}>{label}</button>)}</nav>
+              {tab === 'subscription' && stationRole === 'owner' && <SubscriptionPlans />}
+              {stationId && stationRole && <>{tab === 'orders' && <StationOrders key={`orders:${session.user.id}:${stationId}`} stationId={stationId} userId={session.user.id} role={stationRole} roleFeaturesReady={rolesReady} />}
+                {tab === 'services' && (stationRole === 'owner' || stationRole === 'gerant') && <StationServices key={`services:${session.user.id}:${stationId}`} stationId={stationId} />}
+                {tab === 'customers' && (stationRole === 'owner' || stationRole === 'gerant' || stationRole === 'caissier') && <StationCustomers key={`customers:${session.user.id}:${stationId}`} stationId={stationId} />}
+                {tab === 'inventory' && (stationRole === 'owner' || stationRole === 'gerant') && <StationInventory key={`inventory:${session.user.id}:${stationId}`} stationId={stationId} />}
+                {tab === 'staff' && (stationRole === 'owner' || stationRole === 'gerant') && (rolesReady ? <StationStaff key={`staff:${session.user.id}:${stationId}`} stationId={stationId} canManageRoles={stationRole === 'owner'} /> : <p role="status" className="text-sm text-amber-300">Le module Personnel nécessite le déploiement préalable des migrations de rôles.</p>)}
+              </>}</>;
+          })()}</>}
           <button className="text-cyan-400 underline" onClick={async () => { const { error } = await supabase!.auth.signOut(); if (error) setError(error.message); }}>Se déconnecter</button>
         </> : <form onSubmit={authenticate} className="space-y-4">
           <p className="text-sm text-gray-400">{signup ? 'Créez votre compte propriétaire.' : 'Connectez-vous à votre compte propriétaire.'}</p>
