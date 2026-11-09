@@ -6,3 +6,6 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# Artefacts de loutil de generation (caches temporaires, non sources)
+.aistudio/

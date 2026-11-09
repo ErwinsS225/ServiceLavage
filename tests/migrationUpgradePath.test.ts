@@ -23,6 +23,9 @@ const PENDING = [
   '20261109142000_station_inventory.sql',
   '20261109150000_station_role_permissions.sql',
 ];
+// Written after the four above were deployed, so it is a separate increment:
+// it only tightens a grant and adds no table.
+const REVOKE = ['20261109160000_revoke_legacy_order_rpc.sql'];
 
 async function apply(db: PGlite, file: string) {
   await db.exec(await readFile(`supabase/migrations/${file}`, 'utf8'));
@@ -54,7 +57,7 @@ test('the four pending migrations apply in order on top of the deployed schema',
 
     // The repository must not drift from the expected split.
     const files = (await readdir('supabase/migrations')).filter(name => name.endsWith('.sql')).sort();
-    assert.deepEqual(files, [...DEPLOYED, ...PENDING]);
+    assert.deepEqual(files, [...DEPLOYED, ...PENDING, ...REVOKE]);
 
     for (const file of DEPLOYED) await apply(db, file);
 

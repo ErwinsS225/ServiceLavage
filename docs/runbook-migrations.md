@@ -28,18 +28,20 @@ Ces objets sont fournis par Supabase. Les tests PGlite les **émulent** (`tests/
 | `20261109182456` | subscription_limits | ✅ |
 | `20261109182509` | station_inventory | ✅ |
 | `20261109182534` | station_role_permissions | ✅ |
+| `20261109184205` | revoke_legacy_order_rpc | ✅ |
 
-> ⚠️ **Les quatre dernières ont été appliquées via le connecteur Supabase** (`create_migration`), qui horodate au moment de l'exécution. Leurs numéros de version diffèrent donc des noms de fichiers locaux (`20261109140000`, `…141000`, `…142000`, `…150000`). **L'historique distant fait foi** : ne pas rejouer les fichiers locaux, ce qui les appliquerait une seconde fois.
+> ⚠️ **Les cinq dernières ont été appliquées via le connecteur Supabase** (`create_migration`), qui horodate au moment de l'exécution. Leurs numéros de version diffèrent donc des noms de fichiers locaux (`20261109140000`, `…141000`, `…142000`, `…150000`, `…160000`). **L'historique distant fait foi** : ne pas rejouer les fichiers locaux, ce qui les appliquerait une seconde fois.
 
 ### Conséquence sur `supabase db push`
 
-Un `supabase db push` détecterait les 4 fichiers locaux comme non appliqués (versions différentes) et tenterait de les rejouer. **Ne pas le lancer en l'état.** Pour aligner le dépôt sur le distant :
+Un `supabase db push` détecterait les **cinq** fichiers locaux comme non appliqués (versions différentes) et tenterait de les rejouer. **Ne pas le lancer en l'état.** Pour aligner le dépôt sur le distant :
 
 ```bash
 supabase link --project-ref avvkzliysacpyavmetsx
 supabase migration list        # confirmer le décalage de versions
 supabase migration repair --status applied 20261109140000 20261109141000 \
-                                      --status applied 20261109142000 20261109150000
+                                      --status applied 20261109142000 20261109150000 \
+                                      --status applied 20261109160000
 ```
 
 `migration repair` n'exécute aucun SQL : il ne fait qu'inscrire les versions locales comme déjà appliquées. À faire **après** avoir confirmé que le schéma distant correspond bien au contenu des fichiers.

@@ -134,7 +134,7 @@ Tant que L1 n'est pas fait, **L4-T4 est impossible** (le test d'intégration éc
 | Effet | Détail |
 | --- | --- |
 | 🔔 **Création de station bloquée au-delà du quota** | Le propriétaire actuel n'a pas de ligne `owner_subscriptions` → plan **Starter** par défaut → **1 station maximum**. Il possède déjà 1 station : toute création supplémentaire échouera jusqu'à attribution d'un plan Supérieur. |
-| 🔔 **RPC remplacées** | `create_station_order` et `transition_station_order` sont redéfinies en version rôle-aware. L'ancienne variante `create_station_order` reste exposée (voir A24 / L1-T5). |
+| 🔔 **RPC remplacées** | `create_station_order` et `transition_station_order` sont redéfinies en version rôle-aware. L'ancienne variante `create_station_order` a depuis été refermée à `authenticated` (migration `20261109184205`, L1-T5). |
 | 🔔 **`current_station_role` devient indispensable** | `OwnerPortal` l'appelle déjà ; en cas d'échec il retombe sur un repli propriétaire. Le déploiement supprime ce repli dégradé. |
 | ✅ **Aucun impact sur les données existantes** | `enforce_station_limit` et `enforce_monthly_order_limit` sont des triggers `BEFORE INSERT` : ils ne touchent pas les lignes existantes. |
 
@@ -635,7 +635,7 @@ Aucune anomalie n'est orpheline.
 | --- | :---: | :---: | --- |
 | Une migration échoue en production à mi-parcours | Faible | Élevé | Sandbox L1-T1 obligatoire + vérification § 5.2 après **chaque** migration |
 | Blocage de création de station pour l'utilisateur actuel (quota Starter = 1) | **Élevé** | Moyen | Annoncer avant déploiement ; attribuer un plan Pro si besoin (L5-T3) ; comportement voulu |
-| Le `REVOKE` de L1-T5 casse la RPC idempotente | Moyen | Élevé | Test PGlite obligatoire avant déploiement ; `CREATE OR REPLACE` pour revenir |
+| Le `REVOKE` de L1-T5 casse la RPC idempotente | Moyen | Élevé | **Écarté** : test PGlite + vérification production confirment que le chaînage `SECURITY DEFINER` traverse le `REVOKE`. Marche arrière : `grant execute … to authenticated` |
 | L'archivage legacy casse un import oublié | Faible | Moyen | `tsc` + build le détectent immédiatement ; PR isolée, retour arrière trivial |
 | La CSP casse Supabase (realtime WebSocket) | Moyen | Élevé | Mode `Report-Only` d'abord ; inclure `wss://` dans `connect-src` |
 | Le job d'intégration CI est instable (Docker) | Moyen | Moyen | Lancer en `continue-on-error` la première semaine, puis bloquant |
@@ -705,15 +705,15 @@ Sous réserve de D1 et D2, la première action concrète est **L1-T1** : valider
 | 2026-11-09 | **L3-T4** — ErrorBoundary | ✅ Écran de secours avec « Réessayer » et « Recharger » ; détail technique en console uniquement |
 | 2026-11-09 | **L3-T5** — Boutons sans `type` | ✅ 38/38 explicites dans le code actif + `tests/buttonTypes.test.ts` (3 tests) |
 | 2026-11-09 | **L3-T6** — Content Security Policy | ✅ 12 directives, origine Supabase injectée au build (jamais en dur) + `tests/contentSecurityPolicy.test.ts` (4 tests) |
+| 2026-11-09 | **L3-T8** — `.aistudio/` hors Git | ✅ 1 fichier retiré du suivi + `.gitignore`. Toujours dans l'historique (`dc7f314`) : non réécrit |
+| 2026-11-09 | **L1-T5** — Refermer la RPC non idempotente | ✅ Migration `20261109184205` déployée. `create_station_order` → `auth_can=false`, variante idempotente intacte. `supabase/tests/revoke_legacy_order_rpc.sql` |
 
 ### Reste à faire
 
 | Tâche | Blocage |
 | --- | --- |
 | L3-T2 — Archiver le legacy (88 % de `src/`) | Nécessite une PR isolée ; débloque `noUnusedLocals` |
-| L3-T8 — `.aistudio/` dans Git | — |
 | L4 — Tests de composant + intégration CI | — |
 | L5 — Finitions | — |
 | `bun.lock` | À supprimer (décision mainteneur) |
 | `metadata.json` — capacité Gemini | À retirer |
-| `create_station_order` non idempotente (**L1-T5 / A24**) | Nécessite un test PGlite préalable |
