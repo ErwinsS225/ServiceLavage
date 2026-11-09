@@ -8,6 +8,10 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # A pull request must be able to turn green on its own merits.
+    concurrency:
+      group: ci-${{ github.ref }}
+      cancel-in-progress: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -18,6 +22,8 @@ jobs:
         run: npm ci
       - name: Type check
         run: npm run lint
+      - name: No unreachable source files
+        run: npm run check:reachability
       - name: Unit and database isolation tests
         run: npm test
       - name: Build with non-secret example configuration

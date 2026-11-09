@@ -10,7 +10,8 @@
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
     "test": "tsx --test tests/*.test.ts",
-    "test:integration": "RUN_LOCAL_SUPABASE_INTEGRATION=1 tsx --test tests/supabaseLocalIntegration.test.ts"
+    "test:integration": "RUN_LOCAL_SUPABASE_INTEGRATION=1 tsx --test tests/supabaseLocalIntegration.test.ts",
+    "check:reachability": "node scripts/checkReachability.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.119.0",
