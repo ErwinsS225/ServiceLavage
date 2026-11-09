@@ -5,6 +5,31 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { defineConfig, type Plugin } from 'vite';
 
+/**
+ * Vite serves the project root in development, which would expose `docs/`,
+ * `tests/`, `supabase/` and `.env*` over HTTP. Only the application entry
+ * points and `public/` are meant to be reachable.
+ */
+function devRootAllowList(): Plugin {
+  return {
+    name: 'dev-root-allow-list',
+    apply: 'serve',
+    configureServer(server) {
+      const blocked = /^\/(docs|tests|supabase|\.aistudio)(\/|$)/;
+      server.middlewares.use((req, _res, next) => {
+        const pathname = new URL(req.url ?? '/', 'http://localhost').pathname;
+        if (blocked.test(pathname) || pathname.includes('..')) {
+          _res.statusCode = 404;
+          _res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+          _res.end('Not found');
+          return;
+        }
+        next();
+      });
+    },
+  };
+}
+
 /** Precache only build artifacts, never API, auth or tenant data. */
 function offlineShell(): Plugin {
   return {
@@ -34,7 +59,7 @@ function offlineShell(): Plugin {
 }
 
 export default defineConfig(() => ({
-  plugins: [react(), tailwindcss(), offlineShell()],
+  plugins: [react(), tailwindcss(), devRootAllowList(), offlineShell()],
   resolve: { alias: { '@': path.resolve(import.meta.dirname, '.') } },
   server: {
     // Arena proxies the app under this preview suffix; keep Vite's host check enabled for other hosts.

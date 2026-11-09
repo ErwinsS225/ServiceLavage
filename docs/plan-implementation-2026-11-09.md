@@ -682,3 +682,38 @@ Sous réserve de D1 et D2, la première action concrète est **L1-T1** : valider
 4. Enchaîner L2-T1 (configuration Auth) et L2-T2 (récupération de mot de passe) dans la même PR.
 
 **Ce qui exige une information de votre part :** l'URL publique de production (D2). Sans elle, je peux tout déployer sauf la configuration des redirections e-mail.
+
+---
+
+## 15. Journal d'exécution
+
+| Date | Tâche | Résultat |
+| --- | --- | --- |
+| 2026-11-09 | **A2** — CI rouge | ✅ Corrigé (`HeroSection` : composant `Button` inexistant remplacé par des boutons natifs) |
+| 2026-11-09 | **L1-T1** — Environnement de test jetable | ⚠️ **Bloqué** : quota de projets gratuits atteint. Remplacé par `tests/migrationUpgradePath.test.ts` (rejoue le chemin 6 → 10 sur PGlite) |
+| 2026-11-09 | **L1-T2** — Sauvegarde | ✅ Dump logique dans `docs/sauvegardes/` |
+| 2026-11-09 | **L1-T3** — Application des migrations | ✅ **10/10 déployées**, une par une, vérifiées après chaque étape |
+| 2026-11-09 | **L1-T4** — Vérifications | ✅ 12 tables, toutes RLS ; 0 fonction exécutable par `anon` ; 3 triggers actifs ; station intacte |
+| 2026-11-09 | **D4** — Plan du propriétaire | ✅ **Pro** attribué (2 stations / 2 500 prestations) |
+| 2026-11-09 | **L1-T6** — Runbook | ✅ `docs/runbook-migrations.md` |
+| 2026-11-09 | **L2-T1** — Config Auth | ✅ `site_url` + `uri_allow_list` sur l'URL de prévisualisation. ⚠️ 3 paramètres (`password_min_length`, `password_hibp_enabled`, `rate_limit_email_sent`) non exposés par l'API → à faire dans le Dashboard |
+| 2026-11-09 | **L2-T2** — Récupération de mot de passe | ✅ Formulaire `forgot` + `recovery`, 5 tests |
+| 2026-11-09 | **L2-T3** — Documents internes | ✅ Déplacés dans `docs/archive/`. **Découverte** : `docs/`, `tests/` et `supabase/` étaient servis par le serveur de dev → bloqués par un plugin, 5 tests |
+| 2026-11-09 | **L3-T1** — TypeScript strict | ✅ `strict: true` + `noFallthroughCasesInSwitch`, **0 erreur**. `noUnusedLocals` reporté après archivage du legacy (129 erreurs, toutes legacy) |
+| 2026-11-09 | **L3-T3** — Dépendances | ✅ 13 → 6 de production, 190 → 62 paquets, bundle **inchangé** (489,92 Ko) |
+| 2026-11-09 | **L3-T7** — Métadonnées | ✅ `servicelavage@1.0.0` (était `react-example@0.0.0`) |
+
+### Reste à faire
+
+| Tâche | Blocage |
+| --- | --- |
+| L3-T2 — Archiver le legacy (88 % de `src/`) | Nécessite une PR isolée ; débloque `noUnusedLocals` |
+| L3-T4 — ErrorBoundary | — |
+| L3-T5 — Boutons sans `type` | — |
+| L3-T6 — CSP | — |
+| L3-T8 — `.aistudio/` dans Git | — |
+| L4 — Tests de composant + intégration CI | — |
+| L5 — Finitions | — |
+| `bun.lock` | À supprimer (décision mainteneur) |
+| `metadata.json` — capacité Gemini | À retirer |
+| `create_station_order` non idempotente (**L1-T5 / A24**) | Nécessite un test PGlite préalable |

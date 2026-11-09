@@ -45,9 +45,16 @@ Les tests PGlite appliquent les migrations sur une base en mémoire et émulent 
 
 ## Organisation
 
-- `src/components/OwnerPortal.tsx` : authentification et accès aux modules réels.
+- `src/components/OwnerPortal.tsx` : authentification, récupération de mot de passe et accès aux modules réels.
 - `src/components/Station*.tsx` : prestations, clients et services.
 - `src/lib/` : client Supabase, logique monétaire et file locale expérimentale.
 - `supabase/migrations/` et `supabase/tests/` : schéma, règles et tests SQL.
 - `src/context/AppContext.tsx` et `src/data/mockData.ts` : ancien prototype, non monté par l'application actuelle.
-- `docs/` : audit, sécurité et fonctionnement hors ligne.
+- `docs/` : audit, implémentation, sécurité, authentification, migrations et fonctionnement hors ligne.
+- `docs/archive/` : documents historiques, **non servis** par l'application.
+
+## Sécurité du serveur de développement
+
+Vite sert la racine du projet : `docs/`, `tests/`, `supabase/` et `.aistudio/` seraient accessibles en HTTP. Un plugin (`devRootAllowList` dans `vite.config.ts`) les bloque et `tests/devServerExposure.test.ts` le vérifie.
+
+Ne jamais placer dans `public/` un fichier qui ne doit pas être public : ce dossier est copié tel quel à la racine du site construit.
