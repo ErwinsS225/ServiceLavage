@@ -8,6 +8,24 @@ const plans = [
   { id: 'business', name: 'Business', price: '35 000', stations: 10, orders: '10 000', users: 50, photos: 100 },
 ] as const;
 
+const starterFeatures = [
+  { label: 'Gestion des prestations', state: 'available' },
+  { label: 'Tickets imprimables', state: 'planned' },
+  { label: 'Catalogue de services personnalisable', state: 'available' },
+  { label: 'Gestion des clients', state: 'available' },
+  { label: 'Fiches véhicules et historique client', state: 'partial' },
+  { label: 'Caisse journalière et paiements', state: 'planned' },
+  { label: 'Rapports essentiels', state: 'planned' },
+  { label: 'Gestion basique du personnel', state: 'planned' },
+  { label: 'Vitrine commerciale simple', state: 'planned' },
+] as const;
+
+const featureState = {
+  available: { label: 'Disponible', color: 'text-emerald-300' },
+  partial: { label: 'Partiel', color: 'text-amber-300' },
+  planned: { label: 'À développer', color: 'text-gray-400' },
+} as const;
+
 export function SubscriptionPlans() {
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [loading, setLoading] = useState(true);
@@ -32,12 +50,18 @@ export function SubscriptionPlans() {
       <p>Prestations ce mois (UTC) : {subscription.monthly_orders} / {subscription.max_monthly_orders}</p>
     </div>}
     <p className="text-sm text-gray-400">Un administrateur attribue le plan. Aucun paiement ou changement de plan n’est effectué depuis cette page. Prix indicatifs, non facturés par l’application.</p>
-    <div className="space-y-3">{plans.map(plan => <article key={plan.id} className="rounded-xl border border-[#343b48] bg-[#20242e] p-4 text-sm space-y-1">
+    <div className="space-y-3">{plans.map(plan => <article key={plan.id} className="rounded-xl border border-[#343b48] bg-[#20242e] p-4 text-sm space-y-2">
       <h3 className="font-bold">{plan.name} {subscription?.plan === plan.id && !error ? '· Actuel' : ''}</h3>
       <p>{plan.price} FCFA / mois · tarif indicatif</p>
       <p>{plan.stations} station(s) · {plan.orders} prestations / mois</p>
       <p className="text-gray-400">Cible non encore appliquée : {plan.users} utilisateurs et {plan.photos} photos.</p>
+      {plan.id === 'starter' && <>
+        <h4 className="pt-2 font-semibold">Fonctionnalités Starter</h4>
+        <ul className="space-y-1">{starterFeatures.map(feature => <li key={feature.label} className="flex justify-between gap-3">
+          <span>{feature.label}</span><span className={`shrink-0 ${featureState[feature.state].color}`}>{featureState[feature.state].label}</span>
+        </li>)}</ul>
+      </>}
     </article>)}</div>
-    <p className="text-xs text-amber-300">Seules les limites de stations et prestations sont prévues dans la migration. Paiements, rôles, galerie, stocks, rapports et autres avantages ne sont pas encore activés.</p>
+    <p className="text-xs text-amber-300">Les fonctionnalités marquées « À développer » ou « Partiel » ne sont pas promises comme pleinement opérationnelles. Les limites serveurs disponibles concernent uniquement le nombre de stations et de prestations.</p>
   </section>;
 }

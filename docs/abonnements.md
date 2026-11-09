@@ -4,6 +4,24 @@
 
 La migration `20261109141000_subscription_limits.sql` et l'écran d'abonnements sont préparés et testés localement, mais la migration n'a **pas été appliquée à LavAuto**. Les limites ne sont donc pas actives sur le projet distant. Avant déploiement, tester sur un projet Supabase jetable avec les migrations en attente (dont les adhésions), examiner les stations déjà créées et les historiques, puis vérifier les versions des migrations distantes. L'écran affiche une erreur si la fonction serveur n'est pas disponible.
 
+## Fonctionnalités Starter déclarées
+
+Le périmètre fourni pour Starter comprend : gestion des prestations et tickets, catalogue personnalisable, clients et véhicules, caisse/paiements, rapports essentiels, personnel basique et vitrine simple. État vérifié dans le parcours Supabase actif :
+
+| Fonction | État réel |
+| --- | --- |
+| Création et suivi des prestations | Disponible dans le portail propriétaire ; synchronisation hors ligne limitée. |
+| Tickets | À développer : aucune génération/impression de ticket n'est reliée au parcours actif. |
+| Catalogue personnalisable | Disponible pour les services propres à une station. |
+| Clients | Disponible ; les véhicules ne sont pas encore des fiches liées au client. |
+| Gestion des véhicules | Partielle : véhicule et plaque sont stockés sur une prestation, sans registre véhicule ni historique dédié. |
+| Caisse journalière et paiements | À développer. |
+| Rapports essentiels | À développer. |
+| Personnel basique | À développer dans l'interface métier ; le modèle de rôles préparé n'est pas déployé. |
+| Vitrine commerciale | À développer dans le parcours actif. |
+
+L'interface d'abonnement affiche ces statuts pour éviter de présenter comme incluses des fonctionnalités non opérationnelles. La définition des fonctionnalités Pro et Business reste à confirmer avant d'établir une matrice complète des accès.
+
 ## Politique cible mise en place par la migration
 
 | Plan | Stations par propriétaire | Prestations mensuelles par propriétaire |
