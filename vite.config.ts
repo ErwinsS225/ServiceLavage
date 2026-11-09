@@ -51,7 +51,7 @@ function cspSupabaseOrigin(): Plugin {
           origin = `${url.origin} ${url.origin.replace(/^https:/, 'wss:')}`;
         } catch { /* keep 'self' for an invalid URL */ }
       }
-      return html.replace('%VITE_CSP_SUPABASE_ORIGIN%', origin);
+      return html.replace('__SUPABASE_CSP_ORIGIN__', origin);
     },
   };
 }

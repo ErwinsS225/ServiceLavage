@@ -15,7 +15,7 @@ const policy = (html.match(/http-equiv="Content-Security-Policy"\s+content="([^"
 
 test('the policy is declared and injects the Supabase placeholder', () => {
   assert.ok(policy.length > 0, 'aucune CSP déclarée dans index.html');
-  assert.match(policy, /connect-src[^;]*%VITE_CSP_SUPABASE_ORIGIN%/);
+  assert.match(policy, /connect-src[^;]*__SUPABASE_CSP_ORIGIN__/);
 });
 
 test('dangerous directives are explicitly disabled', () => {
