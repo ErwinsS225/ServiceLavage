@@ -35,7 +35,7 @@ function offlineShell(): Plugin {
 
 export default defineConfig(() => ({
   plugins: [react(), tailwindcss(), offlineShell()],
-  resolve: { alias: { '@': path.resolve(__dirname, '.') } },
+  resolve: { alias: { '@': path.resolve(import.meta.dirname, '.') } },
   server: {
     // AI Studio can disable file watching to avoid flickering during edits.
     hmr: process.env.DISABLE_HMR !== 'true',
