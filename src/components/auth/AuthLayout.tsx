@@ -11,9 +11,7 @@ const SCENES = {
   signin: ['/assets/auth-signin-1.jpg', '/assets/auth-signin-2.jpg'],
   signup: ['/assets/auth-signup-1.jpg', '/assets/auth-signup-2.jpg'],
   forgot: ['/assets/auth-forgot-1.jpg', '/assets/auth-forgot-2.jpg'],
-  // Reset still has one image: the generated second pair showed a car
-  // manufacturer logo, which must not appear on a product page.
-  reset: ['/assets/auth-reset-2.jpg'],
+  reset: ['/assets/auth-reset-1.jpg', '/assets/auth-reset-2.jpg'],
 } as const;
 
 export type AuthScene = keyof typeof SCENES;

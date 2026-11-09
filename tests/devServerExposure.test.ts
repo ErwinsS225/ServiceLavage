@@ -39,6 +39,7 @@ test('public/ contains only files meant to be public', async () => {
   assert.deepEqual(files, [
     'assets/auth-forgot-1.jpg',
     'assets/auth-forgot-2.jpg',
+    'assets/auth-reset-1.jpg',
     'assets/auth-reset-2.jpg',
     'assets/auth-signin-1.jpg',
     'assets/auth-signin-2.jpg',

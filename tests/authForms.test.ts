@@ -88,8 +88,9 @@ test('each screen has its own photographs, and they exist', async () => {
     const block = source.match(new RegExp(`${scene}: \\[([^\\]]+)\\]`))?.[1] ?? '';
     return (block.match(IMAGE) ?? []).length;
   };
-  assert.equal(pair('signin'), 2, 'sign-in must have two images');
-  assert.equal(pair('signup'), 2, 'sign-up must have two images');
+  for (const scene of ['signin', 'signup', 'forgot', 'reset']) {
+    assert.equal(pair(scene), 2, `${scene} must have two images`);
+  }
 });
 
 test('the rotating photographs respect prefers-reduced-motion', async () => {
