@@ -46,13 +46,13 @@ export const Dashboard: React.FC = () => {
 
   // Calculate live metric counts
   const ongoingWashes = orders.filter(o => o.status === 'en_cours').length;
-  const inOrderCount = orders.filter(o => o.status === 'en_attente').length + 8; // realistic total queue count
-  const completedCount = orders.filter(o => o.status === 'termine').length + 26;
+  const inOrderCount = orders.filter(o => o.status === 'en_attente').length;
+  const completedCount = orders.filter(o => o.status === 'termine').length;
   const operationalBaysCount = bays.filter(b => b.status === 'operational').length;
   
   const totalRevenueNumber = orders
     .filter(o => o.paymentStatus === 'paye')
-    .reduce((acc, curr) => acc + curr.amount, 0) + 1950; // align with ~$2240 (~1 456 000 FCFA)
+    .reduce((acc, curr) => acc + curr.paidAmount, 0);
 
   const getCategoryBadge = (category: string) => {
     switch (category) {

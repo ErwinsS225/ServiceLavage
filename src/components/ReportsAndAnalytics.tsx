@@ -18,13 +18,13 @@ export const ReportsAndAnalytics: React.FC = () => {
   const [period, setPeriod] = useState<'today' | 'week' | 'month' | 'year'>('month');
 
   // Calculations
-  const totalBilled = orders.reduce((sum, o) => sum + o.amount, 0) + 1950;
+  const totalBilled = orders.reduce((sum, o) => sum + o.amount, 0);
   const totalCollected = orders
     .filter(o => o.paymentStatus === 'paye')
-    .reduce((sum, o) => sum + o.amount, 0) + 1820;
+    .reduce((sum, o) => sum + o.paidAmount, 0);
   const totalUnpaid = Math.max(0, totalBilled - totalCollected);
-  const totalExpensesUSD = expenses.reduce((sum, e) => sum + e.amount, 0) / 650;
-  const netEstimatedProfit = totalCollected - totalExpensesUSD;
+  const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
+  const netEstimatedProfit = totalCollected - totalExpenses;
 
   const handleExportCSV = () => {
     const headers = ['Ticket', 'Date', 'Vehicule', 'Plaque', 'Formule', 'Piste', 'Montant', 'Statut', 'Mode'];
@@ -60,7 +60,7 @@ export const ReportsAndAnalytics: React.FC = () => {
             <span>Rapports Financiers & Performance Opérationnelle</span>
           </h2>
           <p className="text-xs text-gray-400">
-            Distinction stricte entre Chiffre d'Affaires, Encaissements réels, Dépenses et Marge nette
+            Démonstration locale : les données et les indicateurs ne constituent pas une comptabilité fiable.
           </p>
         </div>
 
@@ -132,7 +132,7 @@ export const ReportsAndAnalytics: React.FC = () => {
             Dépenses & Consommables
           </span>
           <div className="text-2xl font-black text-rose-400">
-            -{formatCurrency(totalExpensesUSD)}
+            -{formatCurrency(totalExpenses)}
           </div>
           <p className="text-[11px] text-rose-400 flex items-center gap-1 font-medium">
             <TrendingDown className="w-3.5 h-3.5" />
