@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import { StationCustomers } from './StationCustomers';
 import { StationServices } from './StationServices';
 import { StationOrders } from './StationOrders';
+import { SubscriptionPlans } from './SubscriptionPlans';
 
 type Station = { id: string; name: string };
 
@@ -18,7 +19,7 @@ export function OwnerPortal() {
   const [name, setName] = useState('');
   const [stations, setStations] = useState<Station[]>([]);
   const [stationId, setStationId] = useState('');
-  const [tab, setTab] = useState<'orders' | 'services' | 'customers'>('orders');
+  const [tab, setTab] = useState<'orders' | 'services' | 'customers' | 'subscription'>('orders');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
@@ -110,10 +111,11 @@ export function OwnerPortal() {
               <option value="">Choisir une station</option>{stations.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
           </label>}
+          <nav aria-label="Modules" className="flex flex-wrap gap-2">
+              {([['orders', 'Prestations'], ['services', 'Catalogue'], ['customers', 'Clients'], ['subscription', 'Abonnements']] as const).map(([key, label]) => <button key={key} type="button" onClick={() => setTab(key)} aria-current={tab === key ? 'page' : undefined} className={`rounded-xl px-3 py-2 text-sm ${tab === key ? 'bg-cyan-500 text-gray-950' : 'bg-[#20242e] text-gray-300'}`}>{label}</button>)}
+          </nav>
+          {tab === 'subscription' && <SubscriptionPlans />}
           {stationId && <>
-            <nav aria-label="Modules de la station" className="flex flex-wrap gap-2">
-              {([['orders', 'Prestations'], ['services', 'Catalogue'], ['customers', 'Clients']] as const).map(([key, label]) => <button key={key} type="button" onClick={() => setTab(key)} aria-current={tab === key ? 'page' : undefined} className={`rounded-xl px-3 py-2 text-sm ${tab === key ? 'bg-cyan-500 text-gray-950' : 'bg-[#20242e] text-gray-300'}`}>{label}</button>)}
-            </nav>
             {tab === 'orders' && <StationOrders key={`orders:${session.user.id}:${stationId}`} stationId={stationId} userId={session.user.id} />}
             {tab === 'services' && <StationServices key={`services:${session.user.id}:${stationId}`} stationId={stationId} />}
             {tab === 'customers' && <StationCustomers key={`customers:${session.user.id}:${stationId}`} stationId={stationId} />}
