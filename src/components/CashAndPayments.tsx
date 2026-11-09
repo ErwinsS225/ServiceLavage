@@ -37,21 +37,21 @@ export const CashAndPayments: React.FC = () => {
   
   const totalWave = paidOrders
     .filter(o => o.paymentMethod === 'wave')
-    .reduce((sum, o) => sum + o.amount, 0) + 120000 / 650;
+    .reduce((sum, o) => sum + o.paidAmount, 0);
     
   const totalOrange = paidOrders
     .filter(o => o.paymentMethod === 'orange_money')
-    .reduce((sum, o) => sum + o.amount, 0) + 75000 / 650;
+    .reduce((sum, o) => sum + o.paidAmount, 0);
 
   const totalMtn = paidOrders
     .filter(o => o.paymentMethod === 'mtn_momo')
-    .reduce((sum, o) => sum + o.amount, 0) + 58000 / 650;
+    .reduce((sum, o) => sum + o.paidAmount, 0);
 
   const totalCash = paidOrders
     .filter(o => o.paymentMethod === 'especes' || !o.paymentMethod)
-    .reduce((sum, o) => sum + o.amount, 0) + 65000 / 650;
+    .reduce((sum, o) => sum + o.paidAmount, 0);
 
-  const grandTotal = totalWave + totalOrange + totalMtn + totalCash;
+  const grandTotal = paidOrders.reduce((sum, o) => sum + o.paidAmount, 0);
 
   const filteredOrders = orders.filter(o => {
     if (filterMethod !== 'all' && o.paymentMethod !== filterMethod) return false;
@@ -68,7 +68,8 @@ export const CashAndPayments: React.FC = () => {
 
   const handleCloseSession = (e: React.FormEvent) => {
     e.preventDefault();
-    const cash = Number(actualCashClosing) || cashSession.expectedClosingBalance;
+    const cash = Number(actualCashClosing);
+    if (!actualCashClosing.trim() || !Number.isSafeInteger(cash) || cash < 0) return;
     closeCashSession(cash, 'Clôture de caisse quotidienne normale');
     setShowCloseModal(false);
   };
@@ -83,7 +84,7 @@ export const CashAndPayments: React.FC = () => {
             <span>Caisse Journalière & Encaissements</span>
           </h2>
           <p className="text-xs text-gray-400">
-            Gestion des encaissements Espèces, Wave, Orange Money et MTN MoMo
+            Démonstration locale : ces montants ne constituent pas un journal de caisse fiable.
           </p>
         </div>
 
@@ -101,7 +102,7 @@ export const CashAndPayments: React.FC = () => {
             </button>
           ) : (
             <button
-              onClick={() => openCashSession(Number(openingAmountInput) || 50000)}
+              onClick={() => openCashSession(Number(openingAmountInput))}
               className="px-4 py-2 rounded-xl bg-emerald-600/20 text-emerald-300 hover:bg-emerald-600/30 border border-emerald-500/30 text-xs font-bold flex items-center gap-2 transition-all"
             >
               <Unlock className="w-4 h-4" />
@@ -367,6 +368,8 @@ export const CashAndPayments: React.FC = () => {
                 </label>
                 <input
                   type="number"
+                  min="0"
+                  step="1"
                   required
                   value={actualCashClosing}
                   onChange={e => setActualCashClosing(e.target.value)}

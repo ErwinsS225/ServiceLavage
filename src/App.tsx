@@ -1,4 +1,5 @@
 import React from 'react';
+import { OwnerPortal } from './components/OwnerPortal';
 import { AppProvider, useApp } from './context/AppContext';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
@@ -125,9 +126,5 @@ const MainLayout: React.FC = () => {
 };
 
 export default function App() {
-  return (
-    <AppProvider>
-      <MainLayout />
-    </AppProvider>
-  );
+  return <OwnerPortal />;
 }

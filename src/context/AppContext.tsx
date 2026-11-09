@@ -1,3 +1,4 @@
+import { formatXof } from '../lib/money';
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { 
   StationTenant, 
@@ -110,7 +111,6 @@ interface AppContextType {
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
-const RATE_USD_TO_XOF = 650; // 1 USD = 650 FCFA
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [tenants, setTenants] = useState<StationTenant[]>(() => {
@@ -177,7 +177,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   useEffect(() => {
     const handleOnline = () => {
       setIsOfflineMode(false);
-      showBanner('Connexion internet rétablie ! Synchronisation active.', 'success');
+      showBanner('Connexion internet rétablie. La synchronisation cloud n’est pas disponible dans la démonstration.', 'info');
     };
     const handleOffline = () => {
       setIsOfflineMode(true);
@@ -270,10 +270,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }, 4000);
   };
 
-  const formatCurrency = (amount: number): string => {
-    const fcfa = amount < 1000 ? Math.round(amount * RATE_USD_TO_XOF) : Math.round(amount);
-    return `${fcfa.toLocaleString('fr-FR')} FCFA`;
-  };
+  const formatCurrency = formatXof;
 
   const updateCurrentTenant = (updates: Partial<StationTenant>) => {
     setTenants(prev => prev.map(t => t.id === currentTenant.id ? { ...t, ...updates } : t));
@@ -329,7 +326,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     // If order is completed, update employee commission and bay
     const order = orders.find(o => o.id === id);
-    if (order && status === 'termine') {
+    if (order && order.status !== 'termine' && status === 'termine') {
       if (order.assignedStaffIds.length > 0) {
         const commissionPerWasher = (order.amount * 0.15) / order.assignedStaffIds.length;
         setEmployees(prev => prev.map(emp => {
@@ -337,7 +334,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             return {
               ...emp,
               totalWashesCompleted: emp.totalWashesCompleted + 1,
-              totalCommissionsEarned: emp.totalCommissionsEarned + Math.round(commissionPerWasher * RATE_USD_TO_XOF),
+              totalCommissionsEarned: emp.totalCommissionsEarned + Math.round(commissionPerWasher),
             };
           }
           return emp;
@@ -510,9 +507,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       showBanner('Aucune commande en attente de synchronisation', 'info');
       return;
     }
-    const count = offlineQueueCount;
-    setOfflineQueueCount(0);
-    showBanner(`${count} prestations synchronisées avec succès avec le cloud !`, 'success');
+    showBanner('Synchronisation cloud indisponible dans la démonstration : aucune donnée n’a été envoyée.', 'warning');
   };
 
   return (
