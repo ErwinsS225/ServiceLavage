@@ -124,7 +124,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const [currentUserRole, setCurrentUserRole] = useState<UserRole>('proprietaire');
   const [isDarkMode, setIsDarkMode] = useState<boolean>(true);
-  const [currency, setCurrency] = useState<'USD' | 'XOF'>('USD');
+  const [currency, setCurrency] = useState<'USD' | 'XOF'>('XOF');
   const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
@@ -271,13 +271,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const formatCurrency = (amount: number): string => {
-    if (currency === 'USD') {
-      return `$ ${amount.toFixed(2)}`;
-    } else {
-      // In XOF / FCFA
-      const xofAmount = Math.round(amount * RATE_USD_TO_XOF);
-      return `${xofAmount.toLocaleString('fr-FR')} FCFA`;
-    }
+    const fcfa = amount < 1000 ? Math.round(amount * RATE_USD_TO_XOF) : Math.round(amount);
+    return `${fcfa.toLocaleString('fr-FR')} FCFA`;
   };
 
   const updateCurrentTenant = (updates: Partial<StationTenant>) => {

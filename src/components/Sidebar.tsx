@@ -131,8 +131,8 @@ export const Sidebar: React.FC = () => {
                     : 'text-gray-400 hover:text-gray-200 hover:bg-[#1a1e27]'
                 }`}
               >
-                <Home className="w-4 h-4 text-gray-400" />
-                <span>Home</span>
+                <Home className="w-4 h-4 text-cyan-400" />
+                <span>Tableau de bord</span>
               </button>
 
               <button
@@ -160,7 +160,7 @@ export const Sidebar: React.FC = () => {
               >
                 <div className="flex items-center gap-3">
                   <Car className="w-4 h-4" />
-                  <span>Queue Management</span>
+                  <span>File d'attente (Queue)</span>
                 </div>
                 {activeOrdersCount > 0 && (
                   <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-cyan-500/20 text-cyan-400">
@@ -178,7 +178,7 @@ export const Sidebar: React.FC = () => {
                 }`}
               >
                 <Users className="w-4 h-4" />
-                <span>Customer Management</span>
+                <span>Clients & Flottes</span>
               </button>
 
               <button
@@ -190,7 +190,7 @@ export const Sidebar: React.FC = () => {
                 }`}
               >
                 <LayoutGrid className="w-4 h-4" />
-                <span>Bay Management</span>
+                <span>Pistes de Lavage</span>
               </button>
 
               <button
@@ -202,7 +202,7 @@ export const Sidebar: React.FC = () => {
                 }`}
               >
                 <CreditCard className="w-4 h-4" />
-                <span>Payments & Caisse</span>
+                <span>Caisse & Règlements</span>
               </button>
 
               <button
@@ -214,7 +214,7 @@ export const Sidebar: React.FC = () => {
                 }`}
               >
                 <Package className="w-4 h-4" />
-                <span>Inventory & Dépenses</span>
+                <span>Stocks & Dépenses</span>
               </button>
 
               <button
@@ -263,7 +263,7 @@ export const Sidebar: React.FC = () => {
               >
                 <div className="flex items-center gap-3">
                   <Bell className="w-4 h-4" />
-                  <span>Notification</span>
+                  <span>Notifications</span>
                 </div>
                 <span className="w-2 h-2 rounded-full bg-cyan-400" />
               </button>
@@ -350,7 +350,7 @@ export const Sidebar: React.FC = () => {
                 }`}
               >
                 <Settings className="w-4 h-4" />
-                <span>Settings</span>
+                <span>Paramètres Station</span>
               </button>
 
               <button
@@ -362,7 +362,7 @@ export const Sidebar: React.FC = () => {
                 }`}
               >
                 <HelpCircle className="w-4 h-4" />
-                <span>Help & Guide CI</span>
+                <span>Guide & Aide CI</span>
               </button>
             </div>
           </div>
@@ -418,7 +418,7 @@ export const Sidebar: React.FC = () => {
         <div className="flex items-center justify-between px-1">
           <div className="flex items-center gap-2.5 text-xs font-medium text-gray-400">
             {isDarkMode ? <Moon className="w-4 h-4 text-cyan-400" /> : <Sun className="w-4 h-4 text-amber-400" />}
-            <span>Dark Mode</span>
+            <span>Mode Sombre</span>
           </div>
 
           {/* Toggle Switch */}

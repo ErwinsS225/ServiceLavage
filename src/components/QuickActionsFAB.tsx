@@ -66,8 +66,8 @@ export const QuickActionsFAB: React.FC = () => {
   const quickActions = [
     {
       id: 'new_wash',
-      title: 'Register New Wash',
-      desc: 'Enregistrer un véhicule & ticket POS',
+      title: 'Nouveau Lavage (POS)',
+      desc: 'Enregistrer un véhicule & émettre le ticket',
       icon: Car,
       color: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/40 hover:bg-cyan-500/30',
       badge: 'Action #1',
@@ -78,7 +78,7 @@ export const QuickActionsFAB: React.FC = () => {
     },
     {
       id: 'update_stock',
-      title: 'Update Stock & Products',
+      title: 'Mettre à jour le Stock',
       desc: 'Réapprovisionner shampoings & cires en 1 clic',
       icon: Package,
       color: 'bg-amber-500/20 text-amber-400 border-amber-500/40 hover:bg-amber-500/30',
@@ -89,7 +89,7 @@ export const QuickActionsFAB: React.FC = () => {
     },
     {
       id: 'close_cash',
-      title: 'Cash Register & Payments',
+      title: 'Caisse & Règlements',
       desc: 'Point de caisse Wave, MoMo & espèces',
       icon: CreditCard,
       color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40 hover:bg-emerald-500/30',
@@ -101,7 +101,7 @@ export const QuickActionsFAB: React.FC = () => {
     },
     {
       id: 'refresh_bays',
-      title: 'Refresh All 8 Wash Bays',
+      title: 'Actualiser les 8 Pistes',
       desc: 'Synchroniser l\'état en direct de toutes les pistes',
       icon: RefreshCw,
       color: 'bg-blue-500/20 text-blue-400 border-blue-500/40 hover:bg-blue-500/30',
@@ -110,7 +110,7 @@ export const QuickActionsFAB: React.FC = () => {
     },
     {
       id: 'customer_lookup',
-      title: 'Customer & Fleet Directory',
+      title: 'Répertoire Clients & Flottes',
       desc: 'Consulter un client ou envoyer message WhatsApp',
       icon: Users,
       color: 'bg-purple-500/20 text-purple-400 border-purple-500/40 hover:bg-purple-500/30',
@@ -122,8 +122,8 @@ export const QuickActionsFAB: React.FC = () => {
     },
     {
       id: 'onboarding_wizard',
-      title: 'Station Setup Wizard (9 steps)',
-      desc: 'Assistant de configuration complète de la station',
+      title: 'Assistant Station (9 étapes)',
+      desc: 'Configuration complète et guidée de la station',
       icon: Building2,
       color: 'bg-sky-500/20 text-sky-400 border-sky-500/40 hover:bg-sky-500/30',
       badge: 'Setup',
@@ -152,7 +152,7 @@ export const QuickActionsFAB: React.FC = () => {
             {/* Header label */}
             <div className="px-3 py-1.5 rounded-xl bg-[#191c24] border border-[#2e3544] text-[11px] font-bold text-gray-300 shadow-xl flex items-center gap-1.5">
               <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
-              <span>Quick Actions • Tâches Fréquentes</span>
+              <span>Actions Rapides • Tâches Clés</span>
             </div>
 
             {quickActions.map(act => {
@@ -194,8 +194,8 @@ export const QuickActionsFAB: React.FC = () => {
               ? 'bg-[#252b38] border border-[#3b4457] text-gray-200'
               : 'bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 shadow-cyan-500/35 ring-4 ring-cyan-500/20'
           }`}
-          title="Quick Actions (Actions Rapides)"
-          aria-label="Quick Actions"
+          title="Actions Rapides (Quick Actions)"
+          aria-label="Actions Rapides"
         >
           {isOpen ? (
             <>
@@ -207,7 +207,7 @@ export const QuickActionsFAB: React.FC = () => {
               <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center">
                 <Zap className="w-3.5 h-3.5 text-white fill-white" />
               </div>
-              <span className="tracking-wide font-extrabold pr-0.5">Quick Actions</span>
+              <span className="tracking-wide font-extrabold pr-0.5">Actions Rapides</span>
             </>
           )}
 

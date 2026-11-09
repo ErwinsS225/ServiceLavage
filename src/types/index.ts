@@ -39,6 +39,8 @@ export interface StationTenant {
   baysCount: number;
 }
 
+export type CustomerVehicleCategory = 'sedan' | 'suv' | 'utility' | 'autre';
+
 export interface Customer {
   id: string;
   tenantId: string;
@@ -46,6 +48,9 @@ export interface Customer {
   phone: string;
   email?: string;
   notes?: string;
+  vehicleCategory?: CustomerVehicleCategory;
+  vehicleModel?: string;
+  plateNumber?: string;
   totalVisits: number;
   totalSpent: number;
   createdAt: string;

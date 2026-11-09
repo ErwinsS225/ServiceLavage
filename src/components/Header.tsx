@@ -41,37 +41,17 @@ export const Header: React.FC = () => {
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search..."
+          placeholder="Rechercher un véhicule, client, matricule..."
           className="w-full pl-10 pr-4 py-2 bg-[#20242e] border border-transparent focus:border-cyan-500/50 rounded-xl text-xs text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-cyan-500 transition-all"
         />
       </div>
 
       {/* Right Actions */}
       <div className="flex items-center gap-3">
-        {/* Currency Switcher */}
-        <div className="flex items-center bg-[#20242e] rounded-xl p-0.5 border border-[#2b313e]">
-          <button
-            onClick={() => setCurrency('USD')}
-            className={`px-2.5 py-1 text-[11px] font-semibold rounded-lg transition-all ${
-              currency === 'USD'
-                ? 'bg-cyan-500 text-white shadow-sm'
-                : 'text-gray-400 hover:text-gray-200'
-            }`}
-            title="Affichage dollars ($ comme dans la maquette)"
-          >
-            $ USD
-          </button>
-          <button
-            onClick={() => setCurrency('XOF')}
-            className={`px-2.5 py-1 text-[11px] font-semibold rounded-lg transition-all ${
-              currency === 'XOF'
-                ? 'bg-cyan-500 text-white shadow-sm'
-                : 'text-gray-400 hover:text-gray-200'
-            }`}
-            title="Devise locale Côte d'Ivoire (Franc CFA)"
-          >
-            FCFA
-          </button>
+        {/* Local Currency Badge: Exclusively FCFA (XOF) */}
+        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#20242e] rounded-xl border border-[#2b313e] text-xs font-bold text-cyan-400">
+          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+          <span>Devise : FCFA</span>
         </div>
 
         {/* Quick New Wash button */}
