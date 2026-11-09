@@ -1,6 +1,9 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
-import { supabase } from '../lib/supabase';
+import { isRecoveryLink, supabase } from '../lib/supabase';
+import {
+  MIN_PASSWORD_LENGTH, RECOVERY_SENT_MESSAGE, recoveryRedirectUrl, validateNewPassword,
+} from '../lib/passwordRecovery';
 import { StationCustomers } from './StationCustomers';
 import { StationServices } from './StationServices';
 import { StationOrders } from './StationOrders';
@@ -20,6 +23,11 @@ export function OwnerPortal() {
   const [signup, setSignup] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [forgot, setForgot] = useState(false);
+  /** The recovery link opened this tab: the user must choose a new password. */
+  const [recovery, setRecovery] = useState(isRecoveryLink);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [name, setName] = useState('');
   const [stations, setStations] = useState<Station[]>([]);
   const [stationId, setStationId] = useState('');
@@ -48,8 +56,10 @@ export function OwnerPortal() {
       setSession(data.session);
       setLoading(false);
     });
-    const { data } = supabase.auth.onAuthStateChange((_event, next) => {
-      if (active) setSession(next);
+    const { data } = supabase.auth.onAuthStateChange((event, next) => {
+      if (!active) return;
+      if (event === 'PASSWORD_RECOVERY') setRecovery(true);
+      setSession(next);
     });
     return () => { active = false; data.subscription.unsubscribe(); };
   }, []);
@@ -151,6 +161,49 @@ export function OwnerPortal() {
     finally { setBusy(false); }
   }
 
+  async function requestRecovery(e: React.FormEvent) {
+    e.preventDefault();
+    if (!supabase) return;
+    setBusy(true); setError(''); setMessage('');
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: recoveryRedirectUrl(window.location.origin),
+      });
+      if (error) setError(`Envoi impossible : ${error.message}`);
+      else { setForgot(false); setMessage(RECOVERY_SENT_MESSAGE); }
+    } catch { setError('Envoi impossible. Vérifiez votre connexion et réessayez.'); }
+    finally { setBusy(false); }
+  }
+
+  async function updatePassword(e: React.FormEvent) {
+    e.preventDefault();
+    if (!supabase) return;
+    const check = validateNewPassword(newPassword, confirmPassword);
+    if (!check.ok) {
+      setError(check.reason === 'too_short'
+        ? `Le nouveau mot de passe doit contenir au moins ${MIN_PASSWORD_LENGTH} caractères.`
+        : check.reason === 'mismatch'
+        ? 'Les deux mots de passe ne correspondent pas.'
+        : 'Saisissez un nouveau mot de passe.');
+      return;
+    }
+    setBusy(true); setError(''); setMessage('');
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) setError(`Mot de passe non modifié : ${error.message}`);
+      else {
+        setRecovery(false); setNewPassword(''); setConfirmPassword('');
+        setMessage('Mot de passe modifié. Vous pouvez utiliser votre nouveau mot de passe.');
+      }
+    } catch { setError('Mot de passe non modifié. Vérifiez votre connexion et réessayez.'); }
+    finally { setBusy(false); }
+  }
+
+  function leaveRecovery() {
+    setRecovery(false); setNewPassword(''); setConfirmPassword('');
+    setError(''); setMessage('');
+  }
+
   async function createStation(e: React.FormEvent) {
     e.preventDefault();
     if (!supabase || !session || !name.trim()) return;
@@ -202,12 +255,26 @@ export function OwnerPortal() {
               </>}</>;
           })()}</>}
           <button className="text-cyan-400 underline" onClick={async () => { const { error } = await supabase!.auth.signOut(); if (error) setError(error.message); }}>Se déconnecter</button>
-        </> : <form onSubmit={authenticate} className="space-y-4">
+        </> : recovery ? <form onSubmit={updatePassword} className="space-y-4">
+          <p className="text-sm text-gray-400">Choisissez un nouveau mot de passe pour votre compte.</p>
+          <label className="block text-sm">Nouveau mot de passe<input className={`${input} mt-1`} type="password" autoComplete="new-password" minLength={MIN_PASSWORD_LENGTH} required value={newPassword} onChange={e => setNewPassword(e.target.value)} /></label>
+          <label className="block text-sm">Confirmation<input className={`${input} mt-1`} type="password" autoComplete="new-password" minLength={MIN_PASSWORD_LENGTH} required value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} /></label>
+          <button className={`${button} w-full`} disabled={busy}>Enregistrer le mot de passe</button>
+          <button type="button" className="text-sm text-cyan-400 underline" disabled={busy} onClick={leaveRecovery}>Revenir à la connexion</button>
+        </form> : forgot ? <form onSubmit={requestRecovery} className="space-y-4">
+          <p className="text-sm text-gray-400">Saisissez l’adresse de votre compte : un lien de réinitialisation vous sera envoyé.</p>
+          <label className="block text-sm">E-mail<input className={`${input} mt-1`} type="email" autoComplete="email" required value={email} onChange={e => setEmail(e.target.value)} /></label>
+          <button className={`${button} w-full`} disabled={busy}>Envoyer le lien de réinitialisation</button>
+          <button type="button" className="text-sm text-cyan-400 underline" disabled={busy} onClick={() => { setForgot(false); setError(''); setMessage(''); }}>Revenir à la connexion</button>
+        </form> : <form onSubmit={authenticate} className="space-y-4">
           <p className="text-sm text-gray-400">{signup ? 'Créez votre compte propriétaire.' : 'Connectez-vous à votre compte propriétaire.'}</p>
           <label className="block text-sm">E-mail<input className={`${input} mt-1`} type="email" autoComplete="email" required value={email} onChange={e => setEmail(e.target.value)} /></label>
-          <label className="block text-sm">Mot de passe<input className={`${input} mt-1`} type="password" autoComplete={signup ? 'new-password' : 'current-password'} minLength={6} required value={password} onChange={e => setPassword(e.target.value)} /></label>
+          <label className="block text-sm">Mot de passe<input className={`${input} mt-1`} type="password" autoComplete={signup ? 'new-password' : 'current-password'} minLength={signup ? MIN_PASSWORD_LENGTH : 6} required value={password} onChange={e => setPassword(e.target.value)} /></label>
           <button className={`${button} w-full`} disabled={busy}>{signup ? 'Créer mon compte' : 'Se connecter'}</button>
-          <button type="button" className="text-sm text-cyan-400 underline" onClick={() => { setSignup(!signup); setError(''); setMessage(''); }}>{signup ? 'Déjà inscrit ? Se connecter' : 'Créer un compte propriétaire'}</button>
+          <div className="flex flex-wrap gap-x-4 gap-y-2">
+            <button type="button" className="text-sm text-cyan-400 underline" onClick={() => { setSignup(!signup); setError(''); setMessage(''); }}>{signup ? 'Déjà inscrit ? Se connecter' : 'Créer un compte propriétaire'}</button>
+            {!signup && <button type="button" className="text-sm text-cyan-400 underline" onClick={() => { setForgot(true); setError(''); setMessage(''); }}>Mot de passe oublié ?</button>}
+          </div>
         </form>}
       {error && <p role="alert" className="text-sm text-red-400">{error}</p>}
       {message && <p role="status" className="text-sm text-emerald-400">{message}</p>}
