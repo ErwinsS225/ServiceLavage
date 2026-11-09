@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import { StationCustomers } from './StationCustomers';
 import { StationServices } from './StationServices';
 import { StationOrders } from './StationOrders';
+import { StationInventory } from './StationInventory';
 import { SubscriptionPlans } from './SubscriptionPlans';
 
 type Station = { id: string; name: string };
@@ -19,7 +20,7 @@ export function OwnerPortal() {
   const [name, setName] = useState('');
   const [stations, setStations] = useState<Station[]>([]);
   const [stationId, setStationId] = useState('');
-  const [tab, setTab] = useState<'orders' | 'services' | 'customers' | 'subscription'>('orders');
+  const [tab, setTab] = useState<'orders' | 'services' | 'customers' | 'inventory' | 'subscription'>('orders');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
@@ -112,13 +113,14 @@ export function OwnerPortal() {
             </select>
           </label>}
           <nav aria-label="Modules" className="flex flex-wrap gap-2">
-              {([['orders', 'Prestations'], ['services', 'Catalogue'], ['customers', 'Clients'], ['subscription', 'Abonnements']] as const).map(([key, label]) => <button key={key} type="button" onClick={() => setTab(key)} aria-current={tab === key ? 'page' : undefined} className={`rounded-xl px-3 py-2 text-sm ${tab === key ? 'bg-cyan-500 text-gray-950' : 'bg-[#20242e] text-gray-300'}`}>{label}</button>)}
+              {([['orders', 'Prestations'], ['services', 'Catalogue'], ['customers', 'Clients'], ['inventory', 'Inventaire'], ['subscription', 'Abonnements']] as const).map(([key, label]) => <button key={key} type="button" onClick={() => setTab(key)} aria-current={tab === key ? 'page' : undefined} className={`rounded-xl px-3 py-2 text-sm ${tab === key ? 'bg-cyan-500 text-gray-950' : 'bg-[#20242e] text-gray-300'}`}>{label}</button>)}
           </nav>
           {tab === 'subscription' && <SubscriptionPlans />}
           {stationId && <>
             {tab === 'orders' && <StationOrders key={`orders:${session.user.id}:${stationId}`} stationId={stationId} userId={session.user.id} />}
             {tab === 'services' && <StationServices key={`services:${session.user.id}:${stationId}`} stationId={stationId} />}
             {tab === 'customers' && <StationCustomers key={`customers:${session.user.id}:${stationId}`} stationId={stationId} />}
+            {tab === 'inventory' && <StationInventory key={`inventory:${session.user.id}:${stationId}`} stationId={stationId} />}
           </>}
           <p className="text-sm text-amber-300">La caisse, les paiements et les autres modules ne sont pas encore disponibles.</p>
           <button className="text-cyan-400 underline" onClick={async () => { const { error } = await supabase!.auth.signOut(); if (error) setError(error.message); }}>Se déconnecter</button>
