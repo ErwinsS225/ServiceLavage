@@ -1,12 +1,13 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import { StationCustomers } from './StationCustomers';
 import { StationServices } from './StationServices';
 import { StationOrders } from './StationOrders';
-import { StationInventory } from './StationInventory';
 import { SubscriptionPlans } from './SubscriptionPlans';
-import { StationStaff } from './StationStaff';
+
+const StationInventory = lazy(() => import('./StationInventory').then(module => ({ default: module.StationInventory })));
+const StationStaff = lazy(() => import('./StationStaff').then(module => ({ default: module.StationStaff })));
 
 type Station = { id: string; name: string; owner_id?: string };
 type StationRole = 'owner' | 'gerant' | 'caissier' | 'laveur';
@@ -196,8 +197,8 @@ export function OwnerPortal() {
               {stationId && stationRole && <>{tab === 'orders' && <StationOrders key={`orders:${session.user.id}:${stationId}`} stationId={stationId} userId={session.user.id} role={stationRole} roleFeaturesReady={rolesReady} />}
                 {tab === 'services' && (stationRole === 'owner' || stationRole === 'gerant') && <StationServices key={`services:${session.user.id}:${stationId}`} stationId={stationId} />}
                 {tab === 'customers' && (stationRole === 'owner' || stationRole === 'gerant' || stationRole === 'caissier') && <StationCustomers key={`customers:${session.user.id}:${stationId}`} stationId={stationId} />}
-                {tab === 'inventory' && (stationRole === 'owner' || stationRole === 'gerant') && <StationInventory key={`inventory:${session.user.id}:${stationId}`} stationId={stationId} />}
-                {tab === 'staff' && (stationRole === 'owner' || stationRole === 'gerant') && (rolesReady ? <StationStaff key={`staff:${session.user.id}:${stationId}`} stationId={stationId} canManageRoles={stationRole === 'owner'} /> : <p role="status" className="text-sm text-amber-300">Le module Personnel nécessite le déploiement préalable des migrations de rôles.</p>)}
+                {tab === 'inventory' && (stationRole === 'owner' || stationRole === 'gerant') && <Suspense fallback={<p>Chargement de l’inventaire…</p>}><StationInventory key={`inventory:${session.user.id}:${stationId}`} stationId={stationId} userId={session.user.id} /></Suspense>}
+                {tab === 'staff' && (stationRole === 'owner' || stationRole === 'gerant') && (rolesReady ? <Suspense fallback={<p>Chargement du personnel…</p>}><StationStaff key={`staff:${session.user.id}:${stationId}`} stationId={stationId} canManageRoles={stationRole === 'owner'} /></Suspense> : <p role="status" className="text-sm text-amber-300">Le module Personnel nécessite le déploiement préalable des migrations de rôles.</p>)}
               </>}</>;
           })()}</>}
           <button className="text-cyan-400 underline" onClick={async () => { const { error } = await supabase!.auth.signOut(); if (error) setError(error.message); }}>Se déconnecter</button>
