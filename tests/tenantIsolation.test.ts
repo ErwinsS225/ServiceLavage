@@ -12,7 +12,7 @@ test('migrations enforce tenant isolation and retry safety under authenticated r
       create role authenticated nologin;
       create role service_role nologin bypassrls;
       create schema auth;
-      create table auth.users (id uuid primary key, email text);
+      create table auth.users (id uuid primary key, email text, email_confirmed_at timestamptz);
       create function auth.uid() returns uuid language sql stable as
         $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
       grant usage on schema public, auth to anon, authenticated, service_role;
@@ -22,6 +22,7 @@ test('migrations enforce tenant isolation and retry safety under authenticated r
     const files = (await readdir('supabase/migrations')).filter(name => name.endsWith('.sql')).sort();
     for (const file of files) await db.exec(await readFile(`supabase/migrations/${file}`, 'utf8'));
     await db.exec(await readFile('supabase/tests/tenant_isolation.sql', 'utf8'));
+    await db.exec(await readFile('supabase/tests/station_memberships.sql', 'utf8'));
   } finally {
     await db.close();
   }
