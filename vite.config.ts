@@ -1,22 +1,44 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
-import path from 'path';
-import {defineConfig} from 'vite';
+import { createHash } from 'node:crypto';
+import { readFileSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
+import { defineConfig, type Plugin } from 'vite';
 
-export default defineConfig(() => {
+/** Precache only build artifacts, never API, auth or tenant data. */
+function offlineShell(): Plugin {
   return {
-    plugins: [react(), tailwindcss()],
-    resolve: {
-      alias: {
-        '@': path.resolve(__dirname, '.'),
-      },
-    },
-    server: {
-      // HMR is disabled in AI Studio via DISABLE_HMR env var.
-      // Do not modify—file watching is disabled to prevent flickering during agent edits.
-      hmr: process.env.DISABLE_HMR !== 'true',
-      // Disable file watching when DISABLE_HMR is true to save CPU during agent edits.
-      watch: process.env.DISABLE_HMR === 'true' ? null : {},
+    name: 'offline-shell',
+    apply: 'build',
+    writeBundle(options, bundle) {
+      const dir = options.dir || 'dist';
+      const files = ['index.html', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png',
+        ...Object.keys(bundle).filter(file => file.startsWith('assets/') && /\.(js|css)$/.test(file))];
+      const hash = createHash('sha256');
+      for (const file of files) hash.update(file).update(readFileSync(path.join(dir, file)));
+      const version = hash.digest('hex').slice(0, 16);
+      const worker = `// Static application shell only; no API responses or user data are cached.\n` +
+        `const CACHE = ${JSON.stringify(`servicelavage-shell-${version}`)};\n` +
+        `const FILES = ${JSON.stringify(files.map(file => `/${file}`))};\n` +
+        `self.addEventListener('install', event => event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(FILES))));\n` +
+        `self.addEventListener('activate', event => event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key.startsWith('servicelavage-shell-') && key !== CACHE).map(key => caches.delete(key))))));\n` +
+        `self.addEventListener('fetch', event => {\n` +
+        `  const url = new URL(event.request.url);\n` +
+        `  if (event.request.method !== 'GET' || url.origin !== self.location.origin) return;\n` +
+        `  if (event.request.mode === 'navigate') { event.respondWith(fetch(event.request).catch(() => caches.open(CACHE).then(cache => cache.match('/index.html')))); return; }\n` +
+        `  if (FILES.includes(url.pathname)) event.respondWith(caches.open(CACHE).then(cache => cache.match(event.request)).then(response => response || fetch(event.request)));\n` +
+        `});\n`;
+      writeFileSync(path.join(dir, 'sw.js'), worker);
     },
   };
-});
+}
+
+export default defineConfig(() => ({
+  plugins: [react(), tailwindcss(), offlineShell()],
+  resolve: { alias: { '@': path.resolve(import.meta.dirname, '.') } },
+  server: {
+    // AI Studio can disable file watching to avoid flickering during edits.
+    hmr: process.env.DISABLE_HMR !== 'true',
+    watch: process.env.DISABLE_HMR === 'true' ? null : {},
+  },
+}));

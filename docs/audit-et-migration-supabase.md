@@ -37,13 +37,13 @@ Chaque étape nécessite migration et rollback documentés, tests et revue avant
 
 ## Avancement — clients par station
 
-La migration `20261109000001_station_customers.sql` a été appliquée au projet LavAuto. Elle crée une table séparée pour les clients réels (nom et téléphone), avec clé étrangère vers la station, index et RLS limitée au propriétaire. Les rôles authentifiés ne peuvent modifier que le nom et le téléphone ; aucune suppression n'est exposée. La liste, l'ajout et la modification sont accessibles dans le portail propriétaire après sélection d'une station. Les clients fictifs de l'ancienne interface demeurent dans la démonstration locale et n'ont pas été importés.
+La migration `20261109122729_station_customers.sql` a été appliquée au projet LavAuto. Elle crée une table séparée pour les clients réels (nom et téléphone), avec clé étrangère vers la station, index et RLS limitée au propriétaire. Les rôles authentifiés ne peuvent modifier que le nom et le téléphone ; aucune suppression n'est exposée. La liste, l'ajout et la modification sont accessibles dans le portail propriétaire après sélection d'une station. Les clients fictifs de l'ancienne interface demeurent dans la démonstration locale et n'ont pas été importés.
 
 Les politiques déployées ont été vérifiées par inspection du catalogue ; les tests d'accès avec deux comptes authentifiés distincts et les tests de parcours navigateur restent à réaliser avant usage en production. Les employés ne disposent pas encore d'accès. La connexion du module client existant et des autres écrans métier au modèle réel reste à faire.
 
 ## Avancement — catalogue de services
 
-La migration `20261109000002_station_services.sql` a été appliquée au projet LavAuto. Le catalogue réel commence vide et appartient à une station. La base impose un prix entier compris entre 0 et 100 000 000 FCFA, une durée entière entre 1 et 1 440 minutes et une RLS réservée au propriétaire. Le portail permet d'ajouter et modifier les services et de les rendre inactifs ; la suppression n'est pas exposée. Les contrôles de saisie disposent de tests unitaires. Les règles RLS ont été inspectées dans le catalogue PostgreSQL, mais les essais entre comptes et le parcours navigateur restent à effectuer.
+La migration `20261109122929_station_services.sql` a été appliquée au projet LavAuto. Le catalogue réel commence vide et appartient à une station. La base impose un prix entier compris entre 0 et 100 000 000 FCFA, une durée entière entre 1 et 1 440 minutes et une RLS réservée au propriétaire. Le portail permet d'ajouter et modifier les services et de les rendre inactifs ; la suppression n'est pas exposée. Les contrôles de saisie disposent de tests unitaires. Les règles RLS ont été inspectées dans le catalogue PostgreSQL, mais les essais entre comptes et le parcours navigateur restent à effectuer.
 
 Le catalogue réel n'est pas encore utilisé par le POS ou les prestations : ceux-ci restent des simulations distinctes. Aucun tarif fictif ou montant local ambigu n'a été importé.
 
@@ -51,6 +51,10 @@ Le catalogue réel n'est pas encore utilisé par le POS ou les prestations : ceu
 
 L'application démarre désormais sur l'espace propriétaire réel : l'accès à l'ancienne démonstration a été retiré. Son ancien code et ses jeux fictifs restent dans le dépôt, hors du parcours actif, afin de servir de référence pour migrer les écrans ; ils n'ont pas été supprimés physiquement et aucune donnée existante du navigateur n'a été effacée. Le portail comporte les onglets prestations, catalogue et clients. Les autres onglets historiques ne sont pas encore disponibles.
 
-La migration `20261109000003_station_orders.sql` a été appliquée : les prestations et leurs lignes sont persistées ; la fonction de création vérifie le propriétaire, le client éventuel, les services actifs de la même station et fige les prix et libellés en FCFA. La fonction de transition limite le parcours à attente → en cours → terminé, avec annulation possible avant fin. Les écritures directes sont interdites aux clients authentifiés. Aucun paiement, piste, commission ou historique d'audit n'est créé par ces fonctions.
+La migration `20261109123327_station_orders.sql` a été appliquée : les prestations et leurs lignes sont persistées ; la fonction de création vérifie le propriétaire, le client éventuel, les services actifs de la même station et fige les prix et libellés en FCFA. La fonction de transition limite le parcours à attente → en cours → terminé, avec annulation possible avant fin. Les écritures directes sont interdites aux clients authentifiés. Aucun paiement, piste, commission ou historique d'audit n'est créé par ces fonctions.
 
 Les règles RLS des deux tables ont été inspectées, mais il reste à tester avec plusieurs comptes authentifiés, notamment les RPC, les prix concurrents, les droits inter-stations et le parcours navigateur. La création ne dispose pas encore de clé d'idempotence : en cas d'incertitude réseau, actualiser la liste avant de réessayer. Les fonctionnalités et tous les onglets de l'ancien ERP ne sont pas encore migrés ; ne pas considérer cette version comme prête pour une utilisation financière de production.
+
+## Lot 1 — sécurisation
+
+Les privilèges excessifs de `stations` ont été réduits sur LavAuto, et les versions locales ont été alignées sur son historique. Les tests d’isolation SQL passent dans une base PGlite jetable ; voir [securite-lot-1.md](securite-lot-1.md) pour leurs limites et les tests Supabase réels restant à effectuer.

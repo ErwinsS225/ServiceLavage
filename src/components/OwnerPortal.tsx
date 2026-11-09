@@ -4,11 +4,14 @@ import { supabase } from '../lib/supabase';
 import { StationCustomers } from './StationCustomers';
 import { StationServices } from './StationServices';
 import { StationOrders } from './StationOrders';
+import { StationInventory } from './StationInventory';
+import { SubscriptionPlans } from './SubscriptionPlans';
 
 type Station = { id: string; name: string };
 
 export function OwnerPortal() {
   const [session, setSession] = useState<Session | null>(null);
+  const [online, setOnline] = useState(() => navigator.onLine);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [signup, setSignup] = useState(false);
@@ -17,9 +20,16 @@ export function OwnerPortal() {
   const [name, setName] = useState('');
   const [stations, setStations] = useState<Station[]>([]);
   const [stationId, setStationId] = useState('');
-  const [tab, setTab] = useState<'orders' | 'services' | 'customers'>('orders');
+  const [tab, setTab] = useState<'orders' | 'services' | 'customers' | 'inventory' | 'subscription'>('orders');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    const update = () => setOnline(navigator.onLine);
+    window.addEventListener('online', update);
+    window.addEventListener('offline', update);
+    return () => { window.removeEventListener('online', update); window.removeEventListener('offline', update); };
+  }, []);
 
   useEffect(() => {
     if (!supabase) { setLoading(false); return; }
@@ -41,10 +51,19 @@ export function OwnerPortal() {
     setStations([]);
     setStationId('');
     let active = true;
-    supabase.from('stations').select('id,name').order('created_at').then(({ data, error }) => {
+    const cacheKey = `servicelavage:stations:v1:${session.user.id}`;
+    try {
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) setStations(JSON.parse(cached));
+    } catch { setError('Impossible de lire les stations locales.'); }
+    Promise.resolve(supabase.from('stations').select('id,name').order('created_at')).then(({ data, error }) => {
       if (!active) return;
-      if (error) setError(error.message); else setStations(data || []);
-    });
+      if (error) setError('Stations hors ligne : les données enregistrées sur cet appareil sont utilisées si disponibles.');
+      else {
+        setStations(data || []);
+        try { localStorage.setItem(cacheKey, JSON.stringify(data || [])); } catch { setError('Impossible de sauvegarder les stations pour le mode hors ligne.'); }
+      }
+    }).catch(() => { if (active) setError('Chargement des stations impossible.'); });
     return () => { active = false; };
   }, [session?.user.id]);
 
@@ -80,6 +99,7 @@ export function OwnerPortal() {
   return <main className="min-h-screen bg-[#111317] text-gray-100 flex items-center justify-center p-6">
     <section className="w-full max-w-lg rounded-2xl border border-[#303640] bg-[#16181d] p-8 space-y-5">
       <h1 className="text-2xl font-bold">LavAuto · Espace propriétaire</h1>
+      {!online && <p role="status" className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-300">Connexion indisponible. Les prestations peuvent être mises en attente si les données de la station ont été chargées auparavant ; les autres modules ne fonctionnent pas encore hors ligne.</p>}
       {!supabase ? <p>Configuration Supabase manquante. Renseignez les variables VITE_SUPABASE_URL et VITE_SUPABASE_PUBLISHABLE_KEY.</p>
         : loading ? <p>Chargement…</p>
         : session ? <>
@@ -92,13 +112,15 @@ export function OwnerPortal() {
               <option value="">Choisir une station</option>{stations.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
           </label>}
+          <nav aria-label="Modules" className="flex flex-wrap gap-2">
+              {([['orders', 'Prestations'], ['services', 'Catalogue'], ['customers', 'Clients'], ['inventory', 'Inventaire'], ['subscription', 'Abonnements']] as const).map(([key, label]) => <button key={key} type="button" onClick={() => setTab(key)} aria-current={tab === key ? 'page' : undefined} className={`rounded-xl px-3 py-2 text-sm ${tab === key ? 'bg-cyan-500 text-gray-950' : 'bg-[#20242e] text-gray-300'}`}>{label}</button>)}
+          </nav>
+          {tab === 'subscription' && <SubscriptionPlans />}
           {stationId && <>
-            <nav aria-label="Modules de la station" className="flex flex-wrap gap-2">
-              {([['orders', 'Prestations'], ['services', 'Catalogue'], ['customers', 'Clients']] as const).map(([key, label]) => <button key={key} type="button" onClick={() => setTab(key)} aria-current={tab === key ? 'page' : undefined} className={`rounded-xl px-3 py-2 text-sm ${tab === key ? 'bg-cyan-500 text-gray-950' : 'bg-[#20242e] text-gray-300'}`}>{label}</button>)}
-            </nav>
-            {tab === 'orders' && <StationOrders key={`orders:${session.user.id}:${stationId}`} stationId={stationId} />}
+            {tab === 'orders' && <StationOrders key={`orders:${session.user.id}:${stationId}`} stationId={stationId} userId={session.user.id} />}
             {tab === 'services' && <StationServices key={`services:${session.user.id}:${stationId}`} stationId={stationId} />}
             {tab === 'customers' && <StationCustomers key={`customers:${session.user.id}:${stationId}`} stationId={stationId} />}
+            {tab === 'inventory' && <StationInventory key={`inventory:${session.user.id}:${stationId}`} stationId={stationId} />}
           </>}
           <p className="text-sm text-amber-300">La caisse, les paiements et les autres modules ne sont pas encore disponibles.</p>
           <button className="text-cyan-400 underline" onClick={async () => { const { error } = await supabase!.auth.signOut(); if (error) setError(error.message); }}>Se déconnecter</button>
