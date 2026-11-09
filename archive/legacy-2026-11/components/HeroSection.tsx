@@ -1,7 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Sparkles, Zap, Shield, TrendingUp, ArrowRight, CheckCircle2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 
 const HeroSection = () => {
     const features = [
@@ -99,20 +98,19 @@ const HeroSection = () => {
                             transition={{ duration: 0.7, delay: 0.7 }}
                             className="flex flex-wrap gap-4"
                         >
-                            <Button
-                                size="lg"
-                                className="group bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-semibold px-8 py-6 rounded-2xl text-lg shadow-lg shadow-cyan-500/25 hover:shadow-cyan-500/40 transition-all duration-300 hover:scale-105"
+                            <button
+                                type="button"
+                                className="group inline-flex items-center bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-semibold px-8 py-6 rounded-2xl text-lg shadow-lg shadow-cyan-500/25 hover:shadow-cyan-500/40 transition-all duration-300 hover:scale-105"
                             >
                                 Commencer gratuitement
                                 <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                            </Button>
-                            <Button
-                                size="lg"
-                                variant="secondary"
-                                className="px-8 py-6 rounded-2xl text-lg bg-white/5 hover:bg-white/10 border border-white/10 text-white backdrop-blur-sm transition-all duration-300"
+                            </button>
+                            <button
+                                type="button"
+                                className="inline-flex items-center px-8 py-6 rounded-2xl text-lg bg-white/5 hover:bg-white/10 border border-white/10 text-white backdrop-blur-sm transition-all duration-300"
                             >
                                 Voir la démo
-                            </Button>
+                            </button>
                         </motion.div>
 
                         <motion.div

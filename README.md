@@ -1,6 +1,6 @@
 # ServiceLavage
 
-Application React / TypeScript pour la gestion de stations de lavage, avec Supabase Auth et PostgreSQL. L'interface active couvre actuellement l'espace propriétaire, les stations, le catalogue, les clients, les prestations et un inventaire par station (migration encore à déployer ; voir [lot 6](docs/lot-6-inventaire.md)). La caisse, les paiements, les rôles employés et les anciens écrans ne sont pas encore opérationnels dans ce parcours. Les limites d’abonnement sont préparées mais pas encore déployées : voir [abonnements](docs/abonnements.md). Les anciens composants et données fictives restent dans le dépôt comme référence : ne pas les utiliser comme données de production.
+Application React / TypeScript pour la gestion de stations de lavage, avec Supabase Auth et PostgreSQL. Les **10 migrations sont déployées** (voir [runbook](docs/runbook-migrations.md)) : l'espace propriétaire couvre les stations, le catalogue, les clients, les prestations, l'inventaire, le personnel avec rôles (gérant, caissier, laveur) et les limites d'abonnement appliquées par PostgreSQL. La caisse, les paiements, les rapports et les vitrines restent à développer ; les anciens écrans ne sont pas opérationnels et restent dans le dépôt comme référence. Les anciens composants et données fictives ne doivent pas être utilisés comme données de production.
 
 ## Prérequis
 
@@ -19,7 +19,7 @@ npm run dev
 
 L'application écoute sur le port 3000. `VITE_SUPABASE_URL` et `VITE_SUPABASE_PUBLISHABLE_KEY` sont intégrées au code navigateur : utiliser **uniquement** la clé publiable ou anon, jamais `service_role`, une clé secrète, un mot de passe de base ou une clé Gemini. Les fichiers `.env*`, sauf `.env.example`, sont ignorés par Git. Les variables Vite sont lues au démarrage du serveur ou au build ; reconstruire après changement. Une configuration absente affiche un écran explicite, sans connecter Supabase.
 
-Pour la confirmation des inscriptions, configurer la Site URL et les URL de redirection autorisées dans Supabase Auth pour chaque environnement. Ne pas désactiver la confirmation simplement pour faire passer des tests. Aucune fonctionnalité Gemini n'est actuellement utilisée par l'interface active.
+Pour la confirmation des inscriptions, configurer la Site URL et les URL de redirection autorisées dans Supabase Auth pour chaque environnement. Ne pas désactiver la confirmation simplement pour faire passer des tests. Le portail gère aussi la réinitialisation de mot de passe (`resetPasswordForEmail` → formulaire de nouveau mot de passe) ; voir [authentification](docs/authentification.md). Aucune fonctionnalité Gemini n'est actuellement utilisée par l'interface active.
 
 ## Commandes
 
@@ -45,9 +45,24 @@ Les tests PGlite appliquent les migrations sur une base en mémoire et émulent 
 
 ## Organisation
 
-- `src/components/OwnerPortal.tsx` : authentification et accès aux modules réels.
+- `src/components/OwnerPortal.tsx` : authentification, récupération de mot de passe et accès aux modules réels.
+- `src/components/ErrorBoundary.tsx` : écran de secours si un composant lève une erreur.
+- `src/components/auth/` : pages de connexion, d'inscription, de mot de passe oublié et de réinitialisation.
+  `AuthLayout` porte le cadre scindé (photo à gauche, formulaire à droite) ; les quatre formulaires n'en portent que la logique.
 - `src/components/Station*.tsx` : prestations, clients et services.
 - `src/lib/` : client Supabase, logique monétaire et file locale expérimentale.
 - `supabase/migrations/` et `supabase/tests/` : schéma, règles et tests SQL.
 - `src/context/AppContext.tsx` et `src/data/mockData.ts` : ancien prototype, non monté par l'application actuelle.
-- `docs/` : audit, sécurité et fonctionnement hors ligne.
+- `docs/` : audit, implémentation, sécurité, authentification, migrations et fonctionnement hors ligne.
+- `docs/archive/` : documents historiques, **non servis** par l'application.
+- `archive/legacy-2026-11/` : interface React d'origine (≈ 9 200 lignes), **non compilée et non servie**. Voir `archive/README.md`.
+
+## Sécurité du serveur de développement
+
+Vite sert la racine du projet : `docs/`, `tests/`, `supabase/` et `.aistudio/` seraient accessibles en HTTP. Un plugin (`devRootAllowList` dans `vite.config.ts`) les bloque et `tests/devServerExposure.test.ts` le vérifie.
+
+Ne jamais placer dans `public/` un fichier qui ne doit pas être public : ce dossier est copié tel quel à la racine du site construit.
+
+## Content Security Policy
+
+`index.html` déclare une CSP (`default-src 'self'`, `object-src 'none'`, `frame-ancestors 'none'`, etc.). L'origine Supabase de `connect-src` est **injectée au build** depuis `VITE_SUPABASE_URL` par le plugin `cspSupabaseOrigin` : aucune référence de projet n'est écrite en dur dans un fichier suivi. `tests/contentSecurityPolicy.test.ts` verrouille les directives critiques.

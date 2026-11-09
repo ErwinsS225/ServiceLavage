@@ -1,6 +1,0 @@
-{
-  "name": "Clean It CI - ERP Lavage Auto",
-  "description": "Plateforme ERP SaaS multitenant et vitrines commerciales de stations de lavage automobile en Côte d'Ivoire.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}

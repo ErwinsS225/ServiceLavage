@@ -40,3 +40,89 @@
 ::-webkit-scrollbar-thumb:hover {
   background: #3e485e;
 }
+
+/* ------------------------------------------------------------------ *
+ * Rainbow rim light on the authentication cards.
+ *
+ * Two layers: a blurred wide copy underneath for the halo, and a thin sharp
+ * copy on top for the line itself. The line layer is masked to its content
+ * box, so only the 1.5px edge shows. Both are driven by an animated conic
+ * gradient angle, so the rainbow travels around the rim instead of the
+ * element rotating (which would clip its own corners).
+ *
+ * @property is what makes the angle animatable. Browsers without it still
+ * paint the ring, just statically: the gradient is a normal background.
+ *
+ * prefers-reduced-motion freezes the animation and keeps the colours.
+ * ------------------------------------------------------------------ */
+@property --auth-rim-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@keyframes auth-rim-spin {
+  to { --auth-rim-angle: 360deg; }
+}
+
+.auth-rim {
+  position: relative;
+  isolation: isolate;
+  --auth-rim-line: 1.5px;
+}
+
+.auth-rim::before,
+.auth-rim::after {
+  content: '';
+  position: absolute;
+  border-radius: inherit;
+  pointer-events: none;
+  background: conic-gradient(
+    from var(--auth-rim-angle),
+    #ff3d81, #ff8a3d, #ffe23d, #5dff9b,
+    #3ddcff, #6b6bff, #d94dff, #ff3d81
+  );
+  animation: auth-rim-spin 7s linear infinite;
+}
+
+/* Halo: oversized, blurred, behind everything. Kept fairly tight so it reads
+   as light escaping from the edge rather than a fog around the card. */
+.auth-rim::before {
+  inset: -6px;
+  z-index: -2;
+  filter: blur(14px) saturate(1.35);
+  opacity: 0.7;
+}
+
+/* Line: exactly the rim, masked so the middle stays transparent. */
+.auth-rim::after {
+  inset: calc(var(--auth-rim-line) * -1);
+  z-index: -1;
+  padding: var(--auth-rim-line);
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  -webkit-mask-composite: xor;
+  opacity: 1;
+  filter: saturate(1.25) brightness(1.15);
+}
+
+/* The card body covers the disc and keeps the text legible. */
+.auth-rim > .auth-rim-body {
+  position: relative;
+  border-radius: inherit;
+  overflow: hidden;
+  background: #16181d;
+}
+
+/* Below sm the card spans the full width: a ring glued to the screen edge
+   looks like a rendering artefact, so the effect stays for the framed card. */
+@media (max-width: 639px) {
+  .auth-rim::before,
+  .auth-rim::after { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-rim::before,
+  .auth-rim::after { animation: none; }
+}

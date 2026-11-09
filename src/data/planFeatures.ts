@@ -31,7 +31,7 @@ const starter: readonly PlanFeature[] = [
 
 const proAdditions: readonly PlanFeature[] = [
   { id: 'staff-commissions', label: 'Personnel avancé et commissions', delivery: 'planned' },
-  { id: 'inventory-alerts', label: 'Stocks, inventaire et seuils d’alerte', delivery: 'prepared', detail: 'Interface et RPC côté code ; migration non déployée sur LavAuto.' },
+  { id: 'inventory-alerts', label: 'Stocks et inventaire', delivery: 'operational' },
   { id: 'reports-export', label: 'Rapports détaillés avec export PDF / Excel', delivery: 'planned' },
   { id: 'bays-live', label: 'Suivi en temps réel des pistes', delivery: 'planned' },
   { id: 'showcase-gallery', label: 'Vitrine enrichie avec galerie photo', delivery: 'planned' },
@@ -40,7 +40,7 @@ const proAdditions: readonly PlanFeature[] = [
 
 const businessAdditions: readonly PlanFeature[] = [
   { id: 'reports-consolidated', label: 'Consolidation des rapports multi-stations', delivery: 'planned' },
-  { id: 'roles-advanced', label: 'Permissions avancées et rôles stricts', delivery: 'prepared', detail: 'Modèle SQL local uniquement ; migration non déployée et aucun écran métier.' },
+  { id: 'roles-advanced', label: 'Rôles et permissions par station', delivery: 'operational' },
   { id: 'showcase-per-site', label: 'Vitrines personnalisées par station', delivery: 'planned' },
   { id: 'marketplace-priority', label: 'Visibilité prioritaire sur la Marketplace CI', delivery: 'planned' },
   { id: 'offline-resilient', label: 'Synchronisation hors ligne automatique et résiliente', delivery: 'partial', detail: 'Seules les prestations sont mises en file ; reprise à l’ouverture du module/retour réseau, pas de replay arrière-plan. Aucun paiement hors ligne.' },

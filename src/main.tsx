@@ -1,8 +1,13 @@
 import {createRoot} from 'react-dom/client';
-import App from './App.tsx';
+import { OwnerPortal } from './components/OwnerPortal';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import './index.css';
 
-createRoot(document.getElementById('root')!).render(<App />);
+createRoot(document.getElementById('root')!).render(
+  <ErrorBoundary>
+    <OwnerPortal />
+  </ErrorBoundary>,
+);
 
 // Cache the application shell only in production and on secure origins.
 // API and authentication responses are never cached by this service worker.

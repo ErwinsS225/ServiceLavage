@@ -199,7 +199,7 @@ export function StationInventory({ stationId, userId }: { stationId: string; use
       <label className="block text-sm">Unité (ex. litre, pièce)<input className={`${input} mt-1`} maxLength={30} required value={unit} onChange={event => setUnit(event.target.value)} /></label>
       <label className="block text-sm">Quantité de départ<input className={`${input} mt-1`} type="number" min="0" max={maxStock} step="1" required value={quantity} onChange={event => setQuantity(event.target.value)} /></label>
       <label className="block text-sm">Seuil de stock bas<input className={`${input} mt-1`} type="number" min="0" max={maxStock} step="1" required value={minimum} onChange={event => setMinimum(event.target.value)} /></label>
-      <button disabled={busy || loading || !online} className="rounded-xl bg-cyan-500 px-4 py-2 font-semibold text-gray-950 disabled:opacity-50">Ajouter l’article (en ligne)</button>
+      <button type="submit" disabled={busy || loading || !online} className="rounded-xl bg-cyan-500 px-4 py-2 font-semibold text-gray-950 disabled:opacity-50">Ajouter l’article (en ligne)</button>
     </form>
   </section>;
 }

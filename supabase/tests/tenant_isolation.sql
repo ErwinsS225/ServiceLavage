@@ -47,11 +47,14 @@ begin
   exception when insufficient_privilege then denied := true; end;
   if not denied then raise exception 'Cross-tenant insert succeeded'; end if;
   denied := false;
-  begin perform public.create_station_order(sb, null, 'Forbidden', null, array[svc_b]);
+  -- Go through the idempotent variant: it is the only RPC clients may call
+  -- (the plain function is revoked in 20261109160000_revoke_legacy_order_rpc).
+  -- Testing the revoked one would only prove the grant, not tenant isolation.
+  begin perform public.create_station_order_idempotent(gen_random_uuid(), sb, null, 'Forbidden', null, array[svc_b]);
   exception when insufficient_privilege then denied := true; end;
   if not denied then raise exception 'Cross-tenant RPC succeeded'; end if;
   denied := false;
-  begin perform public.create_station_order(sa, null, 'Forbidden', null, array[svc_b]);
+  begin perform public.create_station_order_idempotent(gen_random_uuid(), sa, null, 'Forbidden', null, array[svc_b]);
   exception when invalid_parameter_value then denied := true; end;
   if not denied then raise exception 'Foreign service accepted'; end if;
   first_order := public.create_station_order_idempotent(req, sa, null, 'Vehicle', null, array[svc_a]);
@@ -133,9 +136,14 @@ begin
   exception when insufficient_privilege then denied := true; end;
   if not denied then raise exception 'Anonymous station access succeeded'; end if;
   denied := false;
+  -- Neither order RPC may be reachable without a session.
+  begin perform public.create_station_order_idempotent(gen_random_uuid(), current_setting('test.station_a')::uuid, null, 'Forbidden', null, array[current_setting('test.service_a')::uuid]);
+  exception when insufficient_privilege then denied := true; end;
+  if not denied then raise exception 'Anonymous idempotent order RPC succeeded'; end if;
+  denied := false;
   begin perform public.create_station_order(current_setting('test.station_a')::uuid, null, 'Forbidden', null, array[current_setting('test.service_a')::uuid]);
   exception when insufficient_privilege then denied := true; end;
-  if not denied then raise exception 'Anonymous order RPC succeeded'; end if;
+  if not denied then raise exception 'Anonymous legacy order RPC succeeded'; end if;
 end $$;
 reset role;
 rollback;

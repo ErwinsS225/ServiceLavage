@@ -3,6 +3,20 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!--
+      Content Security Policy. Supabase Auth and PostgREST are reached over
+      https and wss, so `connect-src` must include the project domain; it is
+      injected at build time by the `cspSupabaseOrigin` plugin in vite.config.ts
+      so no host is hard-coded here. The placeholder uses a double-underscore
+      token on purpose: Vite would treat a %NAME% token as an env variable. `style-src 'unsafe-inline'` is required by
+      Tailwind's runtime style injection. `frame-ancestors` is ignored in a meta
+      tag but kept for parity with a server-side header.
+    -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' __SUPABASE_CSP_ORIGIN__; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+    />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
     <meta name="theme-color" content="#111827" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <title>Clean It CI - ERP Lavage Auto</title>
@@ -20,4 +34,3 @@
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
-
