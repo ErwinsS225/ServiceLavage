@@ -1,0 +1,41 @@
+{
+  "_lisez_moi": "Sauvegarde logique prise via le connecteur Supabase juste avant l'application des 4 migrations en attente (memberships, subscription_limits, station_inventory, role_permissions). Ne contient aucune donnée métier autre que 1 station vide. Aucun secret.",
+  "project_ref": "avvkzliysacpyavmetsx",
+  "prise_le": "2026-11-09T18:00:00Z",
+  "migrations_appliquees_avant": 6,
+  "stations": [
+    {
+      "id": "e1cfd2c6-1866-4a98-bd44-2a78a2aa7680",
+      "owner_id": "b287d682-5062-4761-8234-eab739a870f2",
+      "name": "CocoWash",
+      "created_at": "2026-11-09T14:52:45.64616+00:00"
+    }
+  ],
+  "users": [
+    {
+      "id": "b287d682-5062-4761-8234-eab739a870f2",
+      "email": "aduerwins@gmail.com",
+      "email_confirmed_at": "2026-11-09T14:50:29.477473+00:00",
+      "created_at": "2026-11-09T14:49:39.949148+00:00",
+      "last_sign_in_at": "2026-11-09T14:50:29.48502+00:00"
+    }
+  ],
+  "compteurs": {
+    "stations": 1,
+    "station_customers": 0,
+    "station_services": 0,
+    "station_orders": 0,
+    "station_order_items": 0,
+    "station_order_requests": 0
+  },
+  "restauration": "Recréer la ligne via: insert into public.stations(id,owner_id,name) values ('e1cfd2c6-1866-4a98-bd44-2a78a2aa7680','b287d682-5062-4761-8234-eab739a870f2','CocoWash');",
+  "migrations_appliquees_apres": 10,
+  "deploye_le": "2026-11-09T18:25:00Z",
+  "versions_deployees": [
+    "20261109182442 station_memberships",
+    "20261109182456 subscription_limits",
+    "20261109182509 station_inventory",
+    "20261109182534 station_role_permissions"
+  ],
+  "plan_attribue": "pro (2 stations / 2500 prestations par mois)"
+}

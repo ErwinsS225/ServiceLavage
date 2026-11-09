@@ -1,6 +1,6 @@
 # ServiceLavage
 
-Application React / TypeScript pour la gestion de stations de lavage, avec Supabase Auth et PostgreSQL. L'interface active couvre actuellement l'espace propriétaire, les stations, le catalogue, les clients, les prestations et un inventaire par station (migration encore à déployer ; voir [lot 6](docs/lot-6-inventaire.md)). La caisse, les paiements, les rôles employés et les anciens écrans ne sont pas encore opérationnels dans ce parcours. Les limites d’abonnement sont préparées mais pas encore déployées : voir [abonnements](docs/abonnements.md). Les anciens composants et données fictives restent dans le dépôt comme référence : ne pas les utiliser comme données de production.
+Application React / TypeScript pour la gestion de stations de lavage, avec Supabase Auth et PostgreSQL. Les **10 migrations sont déployées** (voir [runbook](docs/runbook-migrations.md)) : l'espace propriétaire couvre les stations, le catalogue, les clients, les prestations, l'inventaire, le personnel avec rôles (gérant, caissier, laveur) et les limites d'abonnement appliquées par PostgreSQL. La caisse, les paiements, les rapports et les vitrines restent à développer ; les anciens écrans ne sont pas opérationnels et restent dans le dépôt comme référence. Les anciens composants et données fictives ne doivent pas être utilisés comme données de production.
 
 ## Prérequis
 

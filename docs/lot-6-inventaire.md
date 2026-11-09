@@ -11,6 +11,6 @@
 
 ## Limites / déploiement
 
-La migration `20261109142000_station_inventory.sql` n'a pas été appliquée à LavAuto. Le nouvel onglet ne sera opérationnel qu'après vérification et application de la migration dans un environnement Supabase de test puis dans l'environnement ciblé. Une absence de migration provoque des erreurs de lecture/écriture visibles ; aucune donnée de démonstration n'est utilisée.
+La migration `station_inventory` a été **appliquée au projet LavAuto le 9 novembre 2026** (version distante `20261109182509`). L'onglet Inventaire est opérationnel ; la création d'article et les ajustements restent réservés aux plans Pro et Business, vérifiés côté PostgreSQL. Voir le [runbook](runbook-migrations.md).
 
 Les ajustements de stock des articles déjà chargés peuvent être mis en attente hors ligne dans le localStorage (non chiffré), puis vérifiés côté serveur lors de la synchronisation ; création d’article hors ligne non prise en charge. Les opérations ne sont pas intégrées automatiquement aux prestations ou à la caisse et il n'y a pas de journal détaillé consultable, de coût d'achat, de valorisation, de fournisseur, ni de transfert entre stations. Le quota de places d'inventaire n'étant pas confirmé par le propriétaire, aucun quota numérique d'articles n'est inventé. Tests PGlite locaux (auth et rôles émulés), mais pas de validation avec PostgREST/Auth hébergés, connexions simultanées de production ou navigateur.

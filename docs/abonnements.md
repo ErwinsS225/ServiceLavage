@@ -2,7 +2,7 @@
 
 ## État
 
-La migration `20261109141000_subscription_limits.sql` et l'écran d'abonnements sont préparés et testés localement, mais la migration n'a **pas été appliquée à LavAuto**. Les limites ne sont donc pas actives sur le projet distant. Avant déploiement, tester sur un projet Supabase jetable avec les migrations en attente (dont les adhésions), examiner les stations déjà créées et les historiques, puis vérifier les versions des migrations distantes. L'écran affiche une erreur si la fonction serveur n'est pas disponible.
+La migration `subscription_limits` a été **appliquée au projet LavAuto le 9 novembre 2026** ; les quotas sont actifs côté PostgreSQL. Voir le [runbook](runbook-migrations.md).
 
 ## Fonctionnalités Starter déclarées
 

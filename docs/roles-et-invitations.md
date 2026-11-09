@@ -1,8 +1,8 @@
-# Rôles et invitations — fondation locale
+# Rôles et invitations — déployé le 9 novembre 2026
 
 ## Périmètre de cette étape
 
-Les migrations `20261109140000_station_memberships.sql` et `20261109150000_station_role_permissions.sql` sont préparées dans le dépôt et testées localement. **Elles n'ont pas été appliquées au projet Supabase distant.** La seconde rend les rôles effectifs pour les opérations métier décrites ci-dessous via RLS/RPC. Le portail possède maintenant une première interface pour le roster et les invitations, l'acceptation par référence, et l'affectation d'un laveur. Aucun e-mail automatique n'est envoyé ; la référence doit être transmise manuellement. Sur LavAuto, les permissions employés ne sont pas actives avant déploiement contrôlé des migrations.
+Les migrations `station_memberships` et `station_role_permissions` ont été **appliquées au projet LavAuto le 9 novembre 2026** (versions distantes `20261109182442` et `20261109182534`). Voir le [runbook](runbook-migrations.md). La seconde rend les rôles effectifs pour les opérations métier décrites ci-dessous via RLS/RPC. Le portail possède maintenant une première interface pour le roster et les invitations, l'acceptation par référence, et l'affectation d'un laveur. Aucun e-mail automatique n'est envoyé ; la référence doit être transmise manuellement. Les permissions employés sont donc actives sur LavAuto ; elles restent à valider par des tests de bout en bout avec plusieurs comptes réels.
 
 Les invitations sont créées et annulées par le propriétaire ; elles expirent après sept jours. Une personne connectée ne peut accepter que l'invitation associée à son adresse confirmée dans `auth.users`. Une ancienne invitation ne peut pas changer un rôle existant. Le propriétaire peut révoquer une adhésion. Une adhésion révoquée ne peut pas encore être réactivée : cette opération devra faire l'objet d'un parcours explicite et sécurisé. Seuls les rôles `gerant`, `caissier` et `laveur` sont acceptés ; aucun rôle super-admin n'est attribué par ce mécanisme.
 
@@ -15,7 +15,7 @@ Les invitations sont créées et annulées par le propriétaire ; elles expirent
 | **Caissier** | Lecture/création/modification des clients. | Aucun encaissement n'est encore implémenté ; pas d'accès au catalogue ou aux prestations par les RPC actuelles. |
 | **Laveur** | Lecture des prestations et détails qui lui sont affectés ; transitions `en_attente → en_cours → termine`. | Aucun client, catalogue, opération non affectée ou annulation. |
 
-Ces contrôles sont ajoutés dans la migration locale `20261109150000_station_role_permissions.sql`. Les affectations sont enregistrées en base et une révocation coupe l'accès même si des affectations historiques demeurent. Les changements de rôle/invitation restent propriétaires seulement. Le cas de paiement du caissier attend le lot caisse/paiements ; aucune permission fictive n'est accordée.
+Ces contrôles sont déployés par la migration `station_role_permissions` (version distante `20261109182534`). Les affectations sont enregistrées en base et une révocation coupe l'accès même si des affectations historiques demeurent. Les changements de rôle/invitation restent propriétaires seulement. Le cas de paiement du caissier attend le lot caisse/paiements ; aucune permission fictive n'est accordée.
 
 ## Vérifications et suite
 
