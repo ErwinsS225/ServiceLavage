@@ -193,6 +193,7 @@ export function OwnerPortal() {
     return <AuthLayout
       title={title}
       subtitle={subtitle}
+      scene={reset ? 'reset' : forgot ? 'forgot' : signup ? 'signup' : 'signin'}
       footer={<p className="text-center text-xs leading-relaxed text-gray-500">En continuant, vous acceptez que vos données de station soient hébergées par Supabase. Aucune donnée de paiement n’est stockée par l’application.</p>}
     >
       {banner}

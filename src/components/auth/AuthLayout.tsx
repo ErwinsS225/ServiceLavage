@@ -1,4 +1,20 @@
+import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
+
+/**
+ * One pair of photographs per screen. Each pair is shown alternately, so the
+ * panel feels alive without loading four images at once.
+ */
+const SCENES = {
+  signin: ['/assets/auth-signin-1.jpg', '/assets/auth-signin-2.jpg'],
+  signup: ['/assets/auth-signup-1.jpg', '/assets/auth-signup-2.jpg'],
+  forgot: ['/assets/auth-forgot-1.jpg', '/assets/auth-forgot-2.jpg'],
+  // Reset still has one image: the generated second pair showed a car
+  // manufacturer logo, which must not appear on a product page.
+  reset: ['/assets/auth-reset-2.jpg'],
+} as const;
+
+export type AuthScene = keyof typeof SCENES;
 
 /**
  * Split-screen shell shared by sign-up, sign-in, password recovery and
@@ -6,23 +22,37 @@ import type { ReactNode } from 'react';
  * changes. The visual panel is decorative and hidden below `lg`, where it
  * would eat the vertical space the form needs on a phone.
  */
-export function AuthLayout({ title, subtitle, children, footer }: {
+export function AuthLayout({ title, subtitle, scene = 'signin', children, footer }: {
   title: string;
   subtitle: string;
+  scene?: AuthScene;
   children: ReactNode;
   footer?: ReactNode;
 }) {
+  // Alternate the two photographs of the scene. Paused for users who ask for
+  // reduced motion, who keep the first image.
+  const images = SCENES[scene];
+  const [frame, setFrame] = useState(0);
+  useEffect(() => {
+    setFrame(0);
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const timer = window.setInterval(() => setFrame(value => (value + 1) % images.length), 9000);
+    return () => window.clearInterval(timer);
+  }, [images]);
   return <main className="min-h-screen bg-[#111317] text-gray-100 flex items-center justify-center p-0 sm:p-6">
-    <div className="w-full max-w-5xl overflow-hidden bg-[#16181d] sm:rounded-2xl sm:border sm:border-[#303640] sm:shadow-2xl sm:shadow-black/40 lg:grid lg:grid-cols-[45%_55%]">
+    <div className="auth-rim w-full max-w-5xl sm:rounded-2xl">
+      <div className="auth-rim-body lg:grid lg:grid-cols-[45%_55%]">
 
       {/* Decorative panel: image, veil, wordmark and a short promise. */}
       <aside className="relative hidden lg:block">
-        <img
-          src="/assets/auth-side.jpg"
+        {images.map((src, index) => <img
+          key={src}
+          src={src}
           alt=""
           aria-hidden="true"
-          className="absolute inset-0 h-full w-full object-cover"
-        />
+          fetchPriority={index === 0 ? 'high' : 'low'}
+          className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-1000 ${index === frame ? 'opacity-100' : 'opacity-0'}`}
+        />)}
         <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/45 to-black/75" />
         <div className="absolute inset-0 bg-gradient-to-tr from-violet-900/35 to-transparent" />
         {/* Scrim below the text only: the photo is busy around the caption. */}
@@ -52,6 +82,7 @@ export function AuthLayout({ title, subtitle, children, footer }: {
         {children}
         {footer && <div className="mt-10 border-t border-[#262b35] pt-5">{footer}</div>}
       </section>
+      </div>
     </div>
   </main>;
 }

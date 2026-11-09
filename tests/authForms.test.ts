@@ -62,6 +62,43 @@ test('the layout panel is decorative and hidden on small screens', async () => {
   assert.match(source, /grid-cols-\[45%_55%\]/);
 });
 
+test('each screen has its own photographs, and they exist', async () => {
+  const source = await readFile(FILES.layout, 'utf8');
+  const { stat } = await import('node:fs/promises');
+  const seen = new Map<string, string>();
+  const IMAGE = /auth-[\w-]+\.jpg/g;
+
+  for (const scene of ['signin', 'signup', 'forgot', 'reset']) {
+    const block = source.match(new RegExp(`${scene}: \\[([^\\]]+)\\]`))?.[1] ?? '';
+    const names = block.match(IMAGE) ?? [];
+    assert.ok(names.length >= 1, `${scene}: no image declared`);
+
+    for (const name of names) {
+      const info = await stat(`public/assets/${name}`);
+      assert.ok(info.size > 0, `${name} is missing or empty`);
+      // No image may be shared between two screens: each page needs its own scene.
+      const previous = seen.get(name);
+      assert.equal(previous, undefined, `${name} is used by both ${previous} and ${scene}`);
+      seen.set(name, scene);
+    }
+  }
+
+  // Sign-in and sign-up must both have a full pair.
+  const pair = (scene: string) => {
+    const block = source.match(new RegExp(`${scene}: \\[([^\\]]+)\\]`))?.[1] ?? '';
+    return (block.match(IMAGE) ?? []).length;
+  };
+  assert.equal(pair('signin'), 2, 'sign-in must have two images');
+  assert.equal(pair('signup'), 2, 'sign-up must have two images');
+});
+
+test('the rotating photographs respect prefers-reduced-motion', async () => {
+  const source = await readFile(FILES.layout, 'utf8');
+  assert.match(source, /prefers-reduced-motion: reduce/);
+  // The first image is eagerly loaded, the alternates are not.
+  assert.match(source, /fetchPriority=\{index === 0 \? 'high' : 'low'\}/);
+});
+
 test('every auth input is labelled and errors are announced', async () => {
   const layout = await readFile(FILES.layout, 'utf8');
   assert.match(layout, /<label className="block">/, 'AuthField must wrap the control in a label');

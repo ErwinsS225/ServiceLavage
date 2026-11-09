@@ -37,7 +37,13 @@ test('public/ contains only files meant to be public', async () => {
     .filter(entry => /\.\w+$/.test(entry))
     .sort();
   assert.deepEqual(files, [
-    'assets/auth-side.jpg',
+    'assets/auth-forgot-1.jpg',
+    'assets/auth-forgot-2.jpg',
+    'assets/auth-reset-2.jpg',
+    'assets/auth-signin-1.jpg',
+    'assets/auth-signin-2.jpg',
+    'assets/auth-signup-1.jpg',
+    'assets/auth-signup-2.jpg',
     'icons/icon-192.png',
     'icons/icon-512.png',
     'manifest.webmanifest',
