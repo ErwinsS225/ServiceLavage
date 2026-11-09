@@ -1,13 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { formatXof } from '../lib/money';
+import { listQueuedOrders, saveQueuedOrder, removeQueuedOrder, type QueuedOrder } from '../lib/offlineOrders';
 
 type Service = { id: string; name: string; price_xof: number };
 type Customer = { id: string; name: string; phone: string };
 type Order = { id: string; vehicle_info: string; plate_number: string | null; total_xof: number; status: 'en_attente' | 'en_cours' | 'termine' | 'annule'; created_at: string; station_order_items: { id: string; service_name: string; price_xof: number }[] };
 const labels = { en_attente: 'En attente', en_cours: 'En cours', termine: 'Terminée', annule: 'Annulée' };
 
-export function StationOrders({ stationId }: { stationId: string }) {
+export function StationOrders({ stationId, userId }: { stationId: string; userId: string }) {
   const [services, setServices] = useState<Service[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -20,10 +21,70 @@ export function StationOrders({ stationId }: { stationId: string }) {
   const [plate, setPlate] = useState('');
   const [customer, setCustomer] = useState('');
   const [selected, setSelected] = useState<string[]>([]);
+  const [pending, setPending] = useState<QueuedOrder[]>([]);
+  const [cached, setCached] = useState(false);
+  const syncing = useRef(false);
+  const syncAgain = useRef(false);
+  const cacheKey = `servicelavage:order-data:v1:${userId}:${stationId}`;
+
+  function refreshQueue() {
+    const queued = listQueuedOrders(localStorage, userId, stationId);
+    setPending(queued);
+    return queued;
+  }
+
+  async function syncQueue() {
+    if (!navigator.onLine) return;
+    if (syncing.current) { syncAgain.current = true; return; }
+    syncing.current = true;
+    try {
+      const queued = refreshQueue();
+      let completed = 0;
+      for (const order of queued) {
+        const { data: currentSession } = await supabase!.auth.getSession();
+        if (currentSession.session?.user.id !== userId) throw new Error('Reconnectez-vous au compte propriétaire pour synchroniser.');
+        const { error } = await supabase!.rpc('create_station_order_idempotent', {
+          p_request_id: order.requestId, p_station_id: order.stationId, p_customer_id: order.customerId,
+          p_vehicle_info: order.vehicle, p_plate_number: order.plate, p_service_ids: order.serviceIds,
+        });
+        if (error) throw new Error(`Synchronisation en attente : ${error.message}`);
+        removeQueuedOrder(localStorage, order);
+        completed++;
+      }
+      refreshQueue();
+      if (completed) { setMessage(`${completed} prestation(s) synchronisée(s). Le tarif serveur a été appliqué.`); setReload(v => v + 1); }
+    } catch (err) {
+      try { refreshQueue(); } catch { /* keep original error */ }
+      setError(err instanceof Error ? err.message : 'Synchronisation impossible. Les opérations restent sur cet appareil.');
+    } finally {
+      syncing.current = false;
+      if (syncAgain.current) { syncAgain.current = false; void syncQueue(); }
+    }
+  }
+
+  useEffect(() => {
+    try { refreshQueue(); } catch (err) { setError(err instanceof Error ? err.message : 'File locale inaccessible.'); }
+    const onOnline = () => { void syncQueue(); };
+    const onStorage = () => { try { refreshQueue(); } catch { setError('File locale inaccessible.'); } };
+    window.addEventListener('online', onOnline);
+    window.addEventListener('storage', onStorage);
+    void syncQueue();
+    return () => { window.removeEventListener('online', onOnline); window.removeEventListener('storage', onStorage); };
+  }, [stationId, userId]);
 
   useEffect(() => {
     let active = true;
-    setLoading(true); setError('');
+    setLoading(true);
+    try {
+      const snapshot = localStorage.getItem(cacheKey);
+      if (snapshot) {
+        const saved = JSON.parse(snapshot);
+        if (Array.isArray(saved.services) && Array.isArray(saved.customers)) {
+          setServices(saved.services); setCustomers(saved.customers); setCached(true);
+        }
+      }
+    } catch { setError('Impossible de lire les données locales.'); }
+    if (!navigator.onLine) { setOrders([]); setLoading(false); return () => { active = false; }; }
     Promise.all([
       supabase!.from('station_services').select('id,name,price_xof').eq('station_id', stationId).eq('is_active', true).order('name'),
       supabase!.from('station_customers').select('id,name,phone').eq('station_id', stationId).order('name'),
@@ -32,21 +93,30 @@ export function StationOrders({ stationId }: { stationId: string }) {
       if (!active) return;
       const firstError = serviceResult.error || customerResult.error || orderResult.error;
       if (firstError) setError(`Chargement impossible : ${firstError.message}`);
-      else { setServices(serviceResult.data ?? []); setCustomers(customerResult.data ?? []); setOrders((orderResult.data ?? []) as Order[]); }
+      else {
+        const snapshot = { services: serviceResult.data ?? [], customers: customerResult.data ?? [] };
+        setServices(snapshot.services); setCustomers(snapshot.customers); setOrders((orderResult.data ?? []) as Order[]); setCached(false);
+        try { localStorage.setItem(cacheKey, JSON.stringify(snapshot)); }
+        catch { setError('Données chargées, mais leur stockage hors ligne a échoué.'); }
+      }
       setLoading(false);
     }).catch(() => { if (active) { setError('Chargement impossible. Vérifiez votre connexion.'); setLoading(false); } });
     return () => { active = false; };
-  }, [stationId, reload]);
+  }, [stationId, userId, reload]);
 
   async function create(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!vehicle.trim() || selected.length < 1 || selected.length > 20) { setError('Renseignez le véhicule et sélectionnez entre 1 et 20 services.'); return; }
     setBusy(true); setError(''); setMessage('');
     try {
-      const { error } = await supabase!.rpc('create_station_order', { p_station_id: stationId, p_customer_id: customer || null, p_vehicle_info: vehicle.trim(), p_plate_number: plate.trim() || null, p_service_ids: selected });
-      if (error) { setError(`Création impossible : ${error.message}. Si la connexion a été interrompue, actualisez la liste avant de réessayer pour éviter un doublon.`); return; }
-      setVehicle(''); setPlate(''); setCustomer(''); setSelected([]); setMessage('Prestation créée.'); setReload(v => v + 1);
-    } catch { setError('Résultat inconnu. Actualisez la liste avant de réessayer pour éviter un doublon.'); }
+      const order: QueuedOrder = { version: 1, userId, stationId, requestId: crypto.randomUUID(), customerId: customer || null,
+        vehicle: vehicle.trim(), plate: plate.trim() || null, serviceIds: selected, createdAt: new Date().toISOString() };
+      saveQueuedOrder(localStorage, order);
+      setVehicle(''); setPlate(''); setCustomer(''); setSelected([]);
+      setMessage('Prestation enregistrée sur cet appareil, en attente de synchronisation.');
+      try { refreshQueue(); } catch { setError('Prestation enregistrée localement, mais la file contient une entrée illisible : ne créez pas de doublon.'); return; }
+      void syncQueue();
+    } catch (err) { setError(err instanceof Error ? `Enregistrement local impossible : ${err.message}` : 'Enregistrement local impossible.'); }
     finally { setBusy(false); }
   }
   async function transition(id: string, status: 'en_cours' | 'termine' | 'annule') {
@@ -63,6 +133,10 @@ export function StationOrders({ stationId }: { stationId: string }) {
   return <section className="space-y-4 border-t border-[#303640] pt-5" aria-label="Prestations de la station">
     <h2 className="font-bold">Prestations</h2>
     <p className="text-xs text-gray-400">Création et suivi des prestations. Les paiements ne sont pas encore disponibles.</p>
+    <p className="text-xs text-amber-300">{pending.length} prestation(s) en attente sur cet appareil. La synchronisation est tentée au retour du réseau lorsque cet écran et cette station sont ouverts. Le tarif serveur au moment de l’envoi s’applique.</p>
+    <p className="text-xs text-gray-400">Les données locales ne sont pas chiffrées : éviter les appareils partagés. Ne pas effacer les données du navigateur avant synchronisation.</p>
+    {cached && <p className="text-xs text-amber-300">Catalogue et clients locaux : leur état et leurs tarifs peuvent être périmés.</p>}
+    {pending.length > 0 && <><ul className="text-sm text-amber-200">{pending.map(item => <li key={item.requestId}>{item.vehicle} · en attente</li>)}</ul><button type="button" className="text-cyan-400 underline text-sm" onClick={() => void syncQueue()}>Réessayer la synchronisation</button></>}
     {error && <div role="alert" className="text-sm text-red-400">{error} <button type="button" className="underline" onClick={() => setReload(v => v + 1)}>Actualiser</button></div>}
     {message && <p role="status" className="text-sm text-emerald-400">{message}</p>}
     {loading ? <p>Chargement…</p> : <>
@@ -79,7 +153,7 @@ export function StationOrders({ stationId }: { stationId: string }) {
         <button disabled={busy || !services.length} className="rounded-xl bg-cyan-500 px-4 py-2 font-semibold text-gray-950 disabled:opacity-50">Créer la prestation</button>
       </form>
       <h3 className="font-semibold pt-4">Suivi</h3>
-      {!orders.length ? <p className="text-sm text-gray-400">Aucune prestation enregistrée.</p> : <ul className="space-y-3">{orders.map(o => <li key={o.id} className="rounded-xl bg-[#20242e] p-4 space-y-2 text-sm">
+      {!orders.length ? <p className="text-sm text-gray-400">{cached ? "Historique indisponible hors ligne." : "Aucune prestation enregistrée."}</p> : <ul className="space-y-3">{orders.map(o => <li key={o.id} className="rounded-xl bg-[#20242e] p-4 space-y-2 text-sm">
         <div className="flex justify-between gap-2"><strong>{o.vehicle_info}{o.plate_number ? ` · ${o.plate_number}` : ''}</strong><span>{labels[o.status]}</span></div>
         <p className="text-gray-400">{new Date(o.created_at).toLocaleString('fr-FR')}</p>
         <ul className="text-gray-300">{o.station_order_items.map(i => <li key={i.id}>{i.service_name} · {formatXof(i.price_xof)}</li>)}</ul>

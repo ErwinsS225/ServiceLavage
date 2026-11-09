@@ -49,10 +49,19 @@ export function OwnerPortal() {
     setStations([]);
     setStationId('');
     let active = true;
-    supabase.from('stations').select('id,name').order('created_at').then(({ data, error }) => {
+    const cacheKey = `servicelavage:stations:v1:${session.user.id}`;
+    try {
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) setStations(JSON.parse(cached));
+    } catch { setError('Impossible de lire les stations locales.'); }
+    Promise.resolve(supabase.from('stations').select('id,name').order('created_at')).then(({ data, error }) => {
       if (!active) return;
-      if (error) setError(error.message); else setStations(data || []);
-    });
+      if (error) setError('Stations hors ligne : les données enregistrées sur cet appareil sont utilisées si disponibles.');
+      else {
+        setStations(data || []);
+        try { localStorage.setItem(cacheKey, JSON.stringify(data || [])); } catch { setError('Impossible de sauvegarder les stations pour le mode hors ligne.'); }
+      }
+    }).catch(() => { if (active) setError('Chargement des stations impossible.'); });
     return () => { active = false; };
   }, [session?.user.id]);
 
@@ -88,7 +97,7 @@ export function OwnerPortal() {
   return <main className="min-h-screen bg-[#111317] text-gray-100 flex items-center justify-center p-6">
     <section className="w-full max-w-lg rounded-2xl border border-[#303640] bg-[#16181d] p-8 space-y-5">
       <h1 className="text-2xl font-bold">LavAuto · Espace propriétaire</h1>
-      {!online && <p role="status" className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-300">Connexion indisponible. L’application peut s’ouvrir hors ligne après une première visite, mais les données et les modifications ne sont pas encore disponibles hors ligne et aucune synchronisation automatique n’est active.</p>}
+      {!online && <p role="status" className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-300">Connexion indisponible. Les prestations peuvent être mises en attente si les données de la station ont été chargées auparavant ; les autres modules ne fonctionnent pas encore hors ligne.</p>}
       {!supabase ? <p>Configuration Supabase manquante. Renseignez les variables VITE_SUPABASE_URL et VITE_SUPABASE_PUBLISHABLE_KEY.</p>
         : loading ? <p>Chargement…</p>
         : session ? <>
@@ -105,7 +114,7 @@ export function OwnerPortal() {
             <nav aria-label="Modules de la station" className="flex flex-wrap gap-2">
               {([['orders', 'Prestations'], ['services', 'Catalogue'], ['customers', 'Clients']] as const).map(([key, label]) => <button key={key} type="button" onClick={() => setTab(key)} aria-current={tab === key ? 'page' : undefined} className={`rounded-xl px-3 py-2 text-sm ${tab === key ? 'bg-cyan-500 text-gray-950' : 'bg-[#20242e] text-gray-300'}`}>{label}</button>)}
             </nav>
-            {tab === 'orders' && <StationOrders key={`orders:${session.user.id}:${stationId}`} stationId={stationId} />}
+            {tab === 'orders' && <StationOrders key={`orders:${session.user.id}:${stationId}`} stationId={stationId} userId={session.user.id} />}
             {tab === 'services' && <StationServices key={`services:${session.user.id}:${stationId}`} stationId={stationId} />}
             {tab === 'customers' && <StationCustomers key={`customers:${session.user.id}:${stationId}`} stationId={stationId} />}
           </>}
