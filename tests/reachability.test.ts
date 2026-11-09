@@ -45,3 +45,20 @@ test('lazy-loaded station modules are counted as reachable', async () => {
   assert.ok(count >= 20, `only ${count} files reachable: dynamic imports are probably being ignored`);
   assert.doesNotMatch(stdout, /StationInventory|StationStaff/);
 });
+
+/**
+ * The test script used to only match tests/*.test.ts, so the first component
+ * test file (.tsx) ran locally but never in CI. Ten tests were silently
+ * skipped. This pins the glob.
+ */
+test('the test runner picks up both .ts and .tsx test files', async () => {
+  const { readFile, readdir } = await import('node:fs/promises');
+  const pkg = JSON.parse(await readFile('package.json', 'utf8'));
+  const script: string = pkg.scripts.test;
+
+  assert.match(script, /tests\/\*\.test\.ts/, 'TypeScript tests must be picked up');
+  assert.match(script, /tests\/\*\.test\.tsx/, 'TSX component tests must be picked up');
+
+  const present = (await readdir('tests')).filter(name => name.endsWith('.test.tsx'));
+  assert.ok(present.length > 0, 'this guard is pointless if no .tsx test exists');
+});
