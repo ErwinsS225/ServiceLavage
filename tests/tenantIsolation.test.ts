@@ -23,6 +23,7 @@ test('migrations enforce tenant isolation and retry safety under authenticated r
     for (const file of files) await db.exec(await readFile(`supabase/migrations/${file}`, 'utf8'));
     await db.exec(await readFile('supabase/tests/tenant_isolation.sql', 'utf8'));
     await db.exec(await readFile('supabase/tests/station_memberships.sql', 'utf8'));
+    await db.exec(await readFile('supabase/tests/subscription_limits.sql', 'utf8'));
   } finally {
     await db.close();
   }
