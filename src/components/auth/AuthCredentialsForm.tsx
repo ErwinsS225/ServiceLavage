@@ -81,7 +81,7 @@ export function AuthCredentialsForm({ supabase, mode, onModeChange, onForgot, on
     <AuthField
       label="Mot de passe"
       error={fieldErrors.password}
-      hint={signup ? `Au moins ${MIN_PASSWORD_LENGTH} caractères.` : undefined}
+      hint={signup ? `Au moins ${MIN_PASSWORD_LENGTH} caractères, et unique à ce compte.` : undefined}
     >
       <div className="relative">
         <input
@@ -108,7 +108,7 @@ export function AuthCredentialsForm({ supabase, mode, onModeChange, onForgot, on
     {error && <p role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2.5 text-sm text-red-300">{error}</p>}
 
     <button type="submit" className={authButton} disabled={busy}>
-      {busy ? 'Veuillez patienter…' : signup ? 'Créer mon compte' : 'Se connecter'}
+      {busy ? 'Veuillez patienter…' : signup ? 'Créer ma station' : 'Accéder à ma station'}
     </button>
 
     <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 pt-1">
@@ -118,7 +118,7 @@ export function AuthCredentialsForm({ supabase, mode, onModeChange, onForgot, on
         disabled={busy}
         onClick={() => { setError(''); setFieldErrors({}); onMessage(''); onModeChange(signup ? 'signin' : 'signup'); }}
       >
-        {signup ? 'Déjà un compte ? Se connecter' : 'Créer un compte propriétaire'}
+        {signup ? 'Déjà un compte ? Se connecter' : 'Ouvrir mon compte gratuitement'}
       </button>
       {!signup && <button type="button" className={authLink} disabled={busy} onClick={onForgot}>
         Mot de passe oublié ?

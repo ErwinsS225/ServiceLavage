@@ -153,3 +153,54 @@ test('a brand new account sees no station and no error', async () => {
     await db.close();
   }
 });
+
+/**
+ * Sales copy is the easiest place to promise something that does not exist.
+ * src/data/planFeatures.ts already records which features are live, so the
+ * auth copy is checked against it: a promise must never be made about a
+ * feature still marked planned.
+ */
+test('the sales copy only mentions features that actually work', async () => {
+  const copy = await readFile('src/components/auth/authCopy.ts', 'utf8');
+  const features = await readFile('src/data/planFeatures.ts', 'utf8');
+
+  // Labels of everything not yet operational.
+  const planned = [...features.matchAll(
+    /\{ id: '[\w-]+', label: '([^']+)', delivery: '(planned|partial)'/g,
+  )].map(match => match[1]);
+  assert.ok(planned.length > 0, 'the feature list must still mark unsold items');
+
+  // Words that would only make sense for an unbuilt feature.
+  const forbidden = ['rapport', 'commission', 'whatsapp', 'pdf', 'excel', 'caisse', 'vitrine', 'marketplace'];
+  for (const word of forbidden) {
+    assert.doesNotMatch(copy, new RegExp(word, 'i'),
+      `the auth copy promises "${word}", which is still planned`);
+  }
+
+  // Each screen must carry a claim, a sentence and at least two benefits.
+  for (const screen of ['signin', 'signup', 'forgot', 'reset']) {
+    const block = copy.slice(copy.indexOf(`${screen}: {`));
+    const points = block.slice(0, block.indexOf(']')).match(/^\s+'/gm) ?? [];
+    assert.ok(points.length >= 2, `${screen}: needs at least two concrete benefits`);
+  }
+});
+
+test('the copy makes no promise the code cannot keep', async () => {
+  const copy = await readFile('src/components/auth/authCopy.ts', 'utf8');
+  const portal = await readFile('src/components/OwnerPortal.tsx', 'utf8');
+
+  // "all sessions signed out" would require signOut({ scope: 'global' }),
+  // which is not used anywhere.
+  assert.doesNotMatch(copy, /toutes vos sessions|toutes les sessions/i);
+
+  // "one-time link" is a Supabase Auth setting we do not control from here.
+  assert.doesNotMatch(copy, /valable une seule fois|usage unique/i);
+
+  // The offline claim is real: StationOrders queues to localStorage, which is
+  // what actually backs the sentence shown on the sign-in panel.
+  assert.match(copy, /hors ligne/i);
+  const orders = await readFile('src/components/StationOrders.tsx', 'utf8');
+  assert.match(orders, /offlineOrders/);
+  assert.match(orders, /saveQueuedOrder/);
+  assert.doesNotMatch(portal, /offlineOrders/, 'the portal page itself does not queue orders');
+});

@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { isRecoveryLink, supabase } from '../lib/supabase';
 import { AuthLayout } from './auth/AuthLayout';
+import { NO_STATION_COPY } from './auth/authCopy';
 import { AuthCredentialsForm } from './auth/AuthCredentialsForm';
 import { AuthForgotForm } from './auth/AuthForgotForm';
 import { AuthResetForm } from './auth/AuthResetForm';
@@ -171,7 +172,7 @@ export function OwnerPortal() {
     {message && <p role="status" className="mb-5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2.5 text-sm text-emerald-300">{message}</p>}
   </>;
 
-  if (!supabase) return <AuthLayout title="Configuration requise" subtitle="Renseignez l’URL et la clé publiques Supabase pour activer l’espace propriétaire.">
+  if (!supabase) return <AuthLayout title="Configuration requise" screen="signin">
     <p className="text-sm leading-relaxed text-gray-400">
       Les variables <code className="rounded bg-[#20242e] px-1.5 py-0.5 text-gray-200">VITE_SUPABASE_URL</code> et{' '}
       <code className="rounded bg-[#20242e] px-1.5 py-0.5 text-gray-200">VITE_SUPABASE_PUBLISHABLE_KEY</code>{' '}
@@ -179,21 +180,18 @@ export function OwnerPortal() {
     </p>
   </AuthLayout>;
 
-  if (loading) return <AuthLayout title="Connexion" subtitle="Vérification de votre session en cours.">
+  if (loading) return <AuthLayout title="Connexion" screen="signin">
     <p role="status" className="text-sm text-gray-400">Chargement…</p>
   </AuthLayout>;
 
   if (!session || recovery) {
     const reset = recovery;
+    const screen = reset ? 'reset' : forgot ? 'forgot' : signup ? 'signup' : 'signin';
     const title = reset ? 'Nouveau mot de passe' : forgot ? 'Mot de passe oublié' : signup ? 'Créer un compte' : 'Connexion';
-    const subtitle = reset
-      ? 'Choisissez un mot de passe que vous n’utilisez nulle part ailleurs.'
-      : forgot ? 'Nous vous enverrons un lien pour repartir du bon pied.'
-      : signup ? 'Rejoignez la plateforme et pilotez votre station.' : 'Accédez à votre espace propriétaire.';
     return <AuthLayout
       title={title}
-      subtitle={subtitle}
-      scene={reset ? 'reset' : forgot ? 'forgot' : signup ? 'signup' : 'signin'}
+      screen={screen}
+      scene={screen}
       footer={<p className="text-center text-xs leading-relaxed text-gray-500">En continuant, vous acceptez que vos données de station soient hébergées par Supabase. Aucune donnée de paiement n’est stockée par l’application.</p>}
     >
       {banner}
@@ -228,7 +226,10 @@ export function OwnerPortal() {
           <h2 className="font-bold">Mes stations</h2>
           {stations.length
             ? <ul className="mt-3 space-y-2">{stations.map(s => <li className={stationId === s.id ? 'rounded-xl border border-violet-500/40 bg-violet-500/10 p-3 text-sm text-white' : 'rounded-xl bg-[#20242e] p-3 text-sm'} key={s.id}>{s.name}</li>)}</ul>
-            : <p className="mt-2 text-sm text-gray-400">Aucune station enregistrée pour ce compte.</p>}
+            : <div className="mt-3 space-y-1">
+                <p className="text-sm font-semibold text-white">{NO_STATION_COPY.title}</p>
+                <p className="text-sm text-gray-400">{NO_STATION_COPY.body}</p>
+              </div>}
           {stations.length > 0 && <label className="mt-4 block text-sm">Station active
             <select className={`${input} mt-1`} value={stationId} onChange={e => setStationId(e.target.value)}>
               <option value="">Choisir une station</option>{stations.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
