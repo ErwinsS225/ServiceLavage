@@ -231,7 +231,7 @@ export function OwnerPortal() {
           <p className="text-sm text-gray-400">Connecté : {session.user.email}</p>
           <h2 className="font-bold">Mes stations</h2>
           {stations.length ? <ul className="space-y-2">{stations.map(s => <li className="rounded-xl bg-[#20242e] p-3" key={s.id}>{s.name}</li>)}</ul> : <p className="text-sm text-gray-400">Aucune station enregistrée.</p>}
-          {(stationRole === 'owner' || stations.length === 0) && <form onSubmit={createStation} className="flex gap-2"><input className={input} value={name} onChange={e => setName(e.target.value)} placeholder="Nom de la station" maxLength={120} required /><button className={button} disabled={busy}>Créer</button></form>}
+          {(stationRole === 'owner' || stations.length === 0) && <form onSubmit={createStation} className="flex gap-2"><input className={input} value={name} onChange={e => setName(e.target.value)} placeholder="Nom de la station" maxLength={120} required /><button type="submit" className={button} disabled={busy}>Créer</button></form>}
           {stations.length > 0 && <label className="block text-sm">Station active
             <select className={`${input} mt-1`} value={stationId} onChange={e => setStationId(e.target.value)}>
               <option value="">Choisir une station</option>{stations.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
@@ -256,23 +256,23 @@ export function OwnerPortal() {
                 {tab === 'staff' && (stationRole === 'owner' || stationRole === 'gerant') && (rolesReady ? <Suspense fallback={<p>Chargement du personnel…</p>}><StationStaff key={`staff:${session.user.id}:${stationId}`} stationId={stationId} canManageRoles={stationRole === 'owner'} /></Suspense> : <p role="status" className="text-sm text-amber-300">Le module Personnel nécessite le déploiement préalable des migrations de rôles.</p>)}
               </>}</>;
           })()}</>}
-          <button className="text-cyan-400 underline" onClick={async () => { const { error } = await supabase!.auth.signOut(); if (error) setError(error.message); }}>Se déconnecter</button>
+          <button type="button" className="text-cyan-400 underline" onClick={async () => { const { error } = await supabase!.auth.signOut(); if (error) setError(error.message); }}>Se déconnecter</button>
         </> : recovery ? <form onSubmit={updatePassword} className="space-y-4">
           <p className="text-sm text-gray-400">Choisissez un nouveau mot de passe pour votre compte.</p>
           <label className="block text-sm">Nouveau mot de passe<input className={`${input} mt-1`} type="password" autoComplete="new-password" minLength={MIN_PASSWORD_LENGTH} required value={newPassword} onChange={e => setNewPassword(e.target.value)} /></label>
           <label className="block text-sm">Confirmation<input className={`${input} mt-1`} type="password" autoComplete="new-password" minLength={MIN_PASSWORD_LENGTH} required value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} /></label>
-          <button className={`${button} w-full`} disabled={busy}>Enregistrer le mot de passe</button>
+          <button type="submit" className={`${button} w-full`} disabled={busy}>Enregistrer le mot de passe</button>
           <button type="button" className="text-sm text-cyan-400 underline" disabled={busy} onClick={leaveRecovery}>Revenir à la connexion</button>
         </form> : forgot ? <form onSubmit={requestRecovery} className="space-y-4">
           <p className="text-sm text-gray-400">Saisissez l’adresse de votre compte : un lien de réinitialisation vous sera envoyé.</p>
           <label className="block text-sm">E-mail<input className={`${input} mt-1`} type="email" autoComplete="email" required value={email} onChange={e => setEmail(e.target.value)} /></label>
-          <button className={`${button} w-full`} disabled={busy}>Envoyer le lien de réinitialisation</button>
+          <button type="submit" className={`${button} w-full`} disabled={busy}>Envoyer le lien de réinitialisation</button>
           <button type="button" className="text-sm text-cyan-400 underline" disabled={busy} onClick={() => { setForgot(false); setError(''); setMessage(''); }}>Revenir à la connexion</button>
         </form> : <form onSubmit={authenticate} className="space-y-4">
           <p className="text-sm text-gray-400">{signup ? 'Créez votre compte propriétaire.' : 'Connectez-vous à votre compte propriétaire.'}</p>
           <label className="block text-sm">E-mail<input className={`${input} mt-1`} type="email" autoComplete="email" required value={email} onChange={e => setEmail(e.target.value)} /></label>
           <label className="block text-sm">Mot de passe<input className={`${input} mt-1`} type="password" autoComplete={signup ? 'new-password' : 'current-password'} minLength={signup ? MIN_PASSWORD_LENGTH : 6} required value={password} onChange={e => setPassword(e.target.value)} /></label>
-          <button className={`${button} w-full`} disabled={busy}>{signup ? 'Créer mon compte' : 'Se connecter'}</button>
+          <button type="submit" className={`${button} w-full`} disabled={busy}>{signup ? 'Créer mon compte' : 'Se connecter'}</button>
           <div className="flex flex-wrap gap-x-4 gap-y-2">
             <button type="button" className="text-sm text-cyan-400 underline" onClick={() => { setSignup(!signup); setError(''); setMessage(''); }}>{signup ? 'Déjà inscrit ? Se connecter' : 'Créer un compte propriétaire'}</button>
             {!signup && <button type="button" className="text-sm text-cyan-400 underline" onClick={() => { setForgot(true); setError(''); setMessage(''); }}>Mot de passe oublié ?</button>}

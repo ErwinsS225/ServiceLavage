@@ -73,7 +73,7 @@ export function StationServices({ stationId }: { stationId: string }) {
       <label className="block text-sm">Prix (FCFA)<input className={`${input} mt-1`} type="number" min="0" max="100000000" step="1" required value={price} onChange={e => setPrice(e.target.value)} /></label>
       <label className="block text-sm">Durée (minutes)<input className={`${input} mt-1`} type="number" min="1" max="1440" step="1" required value={duration} onChange={e => setDuration(e.target.value)} /></label>
       <label className="flex gap-2 text-sm items-center"><input type="checkbox" checked={active} onChange={e => setActive(e.target.checked)} /> Service actif</label>
-      <div className="flex gap-4"><button disabled={busy || loading} className="rounded-xl bg-cyan-500 px-4 py-2 font-semibold text-gray-950 disabled:opacity-50">{editing ? 'Enregistrer' : 'Ajouter'}</button>
+      <div className="flex gap-4"><button type="submit" disabled={busy || loading} className="rounded-xl bg-cyan-500 px-4 py-2 font-semibold text-gray-950 disabled:opacity-50">{editing ? 'Enregistrer' : 'Ajouter'}</button>
         {editing && <button type="button" disabled={busy} className="text-gray-300 underline" onClick={() => { reset(); setError(''); }}>Annuler</button>}
       </div>
     </form>

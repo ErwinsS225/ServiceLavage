@@ -85,7 +85,7 @@ export function StationStaff({ stationId, canManageRoles }: { stationId: string;
           <h3 className="font-semibold">Inviter un employé</h3>
           <label className="block text-sm">Adresse e-mail de connexion<input className={`${fieldClass} mt-1`} type="email" autoComplete="email" maxLength={254} required value={email} onChange={event => setEmail(event.target.value)} /></label>
           <label className="block text-sm">Rôle<select className={`${fieldClass} mt-1`} value={role} onChange={event => setRole(event.target.value as Role)}><option value="gerant">Gérant — opérations et affectations</option><option value="caissier">Caissier — clients (encaissements à venir)</option><option value="laveur">Laveur — prestations affectées uniquement</option></select></label>
-          <button disabled={busy || loading} className="rounded-xl bg-cyan-500 px-4 py-2 font-semibold text-gray-950 disabled:opacity-50">Créer l’invitation</button>
+          <button type="submit" disabled={busy || loading} className="rounded-xl bg-cyan-500 px-4 py-2 font-semibold text-gray-950 disabled:opacity-50">Créer l’invitation</button>
         </form>
         <h3 className="font-semibold">Invitations</h3>
         {invitations.length === 0 ? <p className="text-sm text-gray-400">Aucune invitation enregistrée.</p> : <ul className="space-y-2">{invitations.map(invitation => {

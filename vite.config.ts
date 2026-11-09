@@ -30,6 +30,32 @@ function devRootAllowList(): Plugin {
   };
 }
 
+
+/**
+ * Injects the Supabase origin into the Content-Security-Policy of index.html.
+ * Hard-coding a project reference in a tracked file would break any other
+ * environment; deriving it from VITE_SUPABASE_URL keeps one source of truth.
+ * Without configuration the directive stays at 'self', which is safe but
+ * leaves authentication unusable — the portal already shows an explicit
+ * message in that case.
+ */
+function cspSupabaseOrigin(): Plugin {
+  return {
+    name: 'csp-supabase-origin',
+    transformIndexHtml(html) {
+      let origin = "'self'";
+      const raw = process.env.VITE_SUPABASE_URL;
+      if (raw) {
+        try {
+          const url = new URL(raw);
+          origin = `${url.origin} ${url.origin.replace(/^https:/, 'wss:')}`;
+        } catch { /* keep 'self' for an invalid URL */ }
+      }
+      return html.replace('%VITE_CSP_SUPABASE_ORIGIN%', origin);
+    },
+  };
+}
+
 /** Precache only build artifacts, never API, auth or tenant data. */
 function offlineShell(): Plugin {
   return {
@@ -59,7 +85,7 @@ function offlineShell(): Plugin {
 }
 
 export default defineConfig(() => ({
-  plugins: [react(), tailwindcss(), devRootAllowList(), offlineShell()],
+  plugins: [react(), tailwindcss(), cspSupabaseOrigin(), devRootAllowList(), offlineShell()],
   resolve: { alias: { '@': path.resolve(import.meta.dirname, '.') } },
   server: {
     // Arena proxies the app under this preview suffix; keep Vite's host check enabled for other hosts.

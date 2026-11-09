@@ -64,7 +64,7 @@ export function StationCustomers({ stationId }: { stationId: string }) {
       <h3 className="text-sm font-semibold">{editing ? 'Modifier le client' : 'Ajouter un client'}</h3>
       <label className="block text-sm">Nom<input className={`${input} mt-1`} required maxLength={120} value={name} onChange={e => setName(e.target.value)} /></label>
       <label className="block text-sm">Téléphone<input className={`${input} mt-1`} type="tel" required maxLength={40} value={phone} onChange={e => setPhone(e.target.value)} /></label>
-      <div className="flex gap-4"><button disabled={busy || loading} className="rounded-xl bg-cyan-500 px-4 py-2 font-semibold text-gray-950 disabled:opacity-50">{editing ? 'Enregistrer' : 'Ajouter'}</button>
+      <div className="flex gap-4"><button type="submit" disabled={busy || loading} className="rounded-xl bg-cyan-500 px-4 py-2 font-semibold text-gray-950 disabled:opacity-50">{editing ? 'Enregistrer' : 'Ajouter'}</button>
         {editing && <button type="button" disabled={busy} className="text-gray-300 underline" onClick={() => { setEditing(null); setName(''); setPhone(''); setError(''); }}>Annuler</button>}
       </div>
     </form>

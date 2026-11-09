@@ -702,15 +702,15 @@ Sous réserve de D1 et D2, la première action concrète est **L1-T1** : valider
 | 2026-11-09 | **L3-T1** — TypeScript strict | ✅ `strict: true` + `noFallthroughCasesInSwitch`, **0 erreur**. `noUnusedLocals` reporté après archivage du legacy (129 erreurs, toutes legacy) |
 | 2026-11-09 | **L3-T3** — Dépendances | ✅ 13 → 6 de production, 190 → 62 paquets, bundle **inchangé** (489,92 Ko) |
 | 2026-11-09 | **L3-T7** — Métadonnées | ✅ `servicelavage@1.0.0` (était `react-example@0.0.0`) |
+| 2026-11-09 | **L3-T4** — ErrorBoundary | ✅ Écran de secours avec « Réessayer » et « Recharger » ; détail technique en console uniquement |
+| 2026-11-09 | **L3-T5** — Boutons sans `type` | ✅ 38/38 explicites dans le code actif + `tests/buttonTypes.test.ts` (3 tests) |
+| 2026-11-09 | **L3-T6** — Content Security Policy | ✅ 12 directives, origine Supabase injectée au build (jamais en dur) + `tests/contentSecurityPolicy.test.ts` (4 tests) |
 
 ### Reste à faire
 
 | Tâche | Blocage |
 | --- | --- |
 | L3-T2 — Archiver le legacy (88 % de `src/`) | Nécessite une PR isolée ; débloque `noUnusedLocals` |
-| L3-T4 — ErrorBoundary | — |
-| L3-T5 — Boutons sans `type` | — |
-| L3-T6 — CSP | — |
 | L3-T8 — `.aistudio/` dans Git | — |
 | L4 — Tests de composant + intégration CI | — |
 | L5 — Finitions | — |

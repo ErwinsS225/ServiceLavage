@@ -46,6 +46,7 @@ Les tests PGlite appliquent les migrations sur une base en mémoire et émulent 
 ## Organisation
 
 - `src/components/OwnerPortal.tsx` : authentification, récupération de mot de passe et accès aux modules réels.
+- `src/components/ErrorBoundary.tsx` : écran de secours si un composant lève une erreur.
 - `src/components/Station*.tsx` : prestations, clients et services.
 - `src/lib/` : client Supabase, logique monétaire et file locale expérimentale.
 - `supabase/migrations/` et `supabase/tests/` : schéma, règles et tests SQL.
@@ -58,3 +59,7 @@ Les tests PGlite appliquent les migrations sur une base en mémoire et émulent 
 Vite sert la racine du projet : `docs/`, `tests/`, `supabase/` et `.aistudio/` seraient accessibles en HTTP. Un plugin (`devRootAllowList` dans `vite.config.ts`) les bloque et `tests/devServerExposure.test.ts` le vérifie.
 
 Ne jamais placer dans `public/` un fichier qui ne doit pas être public : ce dossier est copié tel quel à la racine du site construit.
+
+## Content Security Policy
+
+`index.html` déclare une CSP (`default-src 'self'`, `object-src 'none'`, `frame-ancestors 'none'`, etc.). L'origine Supabase de `connect-src` est **injectée au build** depuis `VITE_SUPABASE_URL` par le plugin `cspSupabaseOrigin` : aucune référence de projet n'est écrite en dur dans un fichier suivi. `tests/contentSecurityPolicy.test.ts` verrouille les directives critiques.

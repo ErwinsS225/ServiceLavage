@@ -195,7 +195,7 @@ export function StationOrders({ stationId, userId, role, roleFeaturesReady }: { 
           {services.map(s => <label className="flex gap-2 items-center text-sm" key={s.id}><input type="checkbox" checked={selected.includes(s.id)} onChange={e => setSelected(prev => e.target.checked ? [...prev, s.id] : prev.filter(id => id !== s.id))} />{s.name} · {formatXof(s.price_xof)}</label>)}
         </fieldset>
         <p className="text-sm">Total indicatif : {formatXof(services.filter(s => selected.includes(s.id)).reduce((sum, s) => sum + s.price_xof, 0))}. Le prix définitif est calculé par la base.</p>
-        <button disabled={busy || !services.length} className="rounded-xl bg-cyan-500 px-4 py-2 font-semibold text-gray-950 disabled:opacity-50">Créer la prestation</button>
+        <button type="submit" disabled={busy || !services.length} className="rounded-xl bg-cyan-500 px-4 py-2 font-semibold text-gray-950 disabled:opacity-50">Créer la prestation</button>
       </form>}
       {!canManageOrders && <p className="text-sm text-gray-400">Vous ne pouvez voir que les prestations qui vous sont affectées.</p>}
       <h3 className="font-semibold pt-4">Suivi</h3>
