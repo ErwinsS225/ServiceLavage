@@ -18,4 +18,6 @@ Les six noms et versions locaux ont été alignés sur les versions effectivemen
 psql "$TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/tests/tenant_isolation.sql
 ```
 
-Aucune base de test locale ni branche de base de données n'était disponible dans cet environnement ; ce script n'a donc **pas été exécuté** et ne constitue pas encore une preuve d'isolation. Des essais additionnels doivent couvrir notamment un véritable accès anonyme, des jetons authentifiés distincts, les cas de concurrence et le frontend. Ne pas utiliser une clé ou une URL de base de production pour ce test.
+Le test `tests/tenantIsolation.test.ts` crée une base PostgreSQL jetable en mémoire avec PGlite, émule les rôles Supabase et `auth.uid()`, applique toutes les migrations puis exécute ce script. Il passe avec `npm test`, y compris pour les rôles `anon` et `authenticated`, deux propriétaires, les RPC et les privilèges. Aucun accès à la base distante n'est nécessaire.
+
+Cette vérification ne reproduit pas toute la plateforme Supabase : les jetons réels, PostgREST, la configuration distante, la concurrence et les parcours navigateur doivent encore être testés sur un projet Supabase de test. Ne pas utiliser une clé ou une URL de base de production pour ces tests.

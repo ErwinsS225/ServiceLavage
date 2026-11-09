@@ -35,9 +35,9 @@ declare sa uuid := current_setting('test.station_a')::uuid; sb uuid := current_s
   cb uuid := current_setting('test.customer_b')::uuid; req uuid := gen_random_uuid(); first_order uuid; second_order uuid;
   affected integer; denied boolean := false;
 begin
-  if (select count(*) from public.stations where id in (sa, sb)) <> 1
-    or (select count(*) from public.station_customers where station_id in (sa, sb)) <> 1
-    or (select count(*) from public.station_services where station_id in (sa, sb)) <> 1 then
+  if not exists (select 1 from public.stations where id = sa) or exists (select 1 from public.stations where id = sb)
+    or not exists (select 1 from public.station_customers where station_id = sa) or exists (select 1 from public.station_customers where station_id = sb)
+    or not exists (select 1 from public.station_services where station_id = sa) or exists (select 1 from public.station_services where station_id = sb) then
     raise exception 'Cross-tenant read isolation failed';
   end if;
   update public.station_customers set name = 'Forbidden' where id = cb;
@@ -59,12 +59,34 @@ begin
   if first_order <> second_order or (select count(*) from public.station_orders where id = first_order) <> 1 then
     raise exception 'Idempotent order retry failed';
   end if;
+  denied := false;
+  begin perform public.create_station_order_idempotent(req, sa, null, 'Different', null, array[svc_a]);
+  exception when invalid_parameter_value then denied := true; end;
+  if not denied then raise exception 'Idempotency key allowed different payload'; end if;
+  denied := false;
+  begin insert into public.stations(owner_id, name) values (current_setting('test.owner_b')::uuid, 'Forbidden');
+  exception when insufficient_privilege then denied := true; end;
+  if not denied then raise exception 'Owner spoofing succeeded'; end if;
+  denied := false;
+  begin update public.stations set owner_id = current_setting('test.owner_b')::uuid where id = sa;
+  exception when insufficient_privilege then denied := true; end;
+  if not denied then raise exception 'Station owner update permitted'; end if;
+  denied := false;
+  begin insert into public.station_orders(station_id, vehicle_info, total_xof) values (sa, 'Forged', 0);
+  exception when insufficient_privilege then denied := true; end;
+  if not denied then raise exception 'Direct order insert succeeded'; end if;
   perform set_config('test.order_a', first_order::text, true);
 end $$;
 select set_config('request.jwt.claim.sub', current_setting('test.owner_b'), true);
 do $$
 declare oid uuid := current_setting('test.order_a')::uuid; denied boolean := false;
 begin
+  if not exists (select 1 from public.stations where id = current_setting('test.station_b')::uuid)
+     or exists (select 1 from public.stations where id = current_setting('test.station_a')::uuid)
+     or not exists (select 1 from public.station_customers where id = current_setting('test.customer_b')::uuid)
+     or exists (select 1 from public.station_customers where id = current_setting('test.customer_a')::uuid) then
+    raise exception 'Owner B isolation failed';
+  end if;
   if (select count(*) from public.station_orders where id = oid) <> 0 or
      (select count(*) from public.station_order_items where order_id = oid) <> 0 then
     raise exception 'Cross-tenant order read succeeded';
@@ -72,6 +94,20 @@ begin
   begin perform public.transition_station_order(oid, 'en_cours');
   exception when insufficient_privilege then denied := true; end;
   if not denied then raise exception 'Cross-tenant transition succeeded'; end if;
+end $$;
+reset role;
+set local role anon;
+select set_config('request.jwt.claim.sub', '', true);
+do $$
+declare denied boolean := false;
+begin
+  begin perform 1 from public.stations limit 1;
+  exception when insufficient_privilege then denied := true; end;
+  if not denied then raise exception 'Anonymous station access succeeded'; end if;
+  denied := false;
+  begin perform public.create_station_order(current_setting('test.station_a')::uuid, null, 'Forbidden', null, array[current_setting('test.service_a')::uuid]);
+  exception when insufficient_privilege then denied := true; end;
+  if not denied then raise exception 'Anonymous order RPC succeeded'; end if;
 end $$;
 reset role;
 rollback;

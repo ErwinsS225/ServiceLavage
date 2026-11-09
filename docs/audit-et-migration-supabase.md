@@ -57,4 +57,4 @@ Les règles RLS des deux tables ont été inspectées, mais il reste à tester a
 
 ## Lot 1 — sécurisation
 
-Les privilèges excessifs de `stations` ont été réduits sur LavAuto, et les versions locales ont été alignées sur son historique. Voir [securite-lot-1.md](securite-lot-1.md) pour les limites et les tests d’isolation encore à exécuter.
+Les privilèges excessifs de `stations` ont été réduits sur LavAuto, et les versions locales ont été alignées sur son historique. Les tests d’isolation SQL passent dans une base PGlite jetable ; voir [securite-lot-1.md](securite-lot-1.md) pour leurs limites et les tests Supabase réels restant à effectuer.
