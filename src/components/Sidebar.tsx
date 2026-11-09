@@ -1,48 +1,52 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { 
-  Home, 
-  Car, 
-  Users, 
-  CreditCard, 
-  Package, 
-  Bell, 
-  Settings, 
-  HelpCircle, 
-  Moon, 
+import {
+  Home,
+  Car,
+  Users,
+  CreditCard,
+  Package,
+  Bell,
+  Settings,
+  HelpCircle,
+  Moon,
   Sun,
-  LayoutGrid, 
-  FileText, 
-  Sparkles, 
-  Globe, 
-  Crown, 
-  Store, 
-  PlusCircle, 
-  Wifi, 
-  WifiOff, 
+  LayoutGrid,
+  FileText,
+  Sparkles,
+  Globe,
+  Crown,
+  Store,
+  PlusCircle,
+  Wifi,
+  WifiOff,
   RefreshCw,
   Layers,
   ChevronDown,
-  Building2
+  Building2,
+  Download
 } from 'lucide-react';
 
 export const Sidebar: React.FC = () => {
-  const { 
-    activeTab, 
-    setActiveTab, 
-    isDarkMode, 
-    toggleDarkMode, 
-    isOfflineMode, 
-    toggleOfflineMode, 
-    offlineQueueCount, 
+  const {
+    activeTab,
+    setActiveTab,
+    isDarkMode,
+    toggleDarkMode,
+    isOfflineMode,
+    toggleOfflineMode,
+    offlineQueueCount,
     syncOfflineQueue,
     tenants,
     currentTenant,
     setCurrentTenantId,
     setIsNewOrderModalOpen,
     setIsOnboardingOpen,
-    orders
+    orders,
+    hasAccess
   } = useApp();
+
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
 
   const activeOrdersCount = orders.filter(o => o.status === 'en_cours' || o.status === 'en_attente').length;
 
@@ -125,11 +129,10 @@ export const Sidebar: React.FC = () => {
             <div className="mt-2 space-y-1">
               <button
                 onClick={() => setActiveTab('dashboard')}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium transition-all ${
-                  activeTab === 'dashboard'
-                    ? 'bg-[#222733] text-white border-l-4 border-cyan-400 font-semibold pl-2'
-                    : 'text-gray-400 hover:text-gray-200 hover:bg-[#1a1e27]'
-                }`}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium transition-all ${activeTab === 'dashboard'
+                  ? 'bg-[#222733] text-white border-l-4 border-cyan-400 font-semibold pl-2'
+                  : 'text-gray-400 hover:text-gray-200 hover:bg-[#1a1e27]'
+                  }`}
               >
                 <Home className="w-4 h-4 text-cyan-400" />
                 <span>Tableau de bord</span>
@@ -137,11 +140,10 @@ export const Sidebar: React.FC = () => {
 
               <button
                 onClick={() => setActiveTab('pos')}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium transition-all ${
-                  activeTab === 'pos'
-                    ? 'bg-[#222733] text-white border-l-4 border-cyan-400 font-semibold pl-2'
-                    : 'text-gray-400 hover:text-gray-200 hover:bg-[#1a1e27]'
-                }`}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium transition-all ${activeTab === 'pos'
+                  ? 'bg-[#222733] text-white border-l-4 border-cyan-400 font-semibold pl-2'
+                  : 'text-gray-400 hover:text-gray-200 hover:bg-[#1a1e27]'
+                  }`}
               >
                 <PlusCircle className="w-4 h-4 text-cyan-400" />
                 <div className="flex items-center justify-between w-full">
@@ -152,11 +154,10 @@ export const Sidebar: React.FC = () => {
 
               <button
                 onClick={() => setActiveTab('queue')}
-                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition-all ${
-                  activeTab === 'queue'
-                    ? 'bg-[#222733] text-white border-l-4 border-cyan-400 font-semibold pl-2'
-                    : 'text-gray-400 hover:text-gray-200 hover:bg-[#1a1e27]'
-                }`}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition-all ${activeTab === 'queue'
+                  ? 'bg-[#222733] text-white border-l-4 border-cyan-400 font-semibold pl-2'
+                  : 'text-gray-400 hover:text-gray-200 hover:bg-[#1a1e27]'
+                  }`}
               >
                 <div className="flex items-center gap-3">
                   <Car className="w-4 h-4" />
@@ -171,11 +172,10 @@ export const Sidebar: React.FC = () => {
 
               <button
                 onClick={() => setActiveTab('customers')}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium transition-all ${
-                  activeTab === 'customers'
-                    ? 'bg-[#222733] text-white border-l-4 border-cyan-400 font-semibold pl-2'
-                    : 'text-gray-400 hover:text-gray-200 hover:bg-[#1a1e27]'
-                }`}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium transition-all ${activeTab === 'customers'
+                  ? 'bg-[#222733] text-white border-l-4 border-cyan-400 font-semibold pl-2'
+                  : 'text-gray-400 hover:text-gray-200 hover:bg-[#1a1e27]'
+                  }`}
               >
                 <Users className="w-4 h-4" />
                 <span>Clients & Flottes</span>
@@ -183,35 +183,34 @@ export const Sidebar: React.FC = () => {
 
               <button
                 onClick={() => setActiveTab('bays')}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium transition-all ${
-                  activeTab === 'bays'
-                    ? 'bg-[#222733] text-white border-l-4 border-cyan-400 font-semibold pl-2'
-                    : 'text-gray-400 hover:text-gray-200 hover:bg-[#1a1e27]'
-                }`}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium transition-all ${activeTab === 'bays'
+                  ? 'bg-[#222733] text-white border-l-4 border-cyan-400 font-semibold pl-2'
+                  : 'text-gray-400 hover:text-gray-200 hover:bg-[#1a1e27]'
+                  }`}
               >
                 <LayoutGrid className="w-4 h-4" />
                 <span>Pistes de Lavage</span>
               </button>
 
-              <button
-                onClick={() => setActiveTab('payments')}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium transition-all ${
-                  activeTab === 'payments'
+              {hasAccess('payments') && (
+                <button
+                  onClick={() => setActiveTab('payments')}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium transition-all ${activeTab === 'payments'
                     ? 'bg-[#222733] text-white border-l-4 border-cyan-400 font-semibold pl-2'
                     : 'text-gray-400 hover:text-gray-200 hover:bg-[#1a1e27]'
-                }`}
-              >
-                <CreditCard className="w-4 h-4" />
-                <span>Caisse & Règlements</span>
-              </button>
+                    }`}
+                >
+                  <CreditCard className="w-4 h-4" />
+                  <span>Caisse & Règlements</span>
+                </button>
+              )}
 
               <button
                 onClick={() => setActiveTab('inventory')}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium transition-all ${
-                  activeTab === 'inventory'
-                    ? 'bg-[#222733] text-white border-l-4 border-cyan-400 font-semibold pl-2'
-                    : 'text-gray-400 hover:text-gray-200 hover:bg-[#1a1e27]'
-                }`}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium transition-all ${activeTab === 'inventory'
+                  ? 'bg-[#222733] text-white border-l-4 border-cyan-400 font-semibold pl-2'
+                  : 'text-gray-400 hover:text-gray-200 hover:bg-[#1a1e27]'
+                  }`}
               >
                 <Package className="w-4 h-4" />
                 <span>Stocks & Dépenses</span>
@@ -219,11 +218,10 @@ export const Sidebar: React.FC = () => {
 
               <button
                 onClick={() => setActiveTab('catalogue')}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium transition-all ${
-                  activeTab === 'catalogue'
-                    ? 'bg-[#222733] text-white border-l-4 border-cyan-400 font-semibold pl-2'
-                    : 'text-gray-400 hover:text-gray-200 hover:bg-[#1a1e27]'
-                }`}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium transition-all ${activeTab === 'catalogue'
+                  ? 'bg-[#222733] text-white border-l-4 border-cyan-400 font-semibold pl-2'
+                  : 'text-gray-400 hover:text-gray-200 hover:bg-[#1a1e27]'
+                  }`}
               >
                 <Sparkles className="w-4 h-4" />
                 <span>Catalogue & Tarifs</span>
@@ -231,35 +229,33 @@ export const Sidebar: React.FC = () => {
 
               <button
                 onClick={() => setActiveTab('staff')}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium transition-all ${
-                  activeTab === 'staff'
-                    ? 'bg-[#222733] text-white border-l-4 border-cyan-400 font-semibold pl-2'
-                    : 'text-gray-400 hover:text-gray-200 hover:bg-[#1a1e27]'
-                }`}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium transition-all ${activeTab === 'staff'
+                  ? 'bg-[#222733] text-white border-l-4 border-cyan-400 font-semibold pl-2'
+                  : 'text-gray-400 hover:text-gray-200 hover:bg-[#1a1e27]'
+                  }`}
               >
                 <Users className="w-4 h-4" />
                 <span>Personnel & Commissions</span>
               </button>
 
-              <button
-                onClick={() => setActiveTab('reports')}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium transition-all ${
-                  activeTab === 'reports'
+              {hasAccess('reports') && (
+                <button
+                  onClick={() => setActiveTab('reports')}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium transition-all ${activeTab === 'reports'
                     ? 'bg-[#222733] text-white border-l-4 border-cyan-400 font-semibold pl-2'
-                    : 'text-gray-400 hover:text-gray-200 hover:bg-[#1a1e27]'
-                }`}
-              >
-                <FileText className="w-4 h-4" />
-                <span>Rapports & Audit</span>
-              </button>
+                    : 'text-gray-400 hover:text-gray-200 hover:bg-[#1a1e27]'}`}
+                >
+                  <FileText className="w-4 h-4" />
+                  <span>Rapports & Audit</span>
+                </button>
+              )}
 
               <button
                 onClick={() => setActiveTab('notifications')}
-                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition-all ${
-                  activeTab === 'notifications'
-                    ? 'bg-[#222733] text-white border-l-4 border-cyan-400 font-semibold pl-2'
-                    : 'text-gray-400 hover:text-gray-200 hover:bg-[#1a1e27]'
-                }`}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition-all ${activeTab === 'notifications'
+                  ? 'bg-[#222733] text-white border-l-4 border-cyan-400 font-semibold pl-2'
+                  : 'text-gray-400 hover:text-gray-200 hover:bg-[#1a1e27]'
+                  }`}
               >
                 <div className="flex items-center gap-3">
                   <Bell className="w-4 h-4" />
@@ -278,11 +274,10 @@ export const Sidebar: React.FC = () => {
             <div className="mt-2 space-y-1">
               <button
                 onClick={() => setActiveTab('showcase')}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium transition-all ${
-                  activeTab === 'showcase'
-                    ? 'bg-[#222733] text-cyan-300 border-l-4 border-cyan-400 font-semibold pl-2'
-                    : 'text-gray-400 hover:text-gray-200 hover:bg-[#1a1e27]'
-                }`}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium transition-all ${activeTab === 'showcase'
+                  ? 'bg-[#222733] text-cyan-300 border-l-4 border-cyan-400 font-semibold pl-2'
+                  : 'text-gray-400 hover:text-gray-200 hover:bg-[#1a1e27]'
+                  }`}
               >
                 <Globe className="w-4 h-4 text-emerald-400" />
                 <div className="text-left">
@@ -293,11 +288,10 @@ export const Sidebar: React.FC = () => {
 
               <button
                 onClick={() => setActiveTab('subscriptions')}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium transition-all ${
-                  activeTab === 'subscriptions'
-                    ? 'bg-[#222733] text-amber-300 border-l-4 border-amber-400 font-semibold pl-2'
-                    : 'text-gray-400 hover:text-gray-200 hover:bg-[#1a1e27]'
-                }`}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium transition-all ${activeTab === 'subscriptions'
+                  ? 'bg-[#222733] text-amber-300 border-l-4 border-amber-400 font-semibold pl-2'
+                  : 'text-gray-400 hover:text-gray-200 hover:bg-[#1a1e27]'
+                  }`}
               >
                 <Crown className="w-4 h-4 text-amber-400" />
                 <div className="text-left">
@@ -308,11 +302,10 @@ export const Sidebar: React.FC = () => {
 
               <button
                 onClick={() => setActiveTab('marketplace')}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium transition-all ${
-                  activeTab === 'marketplace'
-                    ? 'bg-[#222733] text-purple-300 border-l-4 border-purple-400 font-semibold pl-2'
-                    : 'text-gray-400 hover:text-gray-200 hover:bg-[#1a1e27]'
-                }`}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium transition-all ${activeTab === 'marketplace'
+                  ? 'bg-[#222733] text-purple-300 border-l-4 border-purple-400 font-semibold pl-2'
+                  : 'text-gray-400 hover:text-gray-200 hover:bg-[#1a1e27]'
+                  }`}
               >
                 <Store className="w-4 h-4 text-purple-400" />
                 <div className="text-left">
@@ -323,11 +316,10 @@ export const Sidebar: React.FC = () => {
 
               <button
                 onClick={() => setActiveTab('superadmin')}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium transition-all ${
-                  activeTab === 'superadmin'
-                    ? 'bg-[#222733] text-sky-300 border-l-4 border-sky-400 font-semibold pl-2'
-                    : 'text-gray-400 hover:text-gray-200 hover:bg-[#1a1e27]'
-                }`}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium transition-all ${activeTab === 'superadmin'
+                  ? 'bg-[#222733] text-sky-300 border-l-4 border-sky-400 font-semibold pl-2'
+                  : 'text-gray-400 hover:text-gray-200 hover:bg-[#1a1e27]'
+                  }`}
               >
                 <Layers className="w-4 h-4 text-sky-400" />
                 <span>Super-Admin SaaS</span>
@@ -343,11 +335,10 @@ export const Sidebar: React.FC = () => {
             <div className="mt-2 space-y-1">
               <button
                 onClick={() => setActiveTab('settings')}
-                className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium transition-all ${
-                  activeTab === 'settings'
-                    ? 'bg-[#222733] text-white border-l-4 border-cyan-400 font-semibold pl-2'
-                    : 'text-gray-400 hover:text-gray-200 hover:bg-[#1a1e27]'
-                }`}
+                className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium transition-all ${activeTab === 'settings'
+                  ? 'bg-[#222733] text-white border-l-4 border-cyan-400 font-semibold pl-2'
+                  : 'text-gray-400 hover:text-gray-200 hover:bg-[#1a1e27]'
+                  }`}
               >
                 <Settings className="w-4 h-4" />
                 <span>Paramètres Station</span>
@@ -355,15 +346,24 @@ export const Sidebar: React.FC = () => {
 
               <button
                 onClick={() => setActiveTab('help')}
-                className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium transition-all ${
-                  activeTab === 'help'
-                    ? 'bg-[#222733] text-white border-l-4 border-cyan-400 font-semibold pl-2'
-                    : 'text-gray-400 hover:text-gray-200 hover:bg-[#1a1e27]'
-                }`}
+                className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium transition-all ${activeTab === 'help'
+                  ? 'bg-[#222733] text-white border-l-4 border-cyan-400 font-semibold pl-2'
+                  : 'text-gray-400 hover:text-gray-200 hover:bg-[#1a1e27]'
+                  }`}
               >
                 <HelpCircle className="w-4 h-4" />
                 <span>Guide & Aide CI</span>
               </button>
+
+              {hasAccess('export_data') && (
+                <button
+                  onClick={() => setIsExportModalOpen(true)}
+                  className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium text-gray-400 hover:text-gray-200 hover:bg-[#1a1e27] transition-all"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>Exporter les données</span>
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -390,10 +390,10 @@ export const Sidebar: React.FC = () => {
               )}
             </div>
           </div>
-          
+
           <div className="flex items-center gap-1">
             {offlineQueueCount > 0 && (
-              <button 
+              <button
                 onClick={syncOfflineQueue}
                 className="p-1 rounded bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/30 text-[10px]"
                 title="Synchroniser"
@@ -403,11 +403,10 @@ export const Sidebar: React.FC = () => {
             )}
             <button
               onClick={toggleOfflineMode}
-              className={`px-2 py-0.5 rounded text-[10px] font-semibold transition-colors ${
-                isOfflineMode 
-                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' 
-                  : 'bg-[#262c38] text-gray-400 hover:text-white'
-              }`}
+              className={`px-2 py-0.5 rounded text-[10px] font-semibold transition-colors ${isOfflineMode
+                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                : 'bg-[#262c38] text-gray-400 hover:text-white'
+                }`}
             >
               {isOfflineMode ? 'Actif' : 'Simuler'}
             </button>
@@ -425,14 +424,12 @@ export const Sidebar: React.FC = () => {
           <button
             onClick={toggleDarkMode}
             type="button"
-            className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors duration-200 ease-in-out ${
-              isDarkMode ? 'bg-emerald-500' : 'bg-gray-600'
-            }`}
+            className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors duration-200 ease-in-out ${isDarkMode ? 'bg-emerald-500' : 'bg-gray-600'
+              }`}
           >
             <div
-              className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform duration-200 ease-in-out ${
-                isDarkMode ? 'translate-x-5' : 'translate-x-0'
-              }`}
+              className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform duration-200 ease-in-out ${isDarkMode ? 'translate-x-5' : 'translate-x-0'
+                }`}
             />
           </button>
         </div>

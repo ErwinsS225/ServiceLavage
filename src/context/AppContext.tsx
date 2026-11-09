@@ -1,12 +1,13 @@
 import { formatXof } from '../lib/money';
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { 
-  StationTenant, 
-  WashOrder, 
-  BayStation, 
-  Employee, 
-  WashService, 
-  Customer, 
+import { featureConfig, FeatureKey, SubscriptionPlan as AppSubscriptionPlan } from '../config/features';
+import {
+  StationTenant,
+  WashOrder,
+  BayStation,
+  Employee,
+  WashService,
+  Customer,
   RecentEvent,
   SubscriptionPlan,
   InventoryItem,
@@ -35,65 +36,68 @@ interface AppContextType {
   currentTenant: StationTenant;
   setCurrentTenantId: (id: string) => void;
   updateCurrentTenant: (updates: Partial<StationTenant>) => void;
-  
+
   currentUserRole: UserRole;
   setCurrentUserRole: (role: UserRole) => void;
-  
+
+  currentUserPlan: AppSubscriptionPlan;
+  hasAccess: (feature: FeatureKey) => boolean;
+
   isDarkMode: boolean;
   toggleDarkMode: () => void;
-  
+
   currency: 'USD' | 'XOF';
   setCurrency: (c: 'USD' | 'XOF') => void;
   formatCurrency: (amount: number) => string;
-  
+
   activeTab: string;
   setActiveTab: (tab: string) => void;
-  
+
   searchQuery: string;
   setSearchQuery: (q: string) => void;
-  
+
   orders: WashOrder[];
   addOrder: (order: Omit<WashOrder, 'id' | 'ticketNumber' | 'createdAt'>) => WashOrder;
   updateOrderStatus: (id: string, status: WashStatus) => void;
   updatePaymentStatus: (id: string, paymentStatus: PaymentStatus, method?: PaymentMethod) => void;
-  
+
   bays: BayStation[];
   refreshBay: (bayId: number) => void;
   updateBayStatus: (bayId: number, status: 'operational' | 'out_of_service' | 'maintenance') => void;
-  
+
   services: WashService[];
   addService: (service: Omit<WashService, 'id'>) => void;
   updateService: (id: string, updates: Partial<WashService>) => void;
-  
+
   employees: Employee[];
   addEmployee: (emp: Omit<Employee, 'id' | 'totalWashesCompleted' | 'totalCommissionsEarned'>) => void;
-  
+
   customers: Customer[];
   addCustomer: (cust: Omit<Customer, 'id' | 'totalVisits' | 'totalSpent' | 'createdAt'>) => void;
-  
+
   inventory: InventoryItem[];
   addInventoryItem: (item: Omit<InventoryItem, 'id' | 'lastRestocked'>) => void;
   updateInventoryStock: (id: string, newQuantity: number) => void;
-  
+
   expenses: ExpenseItem[];
   addExpense: (expense: Omit<ExpenseItem, 'id' | 'date'>) => void;
-  
+
   recentEvents: RecentEvent[];
   addRecentEvent: (event: Omit<RecentEvent, 'id' | 'timeAgo'>) => void;
-  
+
   subscriptionPlans: SubscriptionPlan[];
   upgradePlan: (planId: 'starter' | 'pro' | 'business') => void;
-  
+
   cashSession: CashSession;
   closeCashSession: (actualCash: number, notes?: string) => void;
   openCashSession: (openingBalance: number) => void;
-  
+
   // Offline resilience
   isOfflineMode: boolean;
   toggleOfflineMode: () => void;
   offlineQueueCount: number;
   syncOfflineQueue: () => void;
-  
+
   // Modals
   isNewOrderModalOpen: boolean;
   setIsNewOrderModalOpen: (open: boolean) => void;
@@ -103,7 +107,7 @@ interface AppContextType {
   setSelectedOrderForDetail: (order: WashOrder | null) => void;
   isOnboardingOpen: boolean;
   setIsOnboardingOpen: (open: boolean) => void;
-  
+
   // Notification banner
   bannerMessage: { type: 'success' | 'info' | 'warning'; text: string } | null;
   showBanner: (text: string, type?: 'success' | 'info' | 'warning') => void;
@@ -123,6 +127,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   });
 
   const [currentUserRole, setCurrentUserRole] = useState<UserRole>('proprietaire');
+  const [currentUserPlan, setCurrentUserPlan] = useState<AppSubscriptionPlan>('premium');
   const [isDarkMode, setIsDarkMode] = useState<boolean>(true);
   const [currency, setCurrency] = useState<'USD' | 'XOF'>('XOF');
   const [activeTab, setActiveTab] = useState<string>('dashboard');
@@ -212,6 +217,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // Current tenant accessor
   const currentTenant = tenants.find(t => t.id === currentTenantId) || tenants[0];
+
+  // Feature flag access control
+  const hasAccess = (feature: FeatureKey): boolean => {
+    return featureConfig[currentUserPlan]?.[feature] ?? false;
+  };
 
   // Save to localStorage
   useEffect(() => {
@@ -519,6 +529,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         updateCurrentTenant,
         currentUserRole,
         setCurrentUserRole,
+        currentUserPlan,
+        hasAccess,
         isDarkMode,
         toggleDarkMode,
         currency,

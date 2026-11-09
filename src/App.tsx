@@ -12,7 +12,6 @@ import { InventoryAndExpenses } from './components/InventoryAndExpenses';
 import { ReportsAndAnalytics } from './components/ReportsAndAnalytics';
 import { CatalogueManagement } from './components/CatalogueManagement';
 import { StaffManagement } from './components/StaffManagement';
-import { StationShowcase } from './components/StationShowcase';
 import { SaaSAdminAndSubscriptions } from './components/SaaSAdminAndSubscriptions';
 import { MarketplaceView } from './components/MarketplaceView';
 import { SettingsAndHelp } from './components/SettingsAndHelp';
@@ -56,8 +55,6 @@ const MainLayout: React.FC = () => {
         return <CatalogueManagement />;
       case 'staff':
         return <StaffManagement />;
-      case 'showcase':
-        return <StationShowcase />;
       case 'subscriptions':
       case 'superadmin':
         return <SaaSAdminAndSubscriptions />;

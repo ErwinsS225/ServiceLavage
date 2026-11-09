@@ -1,29 +1,42 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { Settings, HelpCircle, Save, Printer, MapPin, Building, Phone, DollarSign, Wifi, Shield } from 'lucide-react';
+import { 
+  Settings, HelpCircle, Save, Printer, MapPin, Building, Phone, DollarSign, Wifi, Shield, Mail, Globe, Image, Ticket
+} from 'lucide-react';
 
 export const SettingsAndHelp: React.FC = () => {
   const { currentTenant, updateCurrentTenant, isOfflineMode, toggleOfflineMode, showBanner } = useApp();
 
   const [name, setName] = useState(currentTenant.name);
+  const [slug, setSlug] = useState(currentTenant.slug);
+  const [city, setCity] = useState(currentTenant.city);
   const [commune, setCommune] = useState(currentTenant.commune);
   const [quarter, setQuarter] = useState(currentTenant.quarter);
   const [address, setAddress] = useState(currentTenant.address);
   const [phone, setPhone] = useState(currentTenant.phone);
+  const [email, setEmail] = useState(currentTenant.email || '');
   const [hours, setHours] = useState(currentTenant.openingHours);
   const [description, setDescription] = useState(currentTenant.description);
+  const [currency, setCurrency] = useState(currentTenant.currency);
+  const [logo, setLogo] = useState(currentTenant.logo || '');
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     updateCurrentTenant({
       name,
+      slug,
+      city,
       commune,
       quarter,
       address,
       phone,
+      email: email || undefined,
       openingHours: hours,
       description,
+      currency,
+      logo: logo || undefined,
     });
+    showBanner('Configuration de la station enregistrée');
   };
 
   return (
@@ -34,9 +47,9 @@ export const SettingsAndHelp: React.FC = () => {
           <Settings className="w-5 h-5 text-cyan-400" />
           <span>Paramètres de la Station & Configuration Système</span>
         </h2>
-        <p className="text-xs text-gray-400">
-          Personnalisation des coordonnées, impression des tickets, mode de fonctionnement réseau
-        </p>
+          <p className="text-xs text-gray-400">
+            Personnalisation des coordonnées, devise, affichage des tickets et mode hors-ligne
+          </p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -69,6 +82,16 @@ export const SettingsAndHelp: React.FC = () => {
                   className="w-full px-3 py-2 bg-[#202532] border border-[#2b3242] rounded-xl text-xs text-white focus:outline-none focus:border-cyan-500"
                 />
               </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-300 mb-1">E-mail Professionnel</label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  className="w-full px-3 py-2 bg-[#202532] border border-[#2b3242] rounded-xl text-xs text-white focus:outline-none focus:border-cyan-500"
+                />
+              </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -90,6 +113,17 @@ export const SettingsAndHelp: React.FC = () => {
                   required
                   value={quarter}
                   onChange={e => setQuarter(e.target.value)}
+                  className="w-full px-3 py-2 bg-[#202532] border border-[#2b3242] rounded-xl text-xs text-white focus:outline-none focus:border-cyan-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-300 mb-1">Ville</label>
+                <input
+                  type="text"
+                  required
+                  value={city}
+                  onChange={e => setCity(e.target.value)}
                   className="w-full px-3 py-2 bg-[#202532] border border-[#2b3242] rounded-xl text-xs text-white focus:outline-none focus:border-cyan-500"
                 />
               </div>
@@ -123,6 +157,56 @@ export const SettingsAndHelp: React.FC = () => {
                 onChange={e => setDescription(e.target.value)}
                 className="w-full px-3 py-2 bg-[#202532] border border-[#2b3242] rounded-xl text-xs text-white focus:outline-none focus:border-cyan-500"
               />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-300 mb-1">Devise par défaut</label>
+                <select
+                  value={currency}
+                  onChange={e => setCurrency(e.target.value as 'XOF' | 'USD')}
+                  className="w-full px-3 py-2 bg-[#202532] border border-[#2b3242] rounded-xl text-xs text-white focus:outline-none focus:border-cyan-500"
+                >
+                  <option value="XOF">Franc CFA (XOF)</option>
+                  <option value="USD">Dollar US (USD)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-300 mb-1">URL du Logo / Image d'En-tête</label>
+                <input
+                  type="url"
+                  value={logo}
+                  onChange={e => setLogo(e.target.value)}
+                  className="w-full px-3 py-2 bg-[#202532] border border-[#2b3242] rounded-xl text-xs text-white focus:outline-none focus:border-cyan-500"
+                />
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-[#272e3d]">
+              <h4 className="text-xs font-bold text-white uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                <Ticket className="w-4 h-4 text-cyan-400" />
+                <span>Aperçu du Ticket de Caisse</span>
+              </h4>
+              <div className="bg-[#202532] border border-[#2b3242] rounded-xl p-4 font-mono text-xs text-gray-300">
+                {logo && <img src={logo} alt="Logo" className="h-8 mb-2 mx-auto block" />}
+                <div className="text-center font-bold text-white text-sm">{name}</div>
+                <div className="text-center text-[10px] text-gray-400">{address}, {quarter}, {commune}, {city}</div>
+                <div className="text-center text-[10px] text-gray-400">{phone} · {email}</div>
+                <div className="text-center text-[10px] text-gray-400">{hours}</div>
+                <hr className="my-2 border-[#2c3343]" />
+                <div className="flex justify-between text-[10px]">
+                  <span>Ticket : TKT-1081</span>
+                  <span>Caisse : POS-01</span>
+                </div>
+                <div className="flex justify-between text-xs text-white font-semibold mt-2">
+                  <span>TOTAL</span>
+                  <span>12 500 {currency}</span>
+                </div>
+                <div className="text-center text-[10px] text-gray-500 mt-2">
+                  Merci de votre visite — {name}
+                </div>
+              </div>
             </div>
 
             <div className="pt-2 flex justify-end">

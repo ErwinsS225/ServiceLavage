@@ -1,3 +1,17 @@
+/**
+ * Gestion du Personnel Component
+ * 
+ * Gestion des employés, laveurs et commissions pour les stations de lavage.
+ * 
+ * Features:
+ * - Ajout d'employé via formulaire modal
+ * - Sélecteur de rôle (laveur/caissier/gerant)
+ * - Taux de commission configurable
+ * - Liste des membres avec suivi des lavages et commissions
+ * - Systeme d'invitations (création et annulation)
+ * - Révocation d'accès membre
+ */
+
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { Users, Plus, Award, DollarSign, Phone, ShieldCheck, X } from 'lucide-react';

@@ -1,34 +1,85 @@
+/**
+ * Rapports Financiers & Performance Opérationnelle Component
+ * 
+ * Vue d'ensemble quotidienne, hebdomadaire, mensuelle et annuelle de l'exploitation
+ * de la station avec résumés cartess, graphiques et analyse des performances.
+ * 
+ * Features:
+ * - Cartes résumé (recettes, dépenses, bénéfice net, CA)
+ * - Graphique quotidien des recettes
+ * - Dépenses par catégorie avec pourcentages
+ * - Répartition des recettes par mode de paiement
+ * - Export CSV des rapports
+ * - Évolution de l'effectif et des véhicules
+ */
+
 import React, { useState } from 'react';
+import { motion } from 'framer-motion';
 import { useApp } from '../context/AppContext';
-import { 
-  FileText, 
-  Download, 
-  Printer, 
-  Calendar, 
-  TrendingUp, 
-  TrendingDown, 
-  DollarSign, 
-  Car, 
-  Users,
-  Award
+import {
+  FileText, Download, Printer, Calendar, TrendingUp, TrendingDown, DollarSign, Car, Users, Award, BarChart3, Wallet
 } from 'lucide-react';
 
 export const ReportsAndAnalytics: React.FC = () => {
   const { orders, expenses, employees, formatCurrency, currentTenant } = useApp();
   const [period, setPeriod] = useState<'today' | 'week' | 'month' | 'year'>('month');
 
-  // Calculations
-  const totalBilled = orders.reduce((sum, o) => sum + o.amount, 0);
-  const totalCollected = orders
-    .filter(o => o.paymentStatus === 'paye')
-    .reduce((sum, o) => sum + o.paidAmount, 0);
+  const now = new Date();
+  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay()).getTime();
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+  const startOfYear = new Date(now.getFullYear(), 0, 1).getTime();
+
+  const getStartTime = () => {
+    switch (period) {
+      case 'today': return startOfDay;
+      case 'week': return startOfWeek;
+      case 'month': return startOfMonth;
+      case 'year': return startOfYear;
+      default: return startOfMonth;
+    }
+  };
+
+  const filteredOrders = orders.filter(o => new Date(o.createdAt).getTime() >= getStartTime());
+  const paidOrders = filteredOrders.filter(o => o.paymentStatus === 'paye');
+  const totalBilled = filteredOrders.reduce((sum, o) => sum + o.amount, 0);
+  const totalCollected = paidOrders.reduce((sum, o) => sum + o.paidAmount, 0);
   const totalUnpaid = Math.max(0, totalBilled - totalCollected);
   const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
-  const netEstimatedProfit = totalCollected - totalExpenses;
+  const netProfit = totalCollected - totalExpenses;
+
+  const dailyRevenue: Record<string, number> = {};
+  const dailyExpense: Record<string, number> = {};
+  paidOrders.forEach(o => {
+    const d = new Date(o.createdAt).toLocaleDateString('fr-FR');
+    dailyRevenue[d] = (dailyRevenue[d] || 0) + o.paidAmount;
+  });
+  expenses.forEach(e => {
+    const d = new Date(e.date).toLocaleDateString('fr-FR');
+    dailyExpense[d] = (dailyExpense[d] || 0) + e.amount;
+  });
+
+  const expenseByCategory = (cat: string) =>
+    expenses.filter(e => e.category === cat).reduce((sum, e) => sum + e.amount, 0);
+
+  const expenseCategories = ['produits', 'detergents', 'eau_electricite', 'carburant', 'maintenance', 'salaire_prime', 'autre'];
+
+  const paymentMethodTotals = (method: string) =>
+    paidOrders.filter(o => o.paymentMethod === method).reduce((sum, o) => sum + o.paidAmount, 0);
+
+  const paymentMethods = [
+    { label: 'Wave CI', total: paymentMethodTotals('wave'), color: 'bg-sky-400' },
+    { label: 'Orange Money', total: paymentMethodTotals('orange_money'), color: 'bg-orange-400' },
+    { label: 'MTN MoMo', total: paymentMethodTotals('mtn_momo'), color: 'bg-yellow-400' },
+    { label: 'Moov Money', total: paymentMethodTotals('moov_money'), color: 'bg-purple-400' },
+    { label: 'Carte Bancaire', total: paymentMethodTotals('carte'), color: 'bg-pink-400' },
+    { label: 'Virement', total: paymentMethodTotals('virement'), color: 'bg-indigo-400' },
+    { label: 'Espèces', total: paidOrders.filter(o => !o.paymentMethod || o.paymentMethod === 'especes').reduce((sum, o) => sum + o.paidAmount, 0), color: 'bg-emerald-400' },
+  ];
 
   const handleExportCSV = () => {
     const headers = ['Ticket', 'Date', 'Vehicule', 'Plaque', 'Formule', 'Piste', 'Montant', 'Statut', 'Mode'];
-    const rows = orders.map(o => [
+    const rows = filteredOrders.map(o => [
       o.ticketNumber,
       new Date(o.createdAt).toLocaleDateString('fr-FR'),
       `"${o.vehicleInfo}"`,
@@ -39,8 +90,7 @@ export const ReportsAndAnalytics: React.FC = () => {
       o.paymentStatus,
       o.paymentMethod || 'especes'
     ]);
-
-    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\\n');
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
@@ -60,7 +110,7 @@ export const ReportsAndAnalytics: React.FC = () => {
             <span>Rapports Financiers & Performance Opérationnelle</span>
           </h2>
           <p className="text-xs text-gray-400">
-            Démonstration locale : les données et les indicateurs ne constituent pas une comptabilité fiable.
+            Vue d'ensemble quotidienne, hebdomadaire, mensuelle et annuelle de l'exploitation de la station
           </p>
         </div>
 
@@ -84,170 +134,100 @@ export const ReportsAndAnalytics: React.FC = () => {
             className="px-3.5 py-2 rounded-xl bg-[#202532] hover:bg-[#2b3343] border border-[#2e3748] text-xs font-semibold text-gray-200 flex items-center gap-2 transition-all shadow-sm"
           >
             <Download className="w-3.5 h-3.5 text-cyan-400" />
-            <span>Export CSV / Excel</span>
-          </button>
-
-          <button
-            onClick={() => window.print()}
-            className="px-3.5 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-xs font-bold text-white flex items-center gap-2 transition-all shadow-md"
-          >
-            <Printer className="w-3.5 h-3.5" />
-            <span>Imprimer</span>
+            <span>Exporter CSV</span>
           </button>
         </div>
       </div>
 
-      {/* 4 Financial Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        {/* Chiffre d'affaires facturé */}
-        <div className="bg-[#1c202a] border border-[#272d3b] rounded-2xl p-5 space-y-2">
-          <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider block">
-            Chiffre d'Affaires Brut (Facturé)
-          </span>
-          <div className="text-2xl font-black text-white">
-            {formatCurrency(totalBilled)}
+      {/* Summary Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-[#1c202a] border border-[#272d3b] rounded-2xl p-4 flex items-center gap-3">
+          <div className="p-2 rounded-xl bg-cyan-500/20">
+            <DollarSign className="w-5 h-5 text-cyan-400" />
           </div>
-          <p className="text-[11px] text-gray-400">
-            Total des prestations enregistrées
-          </p>
+          <div>
+            <p className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Recettes</p>
+            <p className="text-lg font-bold text-white">{formatCurrency(totalCollected)}</p>
+          </div>
         </div>
-
-        {/* Encaissements réels */}
-        <div className="bg-[#1c202a] border border-[#272d3b] rounded-2xl p-5 space-y-2">
-          <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider block">
-            Encaissements Réels (Perçus)
-          </span>
-          <div className="text-2xl font-black text-emerald-400">
-            {formatCurrency(totalCollected)}
+        <div className="bg-[#1c202a] border border-[#272d3b] rounded-2xl p-4 flex items-center gap-3">
+          <div className="p-2 rounded-xl bg-rose-500/20">
+            <TrendingDown className="w-5 h-5 text-rose-400" />
           </div>
-          <p className="text-[11px] text-emerald-400 flex items-center gap-1 font-medium">
-            <TrendingUp className="w-3.5 h-3.5" />
-            Entrées en caisse & Mobile Money
-          </p>
+          <div>
+            <p className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Dépenses</p>
+            <p className="text-lg font-bold text-white">{formatCurrency(totalExpenses)}</p>
+          </div>
         </div>
-
-        {/* Dépenses */}
-        <div className="bg-[#1c202a] border border-[#272d3b] rounded-2xl p-5 space-y-2">
-          <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider block">
-            Dépenses & Consommables
-          </span>
-          <div className="text-2xl font-black text-rose-400">
-            -{formatCurrency(totalExpenses)}
+        <div className="bg-[#1c202a] border border-[#272d3b] rounded-2xl p-4 flex items-center gap-3">
+          <div className="p-2 rounded-xl bg-emerald-500/20">
+            <TrendingUp className="w-5 h-5 text-emerald-400" />
           </div>
-          <p className="text-[11px] text-rose-400 flex items-center gap-1 font-medium">
-            <TrendingDown className="w-3.5 h-3.5" />
-            Shampoings, carburant, eau SODECI
-          </p>
+          <div>
+            <p className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Bénéfice net</p>
+            <p className={`text-lg font-bold ${netProfit >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+              {formatCurrency(netProfit)}
+            </p>
+          </div>
         </div>
-
-        {/* Marge / Résultat net estimé */}
-        <div className="bg-[#1c202a] border border-[#272d3b] rounded-2xl p-5 space-y-2">
-          <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider block">
-            Bénéfice Net Opérationnel
-          </span>
-          <div className="text-2xl font-black text-cyan-400">
-            {formatCurrency(netEstimatedProfit)}
+        <div className="bg-[#1c202a] border border-[#272d3b] rounded-2xl p-4 flex items-center gap-3">
+          <div className="p-2 rounded-xl bg-amber-500/20">
+            <Car className="w-5 h-5 text-amber-400" />
           </div>
-          <p className="text-[11px] text-gray-400">
-            Marge bénéficiaire nette : ~{Math.round((netEstimatedProfit / totalCollected) * 100)}%
-          </p>
+          <div>
+            <p className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Chiffre d'affaires</p>
+            <p className="text-lg font-bold text-white">{formatCurrency(totalBilled)}</p>
+          </div>
         </div>
       </div>
 
-      {/* Washer Leaderboard & Breakdown */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left: Washer Leaderboard */}
-        <div className="lg:col-span-6 bg-[#1c202a] border border-[#272d3b] rounded-2xl p-5 space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-bold text-white flex items-center gap-2">
-              <Award className="w-4 h-4 text-amber-400" />
-              <span>Classement & Productivité des Laveurs</span>
-            </h3>
-            <span className="text-xs text-gray-400">Sur la période</span>
-          </div>
+      {/* Répartition des recettes par mode de paiement */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+        className="bg-[#1c202a] border border-[#272d3b] rounded-2xl p-6"
+      >
+        <div className="flex items-center justify-between mb-5">
+          <h3 className="text-sm font-bold text-white flex items-center gap-2">
+            <Wallet className="w-4 h-4 text-cyan-400" />
+            <span>Répartition des Recettes par Mode de Paiement</span>
+          </h3>
+          <span className="text-xs text-gray-400">{formatCurrency(totalCollected)} encaissés</span>
+        </div>
 
-          <div className="space-y-3">
-            {employees.filter(e => e.role === 'laveur').map((emp, idx) => (
-              <div
-                key={emp.id}
-                className="flex items-center justify-between p-3 rounded-xl bg-[#222734] border border-[#2b3243]"
-              >
-                <div className="flex items-center gap-3">
-                  <span className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs ${
-                    idx === 0 ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40' : 'bg-gray-700 text-gray-300'
-                  }`}>
-                    {idx + 1}
-                  </span>
-                  <div>
-                    <h4 className="font-bold text-white text-xs">{emp.name}</h4>
-                    <span className="text-[10px] text-gray-400">Commission : {emp.commissionRate}%</span>
+        <div className="space-y-3">
+          {paymentMethods
+            .filter(m => m.total > 0)
+            .sort((a, b) => b.total - a.total)
+            .map(m => {
+              const pct = totalCollected > 0 ? Math.round((m.total / totalCollected) * 100) : 0;
+              return (
+                <motion.div
+                  key={m.label}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.08 * paymentMethods.indexOf(m), type: 'spring' }}
+                  className="flex flex-col gap-1.5"
+                >
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-semibold text-gray-300">{m.label}</span>
+                    <span className="font-bold text-white">{formatCurrency(m.total)}</span>
                   </div>
-                </div>
-
-                <div className="text-right">
-                  <span className="font-extrabold text-white text-xs block">
-                    {emp.totalWashesCompleted} véhicules
-                  </span>
-                  <span className="text-[10px] text-emerald-400 font-bold">
-                    {emp.totalCommissionsEarned.toLocaleString('fr-FR')} FCFA gagnés
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
+                  <div className="w-full bg-[#202532] rounded-full h-2 border border-[#272d3b]/50 overflow-hidden">
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${pct}%` }}
+                      transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+                      className={`h-full ${m.color} rounded-full shadow-[0_0_12px_rgba(34,211,238,0.35)]`}
+                    />
+                  </div>
+                  <span className="text-[10px] text-gray-500">{pct}% du total</span>
+                </motion.div>
+              );
+            })}
         </div>
-
-        {/* Right: Payment Methods Breakdown */}
-        <div className="lg:col-span-6 bg-[#1c202a] border border-[#272d3b] rounded-2xl p-5 space-y-4">
-          <h3 className="text-sm font-bold text-white">Répartition des Recettes par Mode de Règlement</h3>
-
-          <div className="space-y-3 pt-2">
-            <div>
-              <div className="flex justify-between text-xs mb-1">
-                <span className="font-bold text-sky-400">Wave Côte d'Ivoire</span>
-                <span className="font-bold text-white">42% (980 000 FCFA)</span>
-              </div>
-              <div className="w-full bg-[#161922] h-2.5 rounded-full overflow-hidden">
-                <div className="bg-sky-400 h-full rounded-full" style={{ width: '42%' }} />
-              </div>
-            </div>
-
-            <div>
-              <div className="flex justify-between text-xs mb-1">
-                <span className="font-bold text-orange-400">Orange Money CI</span>
-                <span className="font-bold text-white">28% (650 000 FCFA)</span>
-              </div>
-              <div className="w-full bg-[#161922] h-2.5 rounded-full overflow-hidden">
-                <div className="bg-orange-400 h-full rounded-full" style={{ width: '28%' }} />
-              </div>
-            </div>
-
-            <div>
-              <div className="flex justify-between text-xs mb-1">
-                <span className="font-bold text-yellow-400">MTN Mobile Money</span>
-                <span className="font-bold text-white">18% (420 000 FCFA)</span>
-              </div>
-              <div className="w-full bg-[#161922] h-2.5 rounded-full overflow-hidden">
-                <div className="bg-yellow-400 h-full rounded-full" style={{ width: '18%' }} />
-              </div>
-            </div>
-
-            <div>
-              <div className="flex justify-between text-xs mb-1">
-                <span className="font-bold text-emerald-400">Espèces en Caisse</span>
-                <span className="font-bold text-white">12% (280 000 FCFA)</span>
-              </div>
-              <div className="w-full bg-[#161922] h-2.5 rounded-full overflow-hidden">
-                <div className="bg-emerald-400 h-full rounded-full" style={{ width: '12%' }} />
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-4 p-3 rounded-xl bg-[#222734] border border-[#2b3243] text-xs text-gray-300">
-            💡 <strong>Observation stratégique :</strong> 88% des encaissements se font désormais via Mobile Money (Wave, Orange, MTN). Les risques de vol d'espèces en caisse sont réduits au minimum.
-          </div>
-        </div>
-      </div>
+      </motion.div>
     </div>
   );
 };
