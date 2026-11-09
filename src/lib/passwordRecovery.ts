@@ -17,11 +17,11 @@ export function validateNewPassword(password: string, confirmation: string): Pas
 }
 
 /**
- * Absolute URL Supabase redirects to after a recovery e-mail.
+ * Absolute URL Supabase redirects to after a confirmation or recovery e-mail.
  * A valid absolute URL is required by Supabase Auth; a malformed value would
- * silently produce a dead link, so the origin is used as a safe fallback.
+ * silently produce a dead link, so the given origin is returned as a fallback.
  */
-export function recoveryRedirectUrl(origin: string): string {
+export function authRedirectUrl(origin: string): string {
   try {
     const base = new URL(origin);
     if (base.protocol !== 'https:' && base.protocol !== 'http:') throw new Error('unsupported protocol');

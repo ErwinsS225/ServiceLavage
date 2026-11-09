@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { isRecoveryLink, supabase } from '../lib/supabase';
 import {
-  MIN_PASSWORD_LENGTH, RECOVERY_SENT_MESSAGE, recoveryRedirectUrl, validateNewPassword,
+  MIN_PASSWORD_LENGTH, RECOVERY_SENT_MESSAGE, authRedirectUrl, validateNewPassword,
 } from '../lib/passwordRecovery';
 import { StationCustomers } from './StationCustomers';
 import { StationServices } from './StationServices';
@@ -152,8 +152,10 @@ export function OwnerPortal() {
     if (!supabase) return;
     setBusy(true); setError(''); setMessage('');
     try {
+      // An explicit redirectTo keeps the confirmation link on the public origin
+      // instead of the project's Site URL, which can drift between environments.
       const result = signup
-        ? await supabase.auth.signUp({ email, password })
+        ? await supabase.auth.signUp({ email, password, options: { emailRedirectTo: authRedirectUrl(window.location.origin) } })
         : await supabase.auth.signInWithPassword({ email, password });
       if (result.error) setError(result.error.message);
       else if (signup && !result.data.session) setMessage('Vérifiez votre e-mail pour confirmer votre compte, puis connectez-vous.');
@@ -167,7 +169,7 @@ export function OwnerPortal() {
     setBusy(true); setError(''); setMessage('');
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-        redirectTo: recoveryRedirectUrl(window.location.origin),
+        redirectTo: authRedirectUrl(window.location.origin),
       });
       if (error) setError(`Envoi impossible : ${error.message}`);
       else { setForgot(false); setMessage(RECOVERY_SENT_MESSAGE); }

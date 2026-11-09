@@ -19,7 +19,7 @@ npm run dev
 
 L'application écoute sur le port 3000. `VITE_SUPABASE_URL` et `VITE_SUPABASE_PUBLISHABLE_KEY` sont intégrées au code navigateur : utiliser **uniquement** la clé publiable ou anon, jamais `service_role`, une clé secrète, un mot de passe de base ou une clé Gemini. Les fichiers `.env*`, sauf `.env.example`, sont ignorés par Git. Les variables Vite sont lues au démarrage du serveur ou au build ; reconstruire après changement. Une configuration absente affiche un écran explicite, sans connecter Supabase.
 
-Pour la confirmation des inscriptions, configurer la Site URL et les URL de redirection autorisées dans Supabase Auth pour chaque environnement. Ne pas désactiver la confirmation simplement pour faire passer des tests. Aucune fonctionnalité Gemini n'est actuellement utilisée par l'interface active.
+Pour la confirmation des inscriptions, configurer la Site URL et les URL de redirection autorisées dans Supabase Auth pour chaque environnement. Ne pas désactiver la confirmation simplement pour faire passer des tests. Le portail gère aussi la réinitialisation de mot de passe (`resetPasswordForEmail` → formulaire de nouveau mot de passe) ; voir [authentification](docs/authentification.md). Aucune fonctionnalité Gemini n'est actuellement utilisée par l'interface active.
 
 ## Commandes
 

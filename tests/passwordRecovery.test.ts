@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  MIN_PASSWORD_LENGTH, RECOVERY_SENT_MESSAGE, recoveryRedirectUrl, validateNewPassword,
+  MIN_PASSWORD_LENGTH, RECOVERY_SENT_MESSAGE, authRedirectUrl, validateNewPassword,
 } from '../src/lib/passwordRecovery';
 
 test('a new password must be long enough and match its confirmation', () => {
@@ -18,15 +18,15 @@ test('password length limit matches the documented minimum of eight', () => {
 });
 
 test('recovery redirect targets the site root of the current origin', () => {
-  assert.equal(recoveryRedirectUrl('https://3000-abc.e2b.app'), 'https://3000-abc.e2b.app/');
-  assert.equal(recoveryRedirectUrl('http://localhost:3000'), 'http://localhost:3000/');
+  assert.equal(authRedirectUrl('https://3000-abc.e2b.app'), 'https://3000-abc.e2b.app/');
+  assert.equal(authRedirectUrl('http://localhost:3000'), 'http://localhost:3000/');
   // A path in the origin must not leak into the redirect target.
-  assert.equal(recoveryRedirectUrl('https://example.com/deep/path'), 'https://example.com/');
+  assert.equal(authRedirectUrl('https://example.com/deep/path'), 'https://example.com/');
 });
 
 test('a malformed origin is returned unchanged instead of silently producing a dead link', () => {
-  assert.equal(recoveryRedirectUrl('not-a-url'), 'not-a-url');
-  assert.equal(recoveryRedirectUrl(''), '');
+  assert.equal(authRedirectUrl('not-a-url'), 'not-a-url');
+  assert.equal(authRedirectUrl(''), '');
 });
 
 test('the recovery message never reveals whether an account exists', () => {
