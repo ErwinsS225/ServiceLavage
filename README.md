@@ -33,7 +33,7 @@ npm run preview    # prévisualisation locale du build
 npm run clean      # supprime uniquement dist/
 ```
 
-Pour que le build contienne le parcours Supabase complet, les deux variables Vite doivent être renseignées. La CI utilise des valeurs d'exemple non fonctionnelles ; elle ne contacte ni ne modifie un projet Supabase. La PWA nécessite HTTPS ou localhost et une première visite en ligne ; voir [PWA et hors ligne](docs/pwa-hors-ligne.md). La file locale expérimentale ne couvre que la création de prestations, pas les paiements ni tous les autres modules.
+Pour que le build contienne le parcours Supabase complet, les deux variables Vite doivent être renseignées. La CI utilise des valeurs d'exemple non fonctionnelles ; elle ne contacte ni ne modifie un projet Supabase. La PWA nécessite HTTPS ou localhost et une première visite en ligne ; voir [PWA et hors ligne](docs/pwa-hors-ligne.md). Les files locales couvrent progressivement la création de prestations et les ajustements de stock existant ; pas les paiements, la création d’articles hors ligne ni les autres opérations.
 
 ## Migrations et sécurité
 

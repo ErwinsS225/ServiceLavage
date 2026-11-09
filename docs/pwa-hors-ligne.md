@@ -12,7 +12,11 @@ La synchronisation est tentée à l'ouverture de l'écran Prestations, lors de l
 
 Le tarif appliqué est celui en vigueur sur le serveur à la synchronisation ; le tarif affiché hors ligne est indicatif. Les données locales et la file ne sont **pas chiffrées** et sont accessibles aux personnes et scripts ayant accès au navigateur de l'appareil. Éviter les appareils partagés. Effacer les données du navigateur peut entraîner la perte définitive des opérations en attente. Une session expirée peut nécessiter une reconnexion en ligne. Il ne faut pas considérer ce mécanisme comme prêt pour la production tant que les tests de sécurité et de coupure réels ne sont pas passés.
 
-**Clients et catalogue hors ligne en écriture, paiements et autres modules ne sont pas implémentés.** Aucune garantie de synchronisation en arrière-plan ou de notification ne s'applique à ces modules.
+### Inventaire : deuxième périmètre (ajustements uniquement)
+
+L'écran Inventaire conserve le dernier instantané de stock dans le localStorage propre à l'utilisateur et à la station. Les ajustements relatifs (+/−) d'articles déjà connus sont mis en file hors ligne, affichés comme estimations et rejoués dans l'ordre à l'ouverture de l'écran ou au retour réseau tant que l'application est active. Chaque demande conserve son UUID : une réponse perdue peut être répétée sans doubler l'ajustement. Seul l'acquittement Supabase retire une demande. Une erreur de quota, rôle, article supprimé ou stock insuffisant conserve la demande et bloque les suivantes ; il faut se reconnecter et résoudre le conflit. La création d'article et les mutations de clients/catalogue restent en ligne uniquement. Le serveur valide le rôle, le plan et le stock final, car le cache et l'indication `navigator.onLine` ne sont pas une preuve d'autorisation ni d'état actuel.
+
+**Les paiements restent strictement en ligne.** La PWA ne met toujours pas en cache les réponses d'API, d'authentification ou les données utilisateur. Le cache local n'est pas chiffré ; le stock affiché ou estimé peut être périmé et plusieurs appareils peuvent produire des ajustements concurrents. Aucune synchronisation en arrière-plan n'est garantie.
 
 ## Suite nécessaire
 

@@ -25,6 +25,7 @@ test('migrations enforce tenant isolation and retry safety under authenticated r
     await db.exec(await readFile('supabase/tests/station_memberships.sql', 'utf8'));
     await db.exec(await readFile('supabase/tests/subscription_limits.sql', 'utf8'));
     await db.exec(await readFile('supabase/tests/station_inventory.sql', 'utf8'));
+    await db.exec(await readFile('supabase/tests/station_role_permissions.sql', 'utf8'));
   } finally {
     await db.close();
   }

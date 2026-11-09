@@ -37,6 +37,8 @@ export default defineConfig(() => ({
   plugins: [react(), tailwindcss(), offlineShell()],
   resolve: { alias: { '@': path.resolve(import.meta.dirname, '.') } },
   server: {
+    // Arena proxies the app under this preview suffix; keep Vite's host check enabled for other hosts.
+    allowedHosts: ['.e2b.app'],
     // AI Studio can disable file watching to avoid flickering during edits.
     hmr: process.env.DISABLE_HMR !== 'true',
     watch: process.env.DISABLE_HMR === 'true' ? null : {},
