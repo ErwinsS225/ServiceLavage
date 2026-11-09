@@ -1,5 +1,9 @@
 # Authentification et récupération de compte
 
+> ⚠️ **Action requise avant mise en service** : `rate_limit_email_sent = 2` par
+> heure bloque toute inscription réelle au-delà de deux comptes. Voir
+> « Écarts constatés en production » en fin de document.
+
 ## Parcours disponibles dans le portail
 
 | Parcours | État | Détail |
@@ -71,3 +75,35 @@ Cette URL est déclarée dans `site_url` et `uri_allow_list`, mais elle est **in
 ## Réversibilité
 
 Aucun secret n'est utilisé : tout repose sur la clé publiable. Revenir en arrière consiste à supprimer les deux blocs `forgot`/`recovery` de `OwnerPortal.tsx` ; aucune migration ni donnée n'est affectée.
+
+## Écarts constatés en production (vérifiés le 9 novembre 2026)
+
+Relevés via le connecteur Supabase (`get_auth_config`), sur le projet
+`avvkzliysacpyavmetsx`.
+
+| Paramètre | Valeur serveur | Attendu | Conséquence réelle |
+| --- | :---: | :---: | --- |
+| `password_min_length` | **6** | 8 | L'application refuse tout mot de passe de moins de 8 caractères (`MIN_PASSWORD_LENGTH`), **mais l'API Supabase en accepte 6**. Un appel direct à `/auth/v1/signup` contourne donc la règle affichée. |
+| `password_hibp_enabled` | **false** | true | Aucune vérification contre les bases de mots de passe compromis. |
+| `rate_limit_email_sent` | **2/heure** | ≥ 30 | **Bloquant pour la production** : au-delà de 2 e-mails par heure, confirmations d'inscription et liens de réinitialisation ne partent plus. Sur le SMTP intégré de Supabase, cette limite est une protection anti-abus du plan gratuit. |
+| `smtp_host` | **null** | serveur dédié | Tout l'envoi repose sur le service intégré, d'où la limite ci-dessus. |
+
+### Pourquoi ces trois réglages ne sont pas appliqués
+
+Le connecteur `update_auth_config` ne les expose pas : `password_min_length`,
+`password_hibp_enabled` et `rate_limit_email_sent` sont ignorés silencieusement
+lors d'un appel `update_auth_config`. Ils doivent être saisis dans
+**Dashboard → Authentication → Providers / Settings**, ou bien un SMTP dédié
+doit être configuré.
+
+### Priorité
+
+1. **`rate_limit_email_sent` et SMTP** — sans cela, l'inscription réelle est
+   inutilisable au-delà de deux comptes par heure. C'est le seul point de cette
+   liste qui bloque la mise en service.
+2. `password_min_length` — l'écart est masqué par la validation côté client,
+   mais un client modifié passe outre.
+3. `password_hibp_enabled` — confort de sécurité, non bloquant.
+
+> Note : le connecteur expose ces champs dans son schéma mais ne les applique
+> pas ; relire systématiquement avec `get_auth_config` après tentative.
