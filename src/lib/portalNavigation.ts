@@ -80,6 +80,38 @@ export function parseStationRole(value: unknown): StationRole | null {
   return value === 'owner' || value === 'gerant' || value === 'caissier' || value === 'laveur' ? value : null;
 }
 
+/**
+ * Capacités d'affichage, dérivées des mêmes règles que la matrice.
+ *
+ * Un seul endroit décide « ce rôle gère-t-il la station ? », au lieu de quatre
+ * comparaisons `role === 'owner' || role === 'gerant'` dispersées dans les
+ * composants et les hooks — c'est exactement le genre de duplication qui avait
+ * laissé le caissier accéder à un onglet vide.
+ *
+ * Ceci ne protège rien : `revoke_station_membership`, `create_station_invitation`,
+ * `cancel_station_invitation` n'acceptent que le propriétaire, et les politiques
+ * RLS des tables de catalogue / inventaire n'autorisent l'écriture qu'au
+ * propriétaire et au gérant. Ces fonctions alignent l'interface sur ces règles.
+ */
+
+/** Gère la station : catalogue, clients, inventaire, personnel, rapports. */
+export function canManageStation(role: StationRole | null): boolean {
+  return role === 'owner' || role === 'gerant';
+}
+
+/** Enregistre et fait avancer les prestations (`create_station_order_idempotent`). */
+export function canManageOrders(role: StationRole | null): boolean {
+  return role === 'owner' || role === 'gerant';
+}
+
+/**
+ * Invite, annule une invitation, révoque un accès.
+ * Réservé au propriétaire par `create_station_invitation`, de façon identique.
+ */
+export function canManageRoles(role: StationRole | null): boolean {
+  return role === 'owner';
+}
+
 export const ROLE_LABELS: Record<StationRole, string> = {
   owner: 'Propriétaire',
   gerant: 'Gérant',

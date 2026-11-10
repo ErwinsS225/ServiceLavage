@@ -1,81 +1,81 @@
-import { useEffect, useState } from 'react';
-import { supabase } from '../lib/supabase';
-import { 
-  Table, TableHeader, TableBody, TableHead, TableRow, TableCell, 
-  StatusBadge, buttonStyles, formControlStyles, FormField, Modal, Alert, EmptyState 
+import { useState } from 'react';
+import {
+  Table, TableHeader, TableBody, TableHead, TableRow, TableCell,
+  StatusBadge, buttonStyles, formControlStyles, FormField, Modal, Alert, EmptyState
 } from './ui/designSystem';
-import { Users, UserPlus, Shield, XCircle, RotateCw } from 'lucide-react';
+import { Users, UserPlus, Shield, XCircle, RotateCw, Copy } from 'lucide-react';
+import { useStationStaff } from '../hooks/useStationStaff';
+import {
+  STAFF_ROLE_LABELS, STAFF_ROLES, activeMemberCount, canCancelInvitation,
+  canRevokeMember, describeMember, invitationState, isValidInvitationEmail, normalizeInvitationEmail,
+} from '../lib/staffRules';
+import type { StaffRole } from '../lib/stationApi';
 
-type Role = 'gerant' | 'caissier' | 'laveur';
-type Member = { user_id: string; role: Role; created_at: string; revoked_at: string | null };
-type Invitation = { id: string; email: string; role: Role; created_at: string; expires_at: string; accepted_at: string | null; cancelled_at: string | null };
-const roleNames: Record<Role, string> = { gerant: 'Gérant', caissier: 'Caissier', laveur: 'Laveur' };
+/**
+ * Module Personnel & rôles — interface seule.
+ *
+ * Requêtes et mutations : `hooks/useStationStaff`. Règles d'état (invitation
+ * expirée, adresse refusée, accès révocable) : `lib/staffRules`. Ce fichier ne
+ * garde que les formulaires, les modales et le rendu.
+ *
+ * Deux limites assumées, écrites à l'écran plutôt que masquées :
+ *  - les invitations ne partent par aucun email : la référence est à
+ *    transmettre soi-même ;
+ *  - l'email saisi ne sert qu'à retrouver le compte au moment de l'acceptation,
+ *    il n'est pas vérifié par le serveur à la création.
+ *
+ * Les trois actions (inviter, annuler, révoquer) sont réservées au propriétaire
+ * par les RPC `SECURITY DEFINER` ; `canManageRoles` ne fait qu'aligner
+ * l'affichage. RLS reste l'autorité.
+ */
+export function StationStaff({
+  stationId,
+  canManageRoles,
+  roleFeaturesReady = true,
+}: {
+  stationId: string;
+  canManageRoles: boolean;
+  /** `false` tant que `current_station_role` n'a pas répondu. */
+  roleFeaturesReady?: boolean;
+}) {
+  const staff = useStationStaff({ stationId, canManageRoles, enabled: roleFeaturesReady });
+  const { members, invitations, loading, error, actionError, message, busy } = staff;
 
-export function StationStaff({ stationId, canManageRoles }: { stationId: string; canManageRoles: boolean }) {
-  const [members, setMembers] = useState<Member[]>([]);
-  const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [email, setEmail] = useState('');
-  const [role, setRole] = useState<Role>('laveur');
-  /** Member awaiting revocation confirmation (replaces window.confirm). */
+  const [role, setRole] = useState<StaffRole>('laveur');
+  const [inviteOpen, setInviteOpen] = useState(false);
   const [revokeTarget, setRevokeTarget] = useState<string | null>(null);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
-  const [message, setMessage] = useState('');
-  const [reload, setReload] = useState(0);
+  /** Référence affichée une seule fois, après création. */
+  const [createdReference, setCreatedReference] = useState('');
 
-  useEffect(() => {
-    let active = true;
-    setLoading(true); setError('');
-    const roster = supabase!.from('station_memberships').select('user_id,role,created_at,revoked_at').eq('station_id', stationId).order('created_at');
-    const invites = canManageRoles
-      ? supabase!.from('station_invitations').select('id,email,role,created_at,expires_at,accepted_at,cancelled_at').eq('station_id', stationId).order('created_at', { ascending: false })
-      : Promise.resolve({ data: [], error: null });
-    Promise.all([roster, invites]).then(([rosterResult, invitationResult]) => {
-      if (!active) return;
-      const firstError = rosterResult.error || invitationResult.error;
-      if (firstError) setError(`Chargement du personnel impossible : ${firstError.message}`);
-      else { setMembers(rosterResult.data ?? []); setInvitations(invitationResult.data ?? []); }
-      setLoading(false);
-    });
-    return () => { active = false; };
-  }, [stationId, canManageRoles, reload]);
+  const emailValid = isValidInvitationEmail(email);
+  const activeMembers = activeMemberCount(members);
 
-  async function createInvitation(event: React.FormEvent<HTMLFormElement>) {
+  function closeInvite() {
+    setInviteOpen(false);
+    setEmail('');
+    setRole('laveur');
+  }
+
+  async function submitInvitation(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const cleanEmail = email.trim().toLowerCase();
-    if (!cleanEmail) return;
-    setBusy(true); setError(''); setMessage('');
+    if (!emailValid) return;
     try {
-      const { data, error } = await supabase!.rpc('create_station_invitation', { p_station_id: stationId, p_email: cleanEmail, p_role: role });
-      if (error) { setError(`Création de l’invitation impossible : ${error.message}`); return; }
-      setEmail(''); 
-      setModalOpen(false);
-      setMessage(`Invitation créée pour ${cleanEmail}. Référence à transmettre manuellement : ${data}`); 
-      setReload(value => value + 1);
-    } catch { setError('Création de l’invitation impossible. Vérifiez votre connexion.'); }
-    finally { setBusy(false); }
+      const reference = await staff.invite(email, role);
+      closeInvite();
+      setCreatedReference(reference);
+    } catch {
+      // The hook has already surfaced the message in `actionError`.
+    }
   }
 
-  async function cancelInvitation(id: string) {
-    setBusy(true); setError(''); setMessage('');
+  async function copyReference(reference: string) {
     try {
-      const { error } = await supabase!.rpc('cancel_station_invitation', { p_invitation_id: id });
-      if (error) setError(`Annulation impossible : ${error.message}`);
-      else { setMessage('Invitation annulée.'); setReload(value => value + 1); }
-    } catch { setError('Annulation impossible.'); }
-    finally { setBusy(false); }
-  }
-
-  async function revokeMember(userId: string) {
-    setBusy(true); setError(''); setMessage('');
-    try {
-      const { error } = await supabase!.rpc('revoke_station_membership', { p_station_id: stationId, p_user_id: userId });
-      if (error) setError(`Révocation impossible : ${error.message}`);
-      else { setMessage('Accès révoqué.'); setReload(value => value + 1); }
-    } catch { setError('Révocation impossible.'); }
-    finally { setBusy(false); }
+      await navigator.clipboard.writeText(reference);
+      staff.setMessage('Référence copiée. Transmettez-la au collaborateur concerné.');
+    } catch {
+      staff.setActionError('Copie impossible : sélectionnez la référence et copiez-la manuellement.');
+    }
   }
 
   return (
@@ -89,7 +89,7 @@ export function StationStaff({ stationId, canManageRoles }: { stationId: string;
           <button
             type="button"
             className={buttonStyles({ variant: 'outline', size: 'sm' })}
-            onClick={() => setReload(v => v + 1)}
+            onClick={staff.reload}
             disabled={loading || busy}
           >
             <RotateCw className={`w-3.5 h-3.5 mr-1.5 ${loading ? 'animate-spin' : ''}`} />
@@ -99,29 +99,51 @@ export function StationStaff({ stationId, canManageRoles }: { stationId: string;
             <button
               type="button"
               className={buttonStyles({ variant: 'primary', size: 'sm' })}
-              onClick={() => { setModalOpen(true); setError(''); setMessage(''); }}
-              disabled={loading || busy}
+              onClick={() => { setInviteOpen(true); staff.clearMessages(); setCreatedReference(''); }}
+              disabled={loading || busy || !roleFeaturesReady}
             >
               <UserPlus className="w-4 h-4 mr-1.5" />
-              Inviter un employé
+              Inviter un collaborateur
             </button>
           )}
         </div>
       </div>
 
-      {error && (
-        <Alert variant="error" action={
-          <button type="button" className="underline text-xs font-semibold text-rose-300" onClick={() => setReload(value => value + 1)}>
-            Réessayer
-          </button>
-        }>
-          {error}
+      {!roleFeaturesReady && (
+        <Alert variant="info">
+          Votre rôle sur cette station n’est pas encore confirmé par le serveur : la liste reste en lecture seule.
         </Alert>
       )}
 
-      {message && (
-        <Alert variant="success">
-          {message}
+      {(error || actionError) && (
+        <Alert
+          variant="error"
+          action={
+            <button type="button" className="underline text-xs font-semibold text-rose-300" onClick={() => { staff.clearMessages(); staff.reload(); }}>
+              Réessayer
+            </button>
+          }
+        >
+          {actionError || error}
+        </Alert>
+      )}
+
+      {message && <Alert variant="success">{message}</Alert>}
+
+      {/* A reference is shown once and never stored in the clear afterwards:
+          it is a bearer credential for joining the station. */}
+      {createdReference && (
+        <Alert
+          variant="warning"
+          title="Invitation créée — référence à transmettre"
+          action={
+            <button type="button" className="underline text-xs font-semibold text-amber-200" onClick={() => void copyReference(createdReference)}>
+              <Copy className="inline w-3 h-3 mr-1" />Copier
+            </button>
+          }
+        >
+          <p className="text-xs mb-1">Aucun email n’est envoyé automatiquement. Transmettez cette référence au collaborateur invité :</p>
+          <code className="block font-mono text-[11px] break-all bg-black/30 rounded px-2 py-1">{createdReference}</code>
         </Alert>
       )}
 
@@ -131,17 +153,16 @@ export function StationStaff({ stationId, canManageRoles }: { stationId: string;
         </div>
       ) : (
         <div className="space-y-6">
-          {/* Members section */}
           <div className="space-y-3">
             <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
               <Users className="w-4 h-4 text-indigo-400" />
-              Membres actifs ({members.filter(m => !m.revoked_at).length})
+              Membres ({activeMembers} actif{activeMembers > 1 ? 's' : ''} sur {members.length})
             </h3>
             {members.length === 0 ? (
               <EmptyState
                 icon={<Users className="w-6 h-6 text-slate-400" />}
-                title="Aucun membre actif"
-                description="Invitez des gérants, caissiers ou laveurs pour leur déléguer des fonctions au sein de la station."
+                title="Aucun membre"
+                description="Invitez un gérant, un caissier ou un laveur pour lui déléguer des fonctions au sein de la station."
               />
             ) : (
               <Table>
@@ -162,18 +183,19 @@ export function StationStaff({ stationId, canManageRoles }: { stationId: string;
                             <Shield className="w-4 h-4" />
                           </div>
                           <div>
-                            <span className="font-mono text-xs text-white block">
-                              UUID: {member.user_id.slice(0, 8)}...{member.user_id.slice(-4)}
-                            </span>
+                            {/* The roster exposes a UUID, not an email: showing
+                                anything friendlier would mean joining user data
+                                this role has no right to read. */}
+                            <span className="font-mono text-xs text-white block">{describeMember(member.user_id)}</span>
                             <span className="text-[11px] text-slate-500">
-                              Rejoint le {new Date(member.created_at).toLocaleDateString('fr-FR')}
+                              Membre depuis le {new Date(member.created_at).toLocaleDateString('fr-FR')}
                             </span>
                           </div>
                         </div>
                       </TableCell>
                       <TableCell>
                         <span className="font-medium text-xs px-2.5 py-1 rounded-lg bg-slate-800 text-slate-200 border border-slate-700">
-                          {roleNames[member.role]}
+                          {STAFF_ROLE_LABELS[member.role]}
                         </span>
                       </TableCell>
                       <TableCell>
@@ -184,7 +206,7 @@ export function StationStaff({ stationId, canManageRoles }: { stationId: string;
                         />
                       </TableCell>
                       <TableCell align="right">
-                        {canManageRoles && !member.revoked_at && (
+                        {canManageRoles && canRevokeMember(member) && (
                           <button
                             type="button"
                             disabled={busy}
@@ -203,7 +225,6 @@ export function StationStaff({ stationId, canManageRoles }: { stationId: string;
             )}
           </div>
 
-          {/* Invitations section */}
           {canManageRoles && (
             <div className="space-y-3 pt-4 border-t border-[#232834]">
               <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
@@ -211,33 +232,27 @@ export function StationStaff({ stationId, canManageRoles }: { stationId: string;
                 Invitations émises ({invitations.length})
               </h3>
               {invitations.length === 0 ? (
-                <p className="text-xs text-slate-400">Aucune invitation en attente.</p>
+                <p className="text-xs text-slate-400">Aucune invitation émise pour l’instant.</p>
               ) : (
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Email de connexion</TableHead>
+                      <TableHead>Email destinataire</TableHead>
                       <TableHead>Rôle proposé</TableHead>
-                      <TableHead>Référence d'invitation</TableHead>
+                      <TableHead>Référence</TableHead>
                       <TableHead>État</TableHead>
                       <TableHead align="right">Action</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {invitations.map(invitation => {
-                      const isExpired = new Date(invitation.expires_at) <= new Date();
-                      const status = invitation.accepted_at 
-                        ? 'Acceptée' 
-                        : invitation.cancelled_at 
-                        ? 'Annulée' 
-                        : isExpired 
-                        ? 'Expirée' 
-                        : 'En attente';
-                      const badgeStatus = invitation.accepted_at 
-                        ? 'success' 
-                        : invitation.cancelled_at || isExpired 
-                        ? 'danger' 
-                        : 'warning';
+                      const state = invitationState(invitation);
+                      const badge = {
+                        en_attente: { status: 'warning' as const, label: 'En attente' },
+                        acceptee: { status: 'success' as const, label: 'Acceptée' },
+                        annulee: { status: 'danger' as const, label: 'Annulée' },
+                        expiree: { status: 'danger' as const, label: 'Expirée' },
+                      }[state];
 
                       return (
                         <TableRow key={invitation.id}>
@@ -245,7 +260,7 @@ export function StationStaff({ stationId, canManageRoles }: { stationId: string;
                             <span className="font-semibold text-white text-xs">{invitation.email}</span>
                           </TableCell>
                           <TableCell>
-                            <span className="text-xs text-slate-300">{roleNames[invitation.role]}</span>
+                            <span className="text-xs text-slate-300">{STAFF_ROLE_LABELS[invitation.role]}</span>
                           </TableCell>
                           <TableCell>
                             <span className="font-mono text-[11px] text-slate-400 bg-slate-900/60 px-2 py-0.5 rounded border border-slate-800">
@@ -253,15 +268,15 @@ export function StationStaff({ stationId, canManageRoles }: { stationId: string;
                             </span>
                           </TableCell>
                           <TableCell>
-                            <StatusBadge status={badgeStatus} label={status} size="sm" />
+                            <StatusBadge status={badge.status} label={badge.label} size="sm" />
                           </TableCell>
                           <TableCell align="right">
-                            {!invitation.accepted_at && !invitation.cancelled_at && !isExpired && (
+                            {canCancelInvitation(invitation) && (
                               <button
                                 type="button"
                                 disabled={busy}
                                 className={buttonStyles({ variant: 'outline', size: 'sm' })}
-                                onClick={() => void cancelInvitation(invitation.id)}
+                                onClick={() => void staff.cancel(invitation.id)}
                               >
                                 Annuler
                               </button>
@@ -278,15 +293,19 @@ export function StationStaff({ stationId, canManageRoles }: { stationId: string;
         </div>
       )}
 
-      {/* Invite Modal Dialog */}
       <Modal
-        isOpen={modalOpen}
-        onClose={() => setModalOpen(false)}
+        isOpen={inviteOpen}
+        onClose={closeInvite}
         title="Inviter un collaborateur"
-        description="Générez un code d'invitation sécurisé avec attribution de rôle."
+        description="Génère une référence d’invitation à transmettre manuellement."
       >
-        <form onSubmit={event => void createInvitation(event)} className="space-y-4">
-          <FormField label="Adresse email de connexion" required hint="L'employé utilisera cet email pour se connecter">
+        <form onSubmit={event => void submitInvitation(event)} className="space-y-4">
+          <FormField
+            label="Adresse email de connexion"
+            required
+            hint="Doit correspondre au compte que le collaborateur utilisera"
+            error={email.length > 0 && !emailValid ? 'Adresse incomplète ou invalide.' : undefined}
+          >
             <input
               className={formControlStyles.input}
               type="email"
@@ -295,39 +314,39 @@ export function StationStaff({ stationId, canManageRoles }: { stationId: string;
               required
               value={email}
               onChange={event => setEmail(event.target.value)}
+              onBlur={() => setEmail(normalizeInvitationEmail(email))}
               placeholder="employe@exemple.ci"
               autoFocus
             />
           </FormField>
 
-          <FormField label="Rôle opérationnel" required hint="Définit les modules et actions accessibles">
+          <FormField label="Rôle opérationnel" required hint="Détermine les modules et les actions accessibles">
             <select
               className={formControlStyles.select}
               value={role}
-              onChange={event => setRole(event.target.value as Role)}
+              onChange={event => setRole(event.target.value as StaffRole)}
             >
-              <option value="gerant">Gérant — gestion totale des opérations, catalogue, clients et affectations</option>
-              <option value="caissier">Caissier — gestion des clients et suivi de caisse</option>
-              <option value="laveur">Laveur — visualisation et réalisation des prestations affectées uniquement</option>
+              {STAFF_ROLES.map(value => (
+                <option key={value} value={value}>
+                  {value === 'gerant' && 'Gérant — opérations, catalogue, clients, inventaire'}
+                  {value === 'caissier' && 'Caissier — clients et suivi des prestations'}
+                  {value === 'laveur' && 'Laveur — uniquement les prestations qui lui sont affectées'}
+                </option>
+              ))}
             </select>
           </FormField>
 
           <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/25 text-xs text-amber-300">
-            Les invitations ne sont pas transmises par courrier automatique : communiquez la référence d'invitation générée à la personne concernée.
+            Aucun email automatique n’est envoyé : la référence générée devra être transmise vous-même au collaborateur.
           </div>
 
           <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#232834]">
-            <button
-              type="button"
-              disabled={busy}
-              className={buttonStyles({ variant: 'ghost', size: 'md' })}
-              onClick={() => setModalOpen(false)}
-            >
+            <button type="button" disabled={busy} className={buttonStyles({ variant: 'ghost', size: 'md' })} onClick={closeInvite}>
               Annuler
             </button>
             <button
               type="submit"
-              disabled={busy || loading}
+              disabled={busy || !emailValid}
               className={buttonStyles({ variant: 'primary', size: 'md' })}
             >
               {busy ? 'Génération…' : 'Générer l’invitation'}
@@ -336,7 +355,7 @@ export function StationStaff({ stationId, canManageRoles }: { stationId: string;
         </form>
       </Modal>
 
-      {/* Revoking access is immediate for the member: confirm it in a dialog. */}
+      {/* Revoking is immediate for the member: confirm it in a dialog. */}
       <Modal
         isOpen={revokeTarget !== null}
         onClose={() => setRevokeTarget(null)}
@@ -350,14 +369,18 @@ export function StationStaff({ stationId, canManageRoles }: { stationId: string;
               type="button"
               disabled={busy}
               className={buttonStyles({ variant: 'danger', size: 'sm' })}
-              onClick={() => { const id = revokeTarget; setRevokeTarget(null); if (id) void revokeMember(id); }}
+              onClick={() => {
+                const id = revokeTarget;
+                setRevokeTarget(null);
+                if (id) void staff.revoke(id);
+              }}
             >
               Révoquer l’accès
             </button>
           </>
         }
       >
-        <p className="text-xs text-slate-400">Les prestations déjà affectées à ce membre resteront dans l’historique.</p>
+        <p className="text-xs text-slate-400">Les prestations déjà affectées à ce membre restent dans l’historique.</p>
       </Modal>
     </section>
   );

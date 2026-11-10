@@ -4,7 +4,7 @@ import { StationCustomers } from '../StationCustomers';
 import { StationServices } from '../StationServices';
 import { StationOrders } from '../StationOrders';
 import { SubscriptionPlans } from '../SubscriptionPlans';
-import { canOpenTab, type StationRole, type StationTabId } from '../../lib/portalNavigation';
+import { canManageRoles, canOpenTab, type StationRole, type StationTabId } from '../../lib/portalNavigation';
 
 const StationInventory = lazy(() => import('../StationInventory').then(module => ({ default: module.StationInventory })));
 const StationStaff = lazy(() => import('../StationStaff').then(module => ({ default: module.StationStaff })));
@@ -97,7 +97,12 @@ export function StationModulePanel({
     }
     return (
       <Suspense fallback={fallback('Chargement du personnel…')}>
-        <StationStaff key={`staff:${scopeKey}`} stationId={stationId} canManageRoles={role === 'owner'} />
+        <StationStaff
+          key={`staff:${scopeKey}`}
+          stationId={stationId}
+          canManageRoles={canManageRoles(role)}
+          roleFeaturesReady={roleFromServer}
+        />
       </Suspense>
     );
   }

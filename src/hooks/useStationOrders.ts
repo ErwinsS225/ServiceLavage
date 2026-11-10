@@ -22,6 +22,7 @@ import { listQueuedOrders, saveQueuedOrder, synchronizeOrders, type QueuedOrder 
 import { useOfflineQueue } from './useOfflineQueue';
 import { useLocalCache } from './useLocalCache';
 import { describeError } from '../lib/queryResult';
+import { canManageOrders as roleCanManageOrders, type StationRole } from '../lib/portalNavigation';
 
 /**
  * Tout l'état *données* du module Prestations : catalogue actif, clients,
@@ -38,7 +39,7 @@ import { describeError } from '../lib/queryResult';
  * directement serait accepté s'il est affecté, refusé sinon — par le serveur.
  */
 
-export type StationRole = 'owner' | 'gerant' | 'caissier' | 'laveur';
+export type { StationRole };
 
 const ORDER_CACHE_VERSION = 'servicelavage:order-data:v1';
 
@@ -71,7 +72,7 @@ export interface NewOrderInput {
 
 export function useStationOrders({ stationId, userId, role, roleFeaturesReady, client }: UseStationOrdersOptions) {
   const api = useCallback(() => resolveClient(client), [client]);
-  const canManageOrders = role === 'owner' || role === 'gerant';
+  const canManageOrders = roleCanManageOrders(role);
   const cache = useLocalCache<CachedCatalogue>(`${ORDER_CACHE_VERSION}:${userId}:${stationId}`, isCachedCatalogue);
 
   const [services, setServices] = useState<Array<Pick<ServiceRow, 'id' | 'name' | 'price_xof'>>>([]);
