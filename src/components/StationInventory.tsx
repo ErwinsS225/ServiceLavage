@@ -15,6 +15,9 @@ import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { useLocalCache, isArrayOf } from '../hooks/useLocalCache';
 import { useCreateInventoryItem, useInventory } from '../hooks/useStationQueries';
 import { describeError } from '../lib/queryResult';
+import { inventoryAdjustmentSchema, inventoryItemSchema, parseForm } from '../lib/schemas';
+import { errorText } from '../lib/errorMessages';
+import { useToastActions } from '../context/ToastContext';
 import {
   Table, TableHeader, TableBody, TableHead, TableRow, TableCell,
   StatusBadge, buttonStyles, formControlStyles, FormField, Modal, Alert, EmptyState
@@ -95,6 +98,9 @@ export function StationInventory({ stationId, userId }: { stationId: string; use
   const [modalOpen, setModalOpen] = useState(false);
   const [formError, setFormError] = useState('');
   const [message, setMessage] = useState('');
+  /** Erreurs par champ, issues du schéma : une par champ, sous le champ. */
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const toast = useToastActions();
 
   async function createItem(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -102,43 +108,46 @@ export function StationInventory({ stationId, userId }: { stationId: string; use
       setFormError('La création d’article nécessite une connexion ; seuls les ajustements d’articles existants peuvent être mis en file.');
       return;
     }
-    const amount = Number(quantity);
-    const threshold = Number(minimum);
-    if (!name.trim() || !unit.trim() || !Number.isSafeInteger(amount) || amount < 0 || amount > maxStock ||
-        !Number.isSafeInteger(threshold) || threshold < 0 || threshold > maxStock) {
-      setFormError('Renseignez un article, une unité et des quantités entières comprises entre 0 et 1 000 000 000.');
+    // Les bornes viennent du schéma, lui-même aligné sur les `check` de la
+    // base : le message est ainsi précis (« Quantité : entre 0 et … ») au lieu
+    // d'une phrase unique couvrant quatre causes possibles.
+    const parsed = parseForm(inventoryItemSchema, { name, unit, quantity, minThreshold: minimum });
+    if (!parsed.ok) {
+      setFieldErrors(parsed.errors);
+      setFormError(Object.values(parsed.errors)[0] ?? '');
       return;
     }
     setBusy(true);
     setFormError('');
+    setFieldErrors({});
     setMessage('');
     try {
       // La mutation invalide la clé `inventory` : la liste revient du serveur.
-      await createItemMutation.mutateAsync({
-        name: name.trim(),
-        unit: unit.trim(),
-        quantity: amount,
-        minThreshold: threshold,
-      });
+      await createItemMutation.mutateAsync(parsed.data);
       setName('');
       setUnit('');
       setQuantity('');
       setMinimum('');
       setMessage('Article enregistré.');
       setModalOpen(false);
+      toast.success('Article ajouté à l’inventaire.', parsed.data.name);
     } catch (cause) {
-      setFormError(describeError(cause, 'Enregistrement impossible.'));
+      setFormError(errorText(cause));
     } finally {
       setBusy(false);
     }
   }
 
   async function adjust(item: InventoryRow) {
-    const delta = Number(adjustments[item.id]);
-    if (!Number.isSafeInteger(delta) || delta === 0 || Math.abs(delta) > maxStock) {
-      setFormError('L’ajustement doit être un entier non nul compris entre −1 000 000 000 et 1 000 000 000.');
+    const parsed = parseForm(inventoryAdjustmentSchema, adjustments[item.id] ?? '');
+    if (!parsed.ok) {
+      // L'ajustement vit dans une ligne de tableau : le message y est rattaché
+      // par `aria-describedby`, pas par un toast qui masquerait la ligne.
+      setFieldErrors(previous => ({ ...previous, [item.id]: Object.values(parsed.errors)[0] ?? '' }));
+      setFormError(Object.values(parsed.errors)[0] ?? '');
       return;
     }
+    const delta = parsed.data;
     let queuedDelta: number;
     try {
       queuedDelta = listQueuedInventoryAdjustments(localStorage, userId, stationId)
@@ -149,11 +158,16 @@ export function StationInventory({ stationId, userId }: { stationId: string; use
       return;
     }
     if (item.quantity + queuedDelta + delta < 0) {
+      setFieldErrors(previous => ({
+        ...previous,
+        [item.id]: 'Le stock estimé deviendrait négatif. Actualisez le stock avant de réessayer.',
+      }));
       setFormError('Le stock estimé deviendrait négatif. Actualisez le stock avant de réessayer.');
       return;
     }
     setBusy(true);
     setFormError('');
+    setFieldErrors({});
     setMessage('');
     try {
       saveQueuedInventoryAdjustment(localStorage, {
@@ -167,8 +181,12 @@ export function StationInventory({ stationId, userId }: { stationId: string; use
       });
       setAdjustments(previous => ({ ...previous, [item.id]: '' }));
       queue.refresh();
-      if (navigator.onLine) await queue.sync();
-      else setMessage('Ajustement mis en attente sur cet appareil. Le stock serveur sera vérifié à la synchronisation.');
+      if (navigator.onLine) {
+        await queue.sync();
+        toast.success(`Stock de « ${item.name} » ajusté.`);
+      } else {
+        setMessage('Ajustement mis en attente sur cet appareil. Le stock serveur sera vérifié à la synchronisation.');
+      }
     } catch (cause) {
       setFormError(describeError(cause, 'Mise en file impossible.'));
     } finally {
@@ -198,7 +216,7 @@ export function StationInventory({ stationId, userId }: { stationId: string; use
           <button
             type="button"
             className={buttonStyles({ variant: 'primary', size: 'sm' })}
-            onClick={() => { setModalOpen(true); setFormError(''); setMessage(''); }}
+            onClick={() => { setModalOpen(true); setFormError(''); setFieldErrors({}); setMessage(''); }}
             disabled={items.loading || busy || !online}
           >
             <Plus className="w-4 h-4 mr-1.5" />
@@ -330,6 +348,8 @@ export function StationInventory({ stationId, userId }: { stationId: string; use
                       <input
                         id={`adjust-${item.id}`}
                         className="w-24 rounded-lg bg-[#181c25] border border-[#2d3444] px-2.5 py-1.5 text-xs text-white placeholder:text-slate-500 outline-none focus:border-indigo-500 font-mono text-center"
+                        aria-invalid={fieldErrors[item.id] ? true : undefined}
+                        aria-describedby={fieldErrors[item.id] ? `adjust-error-${item.id}` : undefined}
                         type="number"
                         min={-maxStock}
                         max={maxStock}
@@ -348,6 +368,11 @@ export function StationInventory({ stationId, userId }: { stationId: string; use
                         Ajuster
                       </button>
                     </div>
+                    {fieldErrors[item.id] && (
+                      <p id={`adjust-error-${item.id}`} role="alert" className="mt-1 text-[11px] text-rose-400 text-right">
+                        {fieldErrors[item.id]}
+                      </p>
+                    )}
                   </TableCell>
                 </TableRow>
               );
@@ -363,7 +388,7 @@ export function StationInventory({ stationId, userId }: { stationId: string; use
             <button
               type="button"
               className={buttonStyles({ variant: 'primary', size: 'sm' })}
-              onClick={() => { setModalOpen(true); setFormError(''); setMessage(''); }}
+              onClick={() => { setModalOpen(true); setFormError(''); setFieldErrors({}); setMessage(''); }}
               disabled={!online}
             >
               <Plus className="w-4 h-4 mr-1.5" />
@@ -380,11 +405,18 @@ export function StationInventory({ stationId, userId }: { stationId: string; use
         description="Créez une référence pour le suivi des consommables de la station."
       >
         <form onSubmit={event => void createItem(event)} className="space-y-4">
-          <FormField label="Nom du produit ou consommable" required>
+          <FormField
+            label="Nom du produit ou consommable"
+            required
+            htmlFor="inventory-name"
+            error={fieldErrors.name}
+          >
             <input
+              id="inventory-name"
               className={formControlStyles.input}
               maxLength={120}
               required
+              aria-invalid={fieldErrors.name ? true : undefined}
               value={name}
               onChange={event => setName(event.target.value)}
               placeholder="Ex: Shampoing Mousse Actif Pro"
@@ -392,11 +424,19 @@ export function StationInventory({ stationId, userId }: { stationId: string; use
             />
           </FormField>
 
-          <FormField label="Unité de mesure" required hint="Ex: bidon de 5L, litre, rouleau, flacon">
+          <FormField
+            label="Unité de mesure"
+            required
+            hint="Ex: bidon de 5L, litre, rouleau, flacon"
+            htmlFor="inventory-unit"
+            error={fieldErrors.unit}
+          >
             <input
+              id="inventory-unit"
               className={formControlStyles.input}
               maxLength={30}
               required
+              aria-invalid={fieldErrors.unit ? true : undefined}
               value={unit}
               onChange={event => setUnit(event.target.value)}
               placeholder="Ex: Litres"
@@ -404,9 +444,16 @@ export function StationInventory({ stationId, userId }: { stationId: string; use
           </FormField>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <FormField label="Quantité initiale en réserve" required>
+            <FormField
+              label="Quantité initiale en réserve"
+              required
+              htmlFor="inventory-quantity"
+              error={fieldErrors.quantity}
+            >
               <input
+                id="inventory-quantity"
                 className={formControlStyles.input}
+                aria-invalid={fieldErrors.quantity ? true : undefined}
                 type="number"
                 min="0"
                 max={maxStock}
@@ -418,9 +465,17 @@ export function StationInventory({ stationId, userId }: { stationId: string; use
               />
             </FormField>
 
-            <FormField label="Seuil d'alerte de réapprovisionnement" required hint="Déclenche l'alerte Stock bas">
+            <FormField
+              label="Seuil d'alerte de réapprovisionnement"
+              required
+              hint="Déclenche l'alerte Stock bas"
+              htmlFor="inventory-threshold"
+              error={fieldErrors.minThreshold}
+            >
               <input
+                id="inventory-threshold"
                 className={formControlStyles.input}
+                aria-invalid={fieldErrors.minThreshold ? true : undefined}
                 type="number"
                 min="0"
                 max={maxStock}
@@ -440,7 +495,7 @@ export function StationInventory({ stationId, userId }: { stationId: string; use
               type="button"
               disabled={busy}
               className={buttonStyles({ variant: 'ghost', size: 'md' })}
-              onClick={() => setModalOpen(false)}
+              onClick={() => { setModalOpen(false); setFieldErrors({}); }}
             >
               Annuler
             </button>

@@ -1,4 +1,13 @@
-import { QueryClient } from '@tanstack/react-query';
+import { QueryCache, QueryClient } from '@tanstack/react-query';
+
+/**
+ * Ce qu'un échec doit produire à l'écran. Injecté plutôt qu'importé : le cache
+ * est créé hors de React, et un `useToast()` ne peut pas y être appelé.
+ * `main.tsx` branche ces deux fonctions sur le contexte de toasts.
+ */
+export interface QueryErrorHandlers {
+  onQueryError?: (message: string, detail?: string) => void;
+}
 
 /**
  * Client de cache pour les données serveur.
@@ -16,8 +25,20 @@ import { QueryClient } from '@tanstack/react-query';
  * Aucune donnée n'est montrée avant d'être chargée : le cache évite des
  * allers-retours, il ne fabrique jamais un écran plausible.
  */
-export function createQueryClient(): QueryClient {
+export function createQueryClient(handlers: QueryErrorHandlers = {}): QueryClient {
   return new QueryClient({
+    // Seules les lectures sont signalées globalement. Une écriture ratée est
+    // déjà expliquée par l'écran qui l'a déclenchée (message précis sous le
+    // champ ou dans l'alerte d'action) : la doubler d'un toast donnerait deux
+    // textes différents pour un seul échec.
+    queryCache: new QueryCache({
+      onError: error => {
+        handlers.onQueryError?.(
+          'Chargement impossible.',
+          error instanceof Error ? error.message : undefined,
+        );
+      },
+    }),
     defaultOptions: {
       queries: {
         retry: 1,
