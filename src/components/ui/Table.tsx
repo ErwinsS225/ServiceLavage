@@ -2,7 +2,7 @@ import React from 'react';
 
 export function Table({ children, className = '' }: { children: React.ReactNode; className?: string }) {
   return (
-    <div className="w-full overflow-x-auto rounded-xl border border-[#232834]">
+    <div className="w-full overflow-x-auto rounded-xl border border-[var(--border-subtle)]">
       <table className={`w-full text-left text-sm text-slate-300 ${className}`}>{children}</table>
     </div>
   );
@@ -10,14 +10,14 @@ export function Table({ children, className = '' }: { children: React.ReactNode;
 
 export function TableHeader({ children, className = '' }: { children: React.ReactNode; className?: string }) {
   return (
-    <thead className={`bg-[#171b24] text-[11px] uppercase tracking-wider text-slate-400 font-semibold border-b border-[#232834] ${className}`}>
+    <thead className={`bg-[var(--surface-elevated)] text-[11px] uppercase tracking-wider text-[var(--text-secondary)] font-semibold border-b border-[var(--border-subtle)] ${className}`}>
       {children}
     </thead>
   );
 }
 
 export function TableBody({ children, className = '' }: { children: React.ReactNode; className?: string }) {
-  return <tbody className={`divide-y divide-[#1e2330] bg-[#12151c] ${className}`}>{children}</tbody>;
+  return <tbody className={`divide-y divide-[var(--border-subtle)] bg-[var(--surface-card)] ${className}`}>{children}</tbody>;
 }
 
 export function TableRow({ children, className = '', onClick }: { children: React.ReactNode; className?: string; onClick?: () => void }) {

@@ -111,11 +111,11 @@ export function StationCustomers({ stationId, client }: { stationId: string; cli
   const error = formError || customers.error;
 
   return (
-    <section className="space-y-5 border-t border-[#232834] pt-6" aria-label="Clients de la station">
+    <section className="space-y-5 border-t border-[var(--border-subtle)] pt-6" aria-label="Clients de la station">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-bold text-white tracking-tight">Répertoire Clients</h2>
-          <p className="text-xs text-slate-400 mt-0.5">Clients enregistrés dans la station active (isolation multitenant Supabase)</p>
+          <h2 className="text-lg font-bold text-[var(--text-primary)] tracking-tight">Répertoire Clients</h2>
+          <p className="text-xs text-[var(--text-secondary)] mt-0.5">Clients enregistrés dans la station active (isolation multitenant Supabase)</p>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -160,7 +160,7 @@ export function StationCustomers({ stationId, client }: { stationId: string; cli
       )}
 
       {customers.loading ? (
-        <div className="p-8 text-center text-sm text-slate-400 rounded-xl bg-[#141720] border border-[#232834]">
+        <div className="p-8 text-center text-sm text-[var(--text-secondary)] rounded-xl bg-[var(--surface-card)] border border-[var(--border-subtle)]">
           Chargement des clients…
         </div>
       ) : customers.data.length ? (
@@ -181,14 +181,14 @@ export function StationCustomers({ stationId, client }: { stationId: string; cli
                       {customer.name.slice(0, 2)}
                     </div>
                     <div>
-                      <span className="font-semibold text-white block">{customer.name}</span>
-                      <span className="text-[11px] text-slate-400 font-mono">ID: {customer.id.slice(0, 8)}</span>
+                      <span className="font-semibold text-[var(--text-primary)] block">{customer.name}</span>
+                      <span className="text-[11px] text-[var(--text-secondary)] font-mono">ID: {customer.id.slice(0, 8)}</span>
                     </div>
                   </div>
                 </TableCell>
                 <TableCell>
                   <span className="font-mono text-slate-300 flex items-center gap-1.5">
-                    <Phone className="w-3.5 h-3.5 text-slate-500" />
+                    <Phone className="w-3.5 h-3.5 text-[var(--text-muted)]" />
                     {customer.phone}
                   </span>
                 </TableCell>
@@ -209,7 +209,7 @@ export function StationCustomers({ stationId, client }: { stationId: string; cli
         </Table>
       ) : (
         <EmptyState
-          icon={<User className="w-6 h-6 text-slate-400" />}
+          icon={<User className="w-6 h-6 text-[var(--text-secondary)]" />}
           title="Aucun client enregistré"
           description="Enregistrez les coordonnées de vos clients réguliers pour faciliter la création des prestations."
           action={
@@ -273,7 +273,7 @@ export function StationCustomers({ stationId, client }: { stationId: string; cli
 
           {formError && <Alert variant="error">{formError}</Alert>}
 
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#232834]">
+          <div className="flex items-center justify-end gap-3 pt-3 border-t border-[var(--border-subtle)]">
             <button
               type="button"
               disabled={busy}

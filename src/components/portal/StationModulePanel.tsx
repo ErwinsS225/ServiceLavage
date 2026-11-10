@@ -46,7 +46,7 @@ export function StationModulePanel({
   }
 
   const scopeKey = `${userId}:${stationId}`;
-  const fallback = (label: string) => <p className="text-sm text-slate-400">{label}</p>;
+  const fallback = (label: string) => <p className="text-sm text-[var(--text-secondary)]">{label}</p>;
 
   if (tab === 'subscription') return <SubscriptionPlans />;
 

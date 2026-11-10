@@ -38,11 +38,11 @@ export function StatusSplitCard({
       </CardHeader>
       <CardContent className="flex flex-col items-center justify-between">
         {!loaded ? (
-          <p role="status" className="h-44 flex items-center justify-center text-sm text-slate-400">Chargement…</p>
+          <p role="status" className="h-44 flex items-center justify-center text-sm text-[var(--text-secondary)]">Chargement…</p>
         ) : empty ? (
           <div className="h-44 flex items-center justify-center">
             <EmptyState
-              icon={<Clock className="w-6 h-6 text-slate-400" />}
+              icon={<Clock className="w-6 h-6 text-[var(--text-secondary)]" />}
               title="Aucune prestation"
               description="La répartition s’affichera au premier lavage enregistré."
             />
@@ -79,7 +79,7 @@ export function StatusSplitCard({
                     <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: slice.color }} />
                     <span className="text-slate-300">{slice.name}</span>
                   </div>
-                  <span className="font-bold text-white font-mono tabular-nums">{slice.value}</span>
+                  <span className="font-bold text-[var(--text-primary)] font-mono tabular-nums">{slice.value}</span>
                 </div>
               ))}
             </div>

@@ -38,11 +38,11 @@ export function BilledTrendChart({
       </CardHeader>
       <CardContent>
         {!loaded ? (
-          <p role="status" className="h-64 flex items-center justify-center text-sm text-slate-400">Chargement…</p>
+          <p role="status" className="h-64 flex items-center justify-center text-sm text-[var(--text-secondary)]">Chargement…</p>
         ) : empty ? (
           <div className="h-64 flex items-center justify-center">
             <EmptyState
-              icon={<TrendingUp className="w-6 h-6 text-slate-400" />}
+              icon={<TrendingUp className="w-6 h-6 text-[var(--text-secondary)]" />}
               title="Aucune prestation terminée sur 7 jours"
               description="Le graphique apparaîtra dès qu’une prestation aura été enregistrée puis marquée comme terminée. Aucune valeur de démonstration n’est affichée."
               action={onNavigateOrders && (

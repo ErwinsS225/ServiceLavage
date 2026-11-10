@@ -39,11 +39,11 @@ export function StationDashboard({ stationId, userId, onNavigateTab, client = de
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-lg font-bold text-white flex items-center gap-2">
+          <h2 className="text-lg font-bold text-[var(--text-primary)] flex items-center gap-2">
             <TrendingUp className="w-5 h-5 text-indigo-400" />
             <span>Tableau de bord opérationnel · ServiceLavage</span>
           </h2>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-[var(--text-secondary)]">
             Flux de lavage et montants facturés, calculés uniquement à partir des prestations enregistrées
           </p>
         </div>

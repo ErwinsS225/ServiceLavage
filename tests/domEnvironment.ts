@@ -57,6 +57,21 @@ Object.defineProperty(dom.window, 'matchMedia', {
   configurable: true,
 });
 
+// `requestAnimationFrame` n'existe pas sous Node : jsdom le fournit sur sa
+// fenêtre, encore faut-il l'exposer globalement. Le composant `Modal` s'en sert
+// pour déplacer le focus après le rendu des enfants ; sans lui, l'import échoue
+// avant même le premier test.
+Object.defineProperty(globalThis, 'requestAnimationFrame', {
+  value: (callback: (time: number) => void) => setTimeout(() => callback(Date.now()), 0),
+  configurable: true,
+  writable: true,
+});
+Object.defineProperty(globalThis, 'cancelAnimationFrame', {
+  value: (handle: ReturnType<typeof setTimeout>) => clearTimeout(handle),
+  configurable: true,
+  writable: true,
+});
+
 // The layout alternates images on a timer; unhandled timers keep node alive.
 export const clearTimers = () => {
   for (let id = 1; id < 1000; id += 1) clearInterval(id);

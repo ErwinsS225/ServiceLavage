@@ -125,11 +125,11 @@ export function StationServices({ stationId, client }: { stationId: string; clie
   const error = formError || services.error;
 
   return (
-    <section className="space-y-5 border-t border-[#232834] pt-6" aria-label="Catalogue de la station">
+    <section className="space-y-5 border-t border-[var(--border-subtle)] pt-6" aria-label="Catalogue de la station">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-bold text-white tracking-tight">Catalogue des Prestations</h2>
-          <p className="text-xs text-slate-400 mt-0.5">Grille tarifaire et durées paramétrées pour la station active (en FCFA entiers)</p>
+          <h2 className="text-lg font-bold text-[var(--text-primary)] tracking-tight">Catalogue des Prestations</h2>
+          <p className="text-xs text-[var(--text-secondary)] mt-0.5">Grille tarifaire et durées paramétrées pour la station active (en FCFA entiers)</p>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -174,7 +174,7 @@ export function StationServices({ stationId, client }: { stationId: string; clie
       )}
 
       {services.loading ? (
-        <div className="p-8 text-center text-sm text-slate-400 rounded-xl bg-[#141720] border border-[#232834]">
+        <div className="p-8 text-center text-sm text-[var(--text-secondary)] rounded-xl bg-[var(--surface-card)] border border-[var(--border-subtle)]">
           Chargement du catalogue…
         </div>
       ) : services.data.length ? (
@@ -197,19 +197,19 @@ export function StationServices({ stationId, client }: { stationId: string; clie
                       <Sparkles className="w-4 h-4" />
                     </div>
                     <div>
-                      <span className="font-semibold text-white block">{service.name}</span>
-                      <span className="text-[11px] text-slate-400 font-mono">ID: {service.id.slice(0, 8)}</span>
+                      <span className="font-semibold text-[var(--text-primary)] block">{service.name}</span>
+                      <span className="text-[11px] text-[var(--text-secondary)] font-mono">ID: {service.id.slice(0, 8)}</span>
                     </div>
                   </div>
                 </TableCell>
                 <TableCell align="right">
-                  <span className="font-bold text-white text-sm font-mono tabular-nums">
+                  <span className="font-bold text-[var(--text-primary)] text-sm font-mono tabular-nums">
                     {formatXof(service.price_xof)}
                   </span>
                 </TableCell>
                 <TableCell>
                   <span className="inline-flex items-center gap-1.5 text-xs text-slate-300 font-mono">
-                    <Clock className="w-3.5 h-3.5 text-slate-400" />
+                    <Clock className="w-3.5 h-3.5 text-[var(--text-secondary)]" />
                     {service.duration_minutes} min
                   </span>
                 </TableCell>
@@ -233,7 +233,7 @@ export function StationServices({ stationId, client }: { stationId: string; clie
         </Table>
       ) : (
         <EmptyState
-          icon={<Sparkles className="w-6 h-6 text-slate-400" />}
+          icon={<Sparkles className="w-6 h-6 text-[var(--text-secondary)]" />}
           title="Catalogue vide"
           description="Ajoutez vos prestations (lavage simple, intérieur, cire…) pour pouvoir les proposer lors de la création d’une prestation."
           action={
@@ -316,7 +316,7 @@ export function StationServices({ stationId, client }: { stationId: string; clie
           <label className="flex items-center gap-2 text-xs text-slate-300">
             <input
               type="checkbox"
-              className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 bg-[#12151c] border-[#32394a]"
+              className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 bg-[var(--surface-card)] border-[var(--border-strong)]"
               checked={active}
               onChange={event => setActive(event.target.checked)}
             />
@@ -325,7 +325,7 @@ export function StationServices({ stationId, client }: { stationId: string; clie
 
           {formError && <Alert variant="error">{formError}</Alert>}
 
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#232834]">
+          <div className="flex items-center justify-end gap-3 pt-3 border-t border-[var(--border-subtle)]">
             <button
               type="button"
               disabled={busy}

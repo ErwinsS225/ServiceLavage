@@ -40,7 +40,7 @@ export function StationModuleNav({
   return (
     <nav
       aria-label="Modules autorisés"
-      className="flex flex-wrap gap-1.5 p-1.5 rounded-2xl bg-[#12151c] border border-[#232834]"
+      className="flex flex-wrap gap-1.5 p-1.5 rounded-2xl bg-[var(--surface-card)] border border-[var(--border-subtle)]"
     >
       {visible.map(item => {
         const isActive = tab === item.id;
@@ -53,10 +53,10 @@ export function StationModuleNav({
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-150 select-none ${
               isActive
                 ? 'bg-indigo-600 text-white shadow-md shadow-indigo-950/40 border border-indigo-400/30'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.04]'
+                : 'text-[var(--text-secondary)] hover:text-slate-200 hover:bg-white/[0.04]'
             }`}
           >
-            <span className={isActive ? 'text-white' : 'text-slate-500'}>
+            <span className={isActive ? 'text-white' : 'text-[var(--text-muted)]'}>
               {TAB_ICONS[item.id]}
             </span>
             <span>{item.label}</span>

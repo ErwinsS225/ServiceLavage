@@ -89,11 +89,11 @@ export function StationStaff({
   }
 
   return (
-    <section className="space-y-6 border-t border-[#232834] pt-6" aria-label="Personnel de la station">
+    <section className="space-y-6 border-t border-[var(--border-subtle)] pt-6" aria-label="Personnel de la station">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-bold text-white tracking-tight">Personnel & Rôles</h2>
-          <p className="text-xs text-slate-400 mt-0.5">Permissions appliquées au niveau de la base de données (RLS PostgreSQL)</p>
+          <h2 className="text-lg font-bold text-[var(--text-primary)] tracking-tight">Personnel & Rôles</h2>
+          <p className="text-xs text-[var(--text-secondary)] mt-0.5">Permissions appliquées au niveau de la base de données (RLS PostgreSQL)</p>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -158,19 +158,19 @@ export function StationStaff({
       )}
 
       {loading ? (
-        <div className="p-8 text-center text-sm text-slate-400 rounded-xl bg-[#141720] border border-[#232834]">
+        <div className="p-8 text-center text-sm text-[var(--text-secondary)] rounded-xl bg-[var(--surface-card)] border border-[var(--border-subtle)]">
           Chargement du personnel…
         </div>
       ) : (
         <div className="space-y-6">
           <div className="space-y-3">
-            <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+            <h3 className="text-sm font-bold text-[var(--text-primary)] uppercase tracking-wider flex items-center gap-2">
               <Users className="w-4 h-4 text-indigo-400" />
               Membres ({activeMembers} actif{activeMembers > 1 ? 's' : ''} sur {members.length})
             </h3>
             {members.length === 0 ? (
               <EmptyState
-                icon={<Users className="w-6 h-6 text-slate-400" />}
+                icon={<Users className="w-6 h-6 text-[var(--text-secondary)]" />}
                 title="Aucun membre"
                 description="Invitez un gérant, un caissier ou un laveur pour lui déléguer des fonctions au sein de la station."
               />
@@ -196,8 +196,8 @@ export function StationStaff({
                             {/* The roster exposes a UUID, not an email: showing
                                 anything friendlier would mean joining user data
                                 this role has no right to read. */}
-                            <span className="font-mono text-xs text-white block">{describeMember(member.user_id)}</span>
-                            <span className="text-[11px] text-slate-500">
+                            <span className="font-mono text-xs text-[var(--text-primary)] block">{describeMember(member.user_id)}</span>
+                            <span className="text-[11px] text-[var(--text-muted)]">
                               Membre depuis le {new Date(member.created_at).toLocaleDateString('fr-FR')}
                             </span>
                           </div>
@@ -236,13 +236,13 @@ export function StationStaff({
           </div>
 
           {canManageRoles && (
-            <div className="space-y-3 pt-4 border-t border-[#232834]">
-              <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+            <div className="space-y-3 pt-4 border-t border-[var(--border-subtle)]">
+              <h3 className="text-sm font-bold text-[var(--text-primary)] uppercase tracking-wider flex items-center gap-2">
                 <UserPlus className="w-4 h-4 text-sky-400" />
                 Invitations émises ({invitations.length})
               </h3>
               {invitations.length === 0 ? (
-                <p className="text-xs text-slate-400">Aucune invitation émise pour l’instant.</p>
+                <p className="text-xs text-[var(--text-secondary)]">Aucune invitation émise pour l’instant.</p>
               ) : (
                 <Table>
                   <TableHeader>
@@ -267,13 +267,13 @@ export function StationStaff({
                       return (
                         <TableRow key={invitation.id}>
                           <TableCell>
-                            <span className="font-semibold text-white text-xs">{invitation.email}</span>
+                            <span className="font-semibold text-[var(--text-primary)] text-xs">{invitation.email}</span>
                           </TableCell>
                           <TableCell>
                             <span className="text-xs text-slate-300">{STAFF_ROLE_LABELS[invitation.role]}</span>
                           </TableCell>
                           <TableCell>
-                            <span className="font-mono text-[11px] text-slate-400 bg-slate-900/60 px-2 py-0.5 rounded border border-slate-800">
+                            <span className="font-mono text-[11px] text-[var(--text-secondary)] bg-slate-900/60 px-2 py-0.5 rounded border border-slate-800">
                               {invitation.id}
                             </span>
                           </TableCell>
@@ -359,7 +359,7 @@ export function StationStaff({
             Aucun email automatique n’est envoyé : la référence générée devra être transmise vous-même au collaborateur.
           </div>
 
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#232834]">
+          <div className="flex items-center justify-end gap-3 pt-3 border-t border-[var(--border-subtle)]">
             <button type="button" disabled={busy} className={buttonStyles({ variant: 'ghost', size: 'md' })} onClick={closeInvite}>
               Annuler
             </button>
@@ -399,7 +399,7 @@ export function StationStaff({
           </>
         }
       >
-        <p className="text-xs text-slate-400">Les prestations déjà affectées à ce membre restent dans l’historique.</p>
+        <p className="text-xs text-[var(--text-secondary)]">Les prestations déjà affectées à ce membre restent dans l’historique.</p>
       </Modal>
     </section>
   );

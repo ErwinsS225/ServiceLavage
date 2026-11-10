@@ -149,17 +149,17 @@ export function StationReports({ stationId, stationName, client = defaultClient 
     <div className="space-y-6">
       <div className="no-print flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-lg font-bold text-white flex items-center gap-2">
+          <h2 className="text-lg font-bold text-[var(--text-primary)] flex items-center gap-2">
             <FileText className="w-5 h-5 text-indigo-400" />
             <span>Rapport d’activité</span>
           </h2>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-[var(--text-secondary)]">
             Prestations, montants facturés et statuts réels de la période sélectionnée
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center bg-[#181c26] p-1 rounded-xl border border-[#2b3343] text-xs">
+          <div className="flex items-center bg-[var(--surface-elevated)] p-1 rounded-xl border border-[var(--border-strong)] text-xs">
             {(['today', 'week', 'month', 'year'] as const).map(value => (
               <button
                 key={value}
@@ -167,7 +167,7 @@ export function StationReports({ stationId, stationName, client = defaultClient 
                 onClick={() => setPeriod(value)}
                 aria-pressed={period === value}
                 className={`px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer ${
-                  period === value ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'
+                  period === value ? 'bg-indigo-600 text-white shadow-sm' : 'text-[var(--text-secondary)] hover:text-white'
                 }`}
               >
                 {value === 'today' ? "Aujourd'hui" : value === 'week' ? 'Semaine' : value === 'month' ? 'Ce mois' : 'Année'}
@@ -244,12 +244,12 @@ export function StationReports({ stationId, stationName, client = defaultClient 
       </Alert>
 
       {loading ? (
-        <p role="status" className="no-print text-sm text-slate-400">Chargement du rapport…</p>
+        <p role="status" className="no-print text-sm text-[var(--text-secondary)]">Chargement du rapport…</p>
       ) : nothingToReport ? (
         <Card className="no-print">
           <CardContent>
             <EmptyState
-              icon={<Clock className="w-6 h-6 text-slate-400" />}
+              icon={<Clock className="w-6 h-6 text-[var(--text-secondary)]" />}
               title={`Aucune prestation sur la période : ${periodLabel(period)}`}
               description="Aucune valeur n’est affichée : les totaux resteront à zéro tant qu’aucune prestation n’aura été enregistrée sur cette période. Changez de période ou créez une prestation."
             />
@@ -296,23 +296,23 @@ export function StationReports({ stationId, stationName, client = defaultClient 
             <CardContent>
               <ul className="space-y-2 text-xs text-slate-300">
                 <li className="flex gap-2">
-                  <span className="text-slate-500">Prestation terminée</span>
-                  <span className="text-slate-500">→</span>
-                  <span>le lavage est fait. <strong className="text-white">Ce n’est pas un paiement.</strong></span>
+                  <span className="text-[var(--text-muted)]">Prestation terminée</span>
+                  <span className="text-[var(--text-muted)]">→</span>
+                  <span>le lavage est fait. <strong className="text-[var(--text-primary)]">Ce n’est pas un paiement.</strong></span>
                 </li>
                 <li className="flex gap-2">
-                  <span className="text-slate-500">Montant facturé</span>
-                  <span className="text-slate-500">→</span>
+                  <span className="text-[var(--text-muted)]">Montant facturé</span>
+                  <span className="text-[var(--text-muted)]">→</span>
                   <span>prix figé de la prestation, compté seulement une fois le lavage terminé.</span>
                 </li>
                 <li className="flex gap-2">
-                  <span className="text-slate-500">Recette encaissée</span>
-                  <span className="text-slate-500">→</span>
+                  <span className="text-[var(--text-muted)]">Recette encaissée</span>
+                  <span className="text-[var(--text-muted)]">→</span>
                   <span className="text-amber-300">non enregistrée : aucun moyen de paiement n’est stocké.</span>
                 </li>
                 <li className="flex gap-2">
-                  <span className="text-slate-500">Dépense / bénéfice</span>
-                  <span className="text-slate-500">→</span>
+                  <span className="text-[var(--text-muted)]">Dépense / bénéfice</span>
+                  <span className="text-[var(--text-muted)]">→</span>
                   <span className="text-amber-300">non enregistrés : aucune marge ne peut être calculée.</span>
                 </li>
               </ul>

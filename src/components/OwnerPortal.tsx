@@ -70,7 +70,7 @@ export function OwnerPortal({ client }: { client?: SupabaseClient | null }) {
   if (sessionLoading) {
     return (
       <main className="min-h-screen flex items-center justify-center bg-slate-950">
-        <p className="text-sm text-slate-400">Vérification de la session…</p>
+        <p className="text-sm text-[var(--text-secondary)]">Vérification de la session…</p>
       </main>
     );
   }
@@ -161,6 +161,15 @@ export function OwnerPortal({ client }: { client?: SupabaseClient | null }) {
 
   return (
     <div className="min-h-screen bg-[var(--surface-page)] text-[var(--text-primary)] p-4 sm:p-6">
+      {/*
+        Lien d'évitement : premier élément focusable de la page. Sans lui, un
+        utilisateur clavier doit traverser le logo, le compte, le thème et la
+        déconnexion avant chaque module. Visible seulement quand il a le focus
+        (voir `.skip-link` dans index.css).
+      */}
+      <a href="#contenu-principal" className="skip-link">
+        Aller au contenu principal
+      </a>
       <div className="max-w-6xl mx-auto space-y-5">
         <PortalHeader email={session.user.email ?? ''} onSignOut={() => void handleSignOut()} />
 
@@ -186,6 +195,7 @@ export function OwnerPortal({ client }: { client?: SupabaseClient | null }) {
 
         {message && <Alert variant="success">{message}</Alert>}
 
+        <div id="contenu-principal" tabIndex={-1}>
         <StationPicker
           stations={stations}
           stationId={stationId}
@@ -205,7 +215,7 @@ export function OwnerPortal({ client }: { client?: SupabaseClient | null }) {
         {stationId && activeStation && (
           <>
             {roleLoading ? (
-              <p className="text-sm text-slate-400">Vérification de votre rôle sur {activeStation.name}…</p>
+              <p className="text-sm text-[var(--text-secondary)]">Vérification de votre rôle sur {activeStation.name}…</p>
             ) : stationRole && visibleTab ? (
               <>
                 <StationModuleNav role={stationRole} tab={visibleTab} onSelect={setTab} />
@@ -227,12 +237,14 @@ export function OwnerPortal({ client }: { client?: SupabaseClient | null }) {
         )}
 
         {!stationId && stations.length === 0 && canManageStation && (
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-[var(--text-secondary)]">
             Créez votre première station ci-dessus pour accéder au tableau de bord, aux prestations et au catalogue.
           </p>
         )}
 
-        <footer className="pt-2 text-center text-[11px] text-slate-500">
+        </div>
+
+        <footer className="pt-2 text-center text-[11px] text-[var(--text-muted)]">
           ServiceLavage · Les compteurs affichés proviennent des prestations enregistrées sur le serveur, jamais d’une estimation.
         </footer>
       </div>

@@ -197,11 +197,11 @@ export function StationInventory({ stationId, userId }: { stationId: string; use
   const error = formError || items.error || queue.error;
 
   return (
-    <section className="space-y-5 border-t border-[#232834] pt-6" aria-label="Inventaire de la station">
+    <section className="space-y-5 border-t border-[var(--border-subtle)] pt-6" aria-label="Inventaire de la station">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-bold text-white tracking-tight">Gestion des Stocks & Produits</h2>
-          <p className="text-xs text-slate-400 mt-0.5">Suivi des consommables (shampoing, cire, microfibres) avec file hors ligne sécurisée</p>
+          <h2 className="text-lg font-bold text-[var(--text-primary)] tracking-tight">Gestion des Stocks & Produits</h2>
+          <p className="text-xs text-[var(--text-secondary)] mt-0.5">Suivi des consommables (shampoing, cire, microfibres) avec file hors ligne sécurisée</p>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -285,7 +285,7 @@ export function StationInventory({ stationId, userId }: { stationId: string; use
       )}
 
       {items.loading ? (
-        <div className="p-8 text-center text-sm text-slate-400 rounded-xl bg-[#141720] border border-[#232834]">
+        <div className="p-8 text-center text-sm text-[var(--text-secondary)] rounded-xl bg-[var(--surface-card)] border border-[var(--border-subtle)]">
           Chargement de l’inventaire…
         </div>
       ) : items.data.length ? (
@@ -314,16 +314,16 @@ export function StationInventory({ stationId, userId }: { stationId: string; use
                         <Boxes className="w-4 h-4" />
                       </div>
                       <div>
-                        <span className="font-semibold text-white block">{item.name}</span>
-                        <span className="text-[11px] text-slate-400 font-mono">Unité: {item.unit}</span>
+                        <span className="font-semibold text-[var(--text-primary)] block">{item.name}</span>
+                        <span className="text-[11px] text-[var(--text-secondary)] font-mono">Unité: {item.unit}</span>
                       </div>
                     </div>
                   </TableCell>
                   <TableCell align="right">
-                    <span className="font-bold text-white text-base font-mono tabular-nums">
+                    <span className="font-bold text-[var(--text-primary)] text-base font-mono tabular-nums">
                       {estimate}
                     </span>
-                    <span className="text-xs text-slate-400 ml-1 font-sans">{item.unit}</span>
+                    <span className="text-xs text-[var(--text-secondary)] ml-1 font-sans">{item.unit}</span>
                     {queuedDelta !== 0 && (
                       <span className="text-[11px] text-amber-300 block font-mono">
                         ({queuedDelta > 0 ? '+' : ''}{queuedDelta} en attente)
@@ -331,7 +331,7 @@ export function StationInventory({ stationId, userId }: { stationId: string; use
                     )}
                   </TableCell>
                   <TableCell align="right">
-                    <span className="font-mono tabular-nums text-slate-400 text-xs">
+                    <span className="font-mono tabular-nums text-[var(--text-secondary)] text-xs">
                       {item.min_threshold} {item.unit}
                     </span>
                   </TableCell>
@@ -347,7 +347,7 @@ export function StationInventory({ stationId, userId }: { stationId: string; use
                       <label className="sr-only" htmlFor={`adjust-${item.id}`}>Ajustement de stock pour {item.name}</label>
                       <input
                         id={`adjust-${item.id}`}
-                        className="w-24 rounded-lg bg-[#181c25] border border-[#2d3444] px-2.5 py-1.5 text-xs text-white placeholder:text-slate-500 outline-none focus:border-indigo-500 font-mono text-center"
+                        className="w-24 rounded-lg bg-[var(--surface-elevated)] border border-[var(--border-strong)] px-2.5 py-1.5 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none focus:border-indigo-500 font-mono text-center"
                         aria-invalid={fieldErrors[item.id] ? true : undefined}
                         aria-describedby={fieldErrors[item.id] ? `adjust-error-${item.id}` : undefined}
                         type="number"
@@ -364,7 +364,7 @@ export function StationInventory({ stationId, userId }: { stationId: string; use
                         className={buttonStyles({ variant: 'secondary', size: 'sm' })}
                         onClick={() => void adjust(item)}
                       >
-                        <ArrowUpDown className="w-3.5 h-3.5 mr-1 text-slate-400" />
+                        <ArrowUpDown className="w-3.5 h-3.5 mr-1 text-[var(--text-secondary)]" />
                         Ajuster
                       </button>
                     </div>
@@ -381,7 +381,7 @@ export function StationInventory({ stationId, userId }: { stationId: string; use
         </Table>
       ) : (
         <EmptyState
-          icon={<Boxes className="w-6 h-6 text-slate-400" />}
+          icon={<Boxes className="w-6 h-6 text-[var(--text-secondary)]" />}
           title="Aucun article enregistré"
           description="Gérez les stocks de shampoings, cires, chiffons et pièces d'usure avec alertes de réapprovisionnement."
           action={
@@ -490,7 +490,7 @@ export function StationInventory({ stationId, userId }: { stationId: string; use
 
           {formError && <Alert variant="error">{formError}</Alert>}
 
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#232834]">
+          <div className="flex items-center justify-end gap-3 pt-3 border-t border-[var(--border-subtle)]">
             <button
               type="button"
               disabled={busy}

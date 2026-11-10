@@ -40,7 +40,7 @@ export function AuthLayout({ title, screen, scene = 'signin', children, footer }
     const timer = window.setInterval(() => setFrame(value => (value + 1) % images.length), 9000);
     return () => window.clearInterval(timer);
   }, [images]);
-  return <main className="min-h-screen bg-[#111317] text-gray-100 flex items-center justify-center p-0 sm:p-6">
+  return <main className="min-h-screen bg-[var(--surface-canvas)] text-gray-100 flex items-center justify-center p-0 sm:p-6">
     <div className="auth-rim w-full max-w-5xl sm:rounded-2xl">
       <div className="auth-rim-body lg:grid lg:grid-cols-[45%_55%]">
 
@@ -61,10 +61,10 @@ export function AuthLayout({ title, screen, scene = 'signin', children, footer }
         <div className="relative flex h-full flex-col justify-between p-10">
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-sm font-bold tracking-tight text-white uppercase">ServiceLavage</span>
+              <span className="text-sm font-bold tracking-tight text-[var(--text-primary)] uppercase">ServiceLavage</span>
               <span className="text-[10px] font-mono uppercase tracking-widest px-1.5 py-0.5 rounded bg-white/10 text-white/90 border border-white/20">CI</span>
             </div>
-            <h2 className="mt-6 text-4xl font-light leading-tight text-white">{copy.headline}</h2>
+            <h2 className="mt-6 text-4xl font-light leading-tight text-[var(--text-primary)]">{copy.headline}</h2>
             <p className="mt-4 max-w-sm text-sm leading-relaxed text-white/75">{copy.intro}</p>
             <ul className="mt-8 space-y-3">
               {copy.points.map(point => <li key={point} className="flex gap-2.5 text-[13px] leading-snug text-white/80">
@@ -74,7 +74,7 @@ export function AuthLayout({ title, screen, scene = 'signin', children, footer }
             </ul>
           </div>
           <div className="space-y-4">
-            <span className="inline-block border border-white/70 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-white">
+            <span className="inline-block border border-white/70 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--text-primary)]">
               Lavage auto
             </span>
             <p className="text-[11px] text-white/55">ERP multitenant · Côte d’Ivoire</p>

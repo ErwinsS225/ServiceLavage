@@ -128,12 +128,12 @@ export function StationOrders({
   }
 
   return (
-    <section className="space-y-6 border-t border-[#232834] pt-6" aria-label="Prestations de la station">
+    <section className="space-y-6 border-t border-[var(--border-subtle)] pt-6" aria-label="Prestations de la station">
       {/* Title & Actions Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-bold text-white tracking-tight">Suivi des Prestations & File</h2>
-          <p className="text-xs text-slate-400 mt-0.5">Enregistrement des véhicules, ordres de lavage et gestion du flux</p>
+          <h2 className="text-lg font-bold text-[var(--text-primary)] tracking-tight">Suivi des Prestations & File</h2>
+          <p className="text-xs text-[var(--text-secondary)] mt-0.5">Enregistrement des véhicules, ordres de lavage et gestion du flux</p>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -243,12 +243,12 @@ export function StationOrders({
 
       {/* Orders Table */}
       {loading ? (
-        <div className="p-8 text-center text-sm text-slate-400 rounded-xl bg-[#141720] border border-[#232834]">
+        <div className="p-8 text-center text-sm text-[var(--text-secondary)] rounded-xl bg-[var(--surface-card)] border border-[var(--border-subtle)]">
           Chargement des prestations…
         </div>
       ) : !orders.length ? (
         <EmptyState
-          icon={<Car className="w-6 h-6 text-slate-400" />}
+          icon={<Car className="w-6 h-6 text-[var(--text-secondary)]" />}
           title={cached ? "Historique indisponible hors ligne" : "Aucune prestation enregistrée"}
           description="Créez votre première prestation de lavage pour assigner des laveurs et suivre l'avancement."
           action={
@@ -285,13 +285,13 @@ export function StationOrders({
               return (
                 <TableRow key={order.id}>
                   <TableCell>
-                    <div className="font-semibold text-white block">{order.vehicle_info}</div>
+                    <div className="font-semibold text-[var(--text-primary)] block">{order.vehicle_info}</div>
                     {order.plate_number ? (
                       <span className="inline-block mt-0.5 font-mono text-[11px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-200 border border-slate-700">
                         {order.plate_number}
                       </span>
                     ) : (
-                      <span className="text-[11px] text-slate-500 italic">Sans immatriculation</span>
+                      <span className="text-[11px] text-[var(--text-muted)] italic">Sans immatriculation</span>
                     )}
                   </TableCell>
                   <TableCell>
@@ -305,7 +305,7 @@ export function StationOrders({
                     </ul>
                   </TableCell>
                   <TableCell align="right">
-                    <span className="font-bold text-white text-sm font-mono tabular-nums">
+                    <span className="font-bold text-[var(--text-primary)] text-sm font-mono tabular-nums">
                       {formatXof(order.total_xof)}
                     </span>
                   </TableCell>
@@ -313,10 +313,10 @@ export function StationOrders({
                     <StatusBadge status={order.status} size="sm" />
                   </TableCell>
                   <TableCell>
-                    <span className="font-mono text-xs text-slate-400 block tabular-nums">
+                    <span className="font-mono text-xs text-[var(--text-secondary)] block tabular-nums">
                       {new Date(order.created_at).toLocaleDateString('fr-FR')}
                     </span>
-                    <span className="font-mono text-[11px] text-slate-500 block tabular-nums">
+                    <span className="font-mono text-[11px] text-[var(--text-muted)] block tabular-nums">
                       {new Date(order.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
                     </span>
                   </TableCell>
@@ -343,7 +343,7 @@ export function StationOrders({
                             <label className="sr-only" htmlFor={`washer-${order.id}`}>Laveur à affecter</label>
                             <select
                               id={`washer-${order.id}`}
-                              className="w-full text-xs rounded bg-[#181c25] border border-[#2d3444] px-1.5 py-1 text-slate-200 outline-none"
+                              className="w-full text-xs rounded bg-[var(--surface-elevated)] border border-[var(--border-strong)] px-1.5 py-1 text-slate-200 outline-none"
                               value={assignTarget[order.id] ?? ''}
                               onChange={event => setAssignTarget(previous => ({ ...previous, [order.id]: event.target.value }))}
                             >
@@ -485,13 +485,13 @@ export function StationOrders({
                       className={`flex items-center justify-between p-3 rounded-xl border text-xs cursor-pointer transition-all ${
                         isChecked
                           ? 'border-indigo-500 bg-indigo-500/10 text-white shadow-sm'
-                          : 'border-[#2d3444] bg-[#181c25] text-slate-300 hover:border-slate-500'
+                          : 'border-[var(--border-strong)] bg-[var(--surface-elevated)] text-slate-300 hover:border-slate-500'
                       }`}
                     >
                       <div className="flex items-center gap-2.5">
                         <input
                           type="checkbox"
-                          className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 bg-[#12151c] border-[#32394a]"
+                          className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 bg-[var(--surface-card)] border-[var(--border-strong)]"
                           checked={isChecked}
                           onChange={event => setForm({
                             ...form,
@@ -518,14 +518,14 @@ export function StationOrders({
             </p>
           )}
 
-          <div className="p-3.5 rounded-xl bg-[#181c25] border border-[#2d3444] flex items-center justify-between">
+          <div className="p-3.5 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-strong)] flex items-center justify-between">
             <span className="text-xs text-slate-300">Total estimé ({form.serviceIds.length} service{form.serviceIds.length > 1 ? 's' : ''}) :</span>
-            <span className="text-base font-bold font-mono tabular-nums text-white">
+            <span className="text-base font-bold font-mono tabular-nums text-[var(--text-primary)]">
               {formatXof(selectedPriceTotal)}
             </span>
           </div>
 
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#232834]">
+          <div className="flex items-center justify-end gap-3 pt-3 border-t border-[var(--border-subtle)]">
             <button
               type="button"
               disabled={busy}
@@ -572,7 +572,7 @@ export function StationOrders({
           </>
         }
       >
-        <p className="text-xs text-slate-400">Vérifiez qu'aucun lavage n'est en cours sur ce véhicule avant de continuer.</p>
+        <p className="text-xs text-[var(--text-secondary)]">Vérifiez qu'aucun lavage n'est en cours sur ce véhicule avant de continuer.</p>
       </Modal>
 
       {receiptOrder && (

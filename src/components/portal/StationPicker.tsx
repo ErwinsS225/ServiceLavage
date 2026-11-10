@@ -84,7 +84,7 @@ export function StationPicker({
               </FormField>
 
               <div className="space-y-2 pt-1">
-                <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block">
+                <span className="text-[11px] font-semibold text-[var(--text-secondary)] uppercase tracking-wider block">
                   Stations rattachées ({stations.length})
                 </span>
                 <ul className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
@@ -101,11 +101,11 @@ export function StationPicker({
                           className={`w-full p-2.5 rounded-xl border text-xs cursor-pointer flex items-center justify-between transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-400 ${
                             isSelected
                               ? 'border-indigo-500 bg-indigo-500/10 text-white font-semibold shadow-sm'
-                              : 'border-[#242936] bg-[#161a23] text-slate-300 hover:border-slate-600'
+                              : 'border-[#242936] bg-[var(--surface-elevated)] text-slate-300 hover:border-slate-600'
                           }`}
                         >
                           <span className="truncate">{station.name}</span>
-                          <span className="text-[10px] font-mono text-slate-500 shrink-0 ml-2">
+                          <span className="text-[10px] font-mono text-[var(--text-muted)] shrink-0 ml-2">
                             {station.owner_id === userId ? 'Propriétaire' : 'Membre'}
                           </span>
                         </button>
@@ -116,9 +116,9 @@ export function StationPicker({
               </div>
             </div>
           ) : (
-            <div className="space-y-1 p-3 rounded-xl bg-[#161a23] border border-[#242936]">
-              <p className="text-xs font-semibold text-white">{NO_STATION_COPY.title}</p>
-              <p className="text-xs text-slate-400">{NO_STATION_COPY.body}</p>
+            <div className="space-y-1 p-3 rounded-xl bg-[var(--surface-elevated)] border border-[#242936]">
+              <p className="text-xs font-semibold text-[var(--text-primary)]">{NO_STATION_COPY.title}</p>
+              <p className="text-xs text-[var(--text-secondary)]">{NO_STATION_COPY.body}</p>
             </div>
           )}
         </CardContent>
