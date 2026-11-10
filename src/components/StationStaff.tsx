@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { invitationSchema, parseForm } from '../lib/schemas';
+import { useToastActions } from '../context/ToastContext';
 import {
   Table, TableHeader, TableBody, TableHead, TableRow, TableCell,
   StatusBadge, buttonStyles, formControlStyles, FormField, Modal, Alert, EmptyState
@@ -7,7 +9,7 @@ import { Users, UserPlus, Shield, XCircle, RotateCw, Copy } from 'lucide-react';
 import { useStationStaff } from '../hooks/useStationStaff';
 import {
   STAFF_ROLE_LABELS, STAFF_ROLES, activeMemberCount, canCancelInvitation,
-  canRevokeMember, describeMember, invitationState, isValidInvitationEmail, normalizeInvitationEmail,
+  canRevokeMember, describeMember, invitationState, normalizeInvitationEmail,
 } from '../lib/staffRules';
 import type { StaffRole } from '../lib/stationApi';
 
@@ -47,8 +49,14 @@ export function StationStaff({
   const [revokeTarget, setRevokeTarget] = useState<string | null>(null);
   /** Référence affichée une seule fois, après création. */
   const [createdReference, setCreatedReference] = useState('');
+  const toast = useToastActions();
 
-  const emailValid = isValidInvitationEmail(email);
+  // La validité affichée vient du schéma (aligné sur la contrainte
+  // `email = lower(btrim(email))` de la base), et non d'une seconde règle
+  // écrite ici : deux règles finissent toujours par diverger.
+  const emailCheck = invitationSchema.shape.email.safeParse(email);
+  const emailValid = emailCheck.success;
+  const emailError = email.length > 0 && !emailCheck.success ? emailCheck.error.issues[0]?.message : undefined;
   const activeMembers = activeMemberCount(members);
 
   function closeInvite() {
@@ -59,11 +67,13 @@ export function StationStaff({
 
   async function submitInvitation(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!emailValid) return;
+    const parsed = parseForm(invitationSchema, { email, role });
+    if (!parsed.ok) return;
     try {
-      const reference = await staff.invite(email, role);
+      const reference = await staff.invite(parsed.data.email, parsed.data.role);
       closeInvite();
       setCreatedReference(reference);
+      toast.success('Invitation créée.', 'Transmettez la référence au collaborateur concerné.');
     } catch {
       // The hook has already surfaced the message in `actionError`.
     }
@@ -304,10 +314,13 @@ export function StationStaff({
             label="Adresse email de connexion"
             required
             hint="Doit correspondre au compte que le collaborateur utilisera"
-            error={email.length > 0 && !emailValid ? 'Adresse incomplète ou invalide.' : undefined}
+            htmlFor="invite-email"
+            error={emailError}
           >
             <input
+              id="invite-email"
               className={formControlStyles.input}
+              aria-invalid={emailError ? true : undefined}
               type="email"
               autoComplete="email"
               maxLength={254}
@@ -320,8 +333,14 @@ export function StationStaff({
             />
           </FormField>
 
-          <FormField label="Rôle opérationnel" required hint="Détermine les modules et les actions accessibles">
+          <FormField
+            label="Rôle opérationnel"
+            required
+            hint="Détermine les modules et les actions accessibles"
+            htmlFor="invite-role"
+          >
             <select
+              id="invite-role"
               className={formControlStyles.select}
               value={role}
               onChange={event => setRole(event.target.value as StaffRole)}
