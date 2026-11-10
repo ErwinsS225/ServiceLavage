@@ -1,8 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   applyInventoryAdjustment,
-  createInventoryItem,
-  fetchInventory,
   resolveClient,
   type InventoryRow,
 } from '../lib/stationApi';
@@ -14,8 +12,8 @@ import {
 } from '../lib/offlineInventory';
 import { useOfflineQueue } from '../hooks/useOfflineQueue';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
-import { useResource } from '../hooks/useResource';
 import { useLocalCache, isArrayOf } from '../hooks/useLocalCache';
+import { useCreateInventoryItem, useInventory } from '../hooks/useStationQueries';
 import { describeError } from '../lib/queryResult';
 import {
   Table, TableHeader, TableBody, TableHead, TableRow, TableCell,
@@ -52,29 +50,30 @@ export function StationInventory({ stationId, userId }: { stationId: string; use
     isArrayOf(isItem),
   );
 
-  const [cached, setCached] = useState(false);
-  const items = useResource<InventoryRow[]>(
-    async () => {
-      const client = resolveClient();
-      // Offline: show the last snapshot rather than an empty table.
-      if (!online) {
-        const snapshot = cache.read();
-        setCached(snapshot !== null);
-        return snapshot ?? [];
-      }
-      const fresh = await fetchInventory(client, stationId);
-      try {
-        cache.write(fresh);
-        setCached(false);
-      } catch {
-        // A full quota must not hide fresh data; the banner stays off.
-        setCached(false);
-      }
-      return fresh;
-    },
-    [stationId, online, cache],
-    { fallback: 'Impossible de charger l’inventaire.', initial: [] },
-  );
+  // Hors ligne, on n'interroge pas le réseau : le cache local tient le rôle.
+  // Le drapeau `cached` est calculé, pas mémorisé, pour qu'il ne survive pas à
+  // une reconnexion (il restait auparavant affiché après un retour du réseau).
+  const inventoryQuery = useInventory(stationId, { enabled: online });
+  const createItemMutation = useCreateInventoryItem(stationId);
+
+  const offlineSnapshot = online ? null : cache.read();
+  const cached = !online && offlineSnapshot !== null;
+
+  const itemsData = online ? (inventoryQuery.data ?? []) : (offlineSnapshot ?? []);
+  const items = {
+    data: itemsData,
+    loading: !online ? false : inventoryQuery.isPending,
+    error: inventoryQuery.error ? describeError(inventoryQuery.error, 'Impossible de charger l’inventaire.') : '',
+    reload: () => { void inventoryQuery.refetch(); },
+  };
+
+  // Le cache local ne sert qu'à afficher pendant une coupure : dès que la
+  // requête aboutit, on y écrit la photographie serveur.
+  const latest = inventoryQuery.data;
+  useEffect(() => {
+    if (!online || !latest) return;
+    try { cache.write(latest); } catch { /* quota plein : ne pas masquer les données fraîches */ }
+  }, [online, latest, cache]);
 
   const queue = useOfflineQueue<QueuedInventoryAdjustment>({
     list: () => listQueuedInventoryAdjustments(localStorage, userId, stationId),
@@ -114,8 +113,8 @@ export function StationInventory({ stationId, userId }: { stationId: string; use
     setFormError('');
     setMessage('');
     try {
-      await createInventoryItem(resolveClient(), {
-        stationId,
+      // La mutation invalide la clé `inventory` : la liste revient du serveur.
+      await createItemMutation.mutateAsync({
         name: name.trim(),
         unit: unit.trim(),
         quantity: amount,
@@ -127,7 +126,6 @@ export function StationInventory({ stationId, userId }: { stationId: string; use
       setMinimum('');
       setMessage('Article enregistré.');
       setModalOpen(false);
-      items.reload();
     } catch (cause) {
       setFormError(describeError(cause, 'Enregistrement impossible.'));
     } finally {

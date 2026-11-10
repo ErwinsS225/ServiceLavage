@@ -2,8 +2,11 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback } from 'react';
 import {
   createCustomer,
+  createInventoryItem,
   createService,
   fetchCustomers,
+  fetchInventory,
+  fetchReportOrders,
   fetchServices,
   fetchStaff,
   fetchSubscription,
@@ -14,6 +17,8 @@ import {
   type InvitationRow,
   type MemberRow,
   type OwnerSubscription,
+  type ReportOrderRow,
+  type InventoryItemInput,
   type ServiceInput,
   type ServiceRow,
   type StaffRole,
@@ -67,6 +72,36 @@ export function useUpdateService(stationId: string, client?: StationClient | nul
     mutationFn: (input: { serviceId: string; changes: ServiceInput }) =>
       updateService(api(client), stationId, input.serviceId, input.changes),
     onSuccess: () => { void queryClient.invalidateQueries({ queryKey: queryKeys.services(stationId) }); },
+  });
+}
+
+/* ------------------------------ inventaire ----------------------------- */
+
+/**
+ * Inventaire — lecture seule via le cache.
+ *
+ * L'écriture reste hors de TanStack Query, et ce n'est pas un oubli : les
+ * ajustements sont mis en file dans `localStorage` et envoyés par
+ * `apply_inventory_operation`, retirés seulement après accusé serveur. Mettre
+ * cette file dans un cache de lecture la rejouerait ou la viderait au premier
+ * `refetch`. Seule la lecture profite donc du cache.
+ */
+export function useInventory(stationId: string, options: { enabled?: boolean; client?: StationClient | null } = {}) {
+  const { enabled = true, client } = options;
+  return useQuery({
+    queryKey: queryKeys.inventory(stationId),
+    queryFn: () => fetchInventory(api(client), stationId),
+    enabled: Boolean(stationId) && enabled,
+  });
+}
+
+/** Création d'un article : en ligne uniquement, donc une mutation simple. */
+export function useCreateInventoryItem(stationId: string, client?: StationClient | null) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: Omit<InventoryItemInput, 'stationId'>) =>
+      createInventoryItem(api(client), { ...input, stationId }),
+    onSuccess: () => { void queryClient.invalidateQueries({ queryKey: queryKeys.inventory(stationId) }); },
   });
 }
 
@@ -134,6 +169,24 @@ export function useInvitationMutations(stationId: string, client?: StationClient
   return { invite, cancel, revoke };
 }
 
+/* ------------------------------- rapports ------------------------------ */
+
+/**
+ * Prestations de l'année en cours pour le rapport.
+ *
+ * La fenêtre est déclarée par l'appelant (`since`) : un `select` sans borne
+ * grandirait à chaque lavage. `staleTime` plus court que la valeur par défaut,
+ * parce qu'un rapport relu après un lavage doit refléter ce lavage.
+ */
+export function useReportOrders(stationId: string, since: Date, client?: StationClient | null) {
+  return useQuery({
+    queryKey: queryKeys.reports(stationId),
+    queryFn: () => fetchReportOrders(api(client), stationId, since),
+    enabled: Boolean(stationId),
+    staleTime: 0,
+  });
+}
+
 /* ----------------------------- abonnement ------------------------------ */
 
 export function useSubscriptionQuery(enabled: boolean, client?: StationClient | null) {
@@ -144,7 +197,7 @@ export function useSubscriptionQuery(enabled: boolean, client?: StationClient | 
   });
 }
 
-export type { CustomerRow, InvitationRow, MemberRow, OwnerSubscription, ServiceRow };
+export type { CustomerRow, InvitationRow, MemberRow, OwnerSubscription, ReportOrderRow, ServiceRow };
 
 /** Message prêt à afficher pour n'importe quelle erreur de mutation. */
 export function mutationMessage(cause: unknown, fallback: string): string {

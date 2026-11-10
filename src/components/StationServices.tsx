@@ -2,15 +2,8 @@ import { useCallback, useState } from 'react';
 import { formatXof } from '../lib/money';
 import { parseServiceInteger } from '../lib/serviceValidation';
 import { describeError } from '../lib/queryResult';
-import {
-  createService,
-  fetchServices,
-  resolveClient,
-  updateService,
-  type ServiceInput,
-  type ServiceRow,
-} from '../lib/stationApi';
-import { useResource } from '../hooks/useResource';
+import { type ServiceInput, type ServiceRow, type StationClient } from '../lib/stationApi';
+import { useCreateService, useServices, useUpdateService } from '../hooks/useStationQueries';
 import {
   Table, TableHeader, TableBody, TableHead, TableRow, TableCell,
   StatusBadge, buttonStyles, formControlStyles, FormField, Modal, Alert, EmptyState
@@ -20,21 +13,27 @@ import { Plus, Sparkles, Clock, Edit2, RotateCw } from 'lucide-react';
 /**
  * Catalogue de la station.
  *
- * Ce composant ne fait plus que trois choses : tenir le formulaire, appeler
- * `stationApi` et rendre. Les requêtes, la validation numérique et les
- * messages d'erreur sont sortis (voir `lib/stationApi.ts`), ce qui permet de
- * les tester avec un faux client, sans DOM.
+ * Trois choses seulement : tenir le formulaire, déclencher les mutations et
+ * rendre. Les requêtes vivent dans `lib/stationApi.ts`, leur cache dans
+ * `hooks/useStationQueries.ts`, la validation numérique dans
+ * `lib/serviceValidation.ts` — donc testables sans DOM.
  *
  * Les droits ne sont pas décidés ici : `station_services` est protégée par RLS
  * (propriétaire et gérant en écriture) et le panneau n'est monté que pour ces
  * rôles. Un appel direct hors rôle est refusé par PostgreSQL, pas par React.
  */
-export function StationServices({ stationId, client }: { stationId: string; client?: Parameters<typeof resolveClient>[0] }) {
-  const services = useResource<ServiceRow[]>(
-    () => fetchServices(resolveClient(client), stationId),
-    [stationId, client],
-    { fallback: 'Impossible de charger le catalogue.', initial: [] },
-  );
+export function StationServices({ stationId, client }: { stationId: string; client?: StationClient | null }) {
+  const servicesQuery = useServices(stationId, client);
+  const createMutation = useCreateService(stationId, client);
+  const updateMutation = useUpdateService(stationId, client);
+
+  // Même contrat de rendu qu'avant : `data`, `loading`, `error`, `reload`.
+  const services = {
+    data: servicesQuery.data ?? [],
+    loading: servicesQuery.isPending,
+    error: servicesQuery.error ? describeError(servicesQuery.error, 'Impossible de charger le catalogue.') : '',
+    reload: () => { void servicesQuery.refetch(); },
+  };
 
   const [busy, setBusy] = useState(false);
   const [name, setName] = useState('');
@@ -90,11 +89,13 @@ export function StationServices({ stationId, client }: { stationId: string; clie
     setFormError('');
     setMessage('');
     try {
-      const api = resolveClient(client);
-      const saved = editing
-        ? await updateService(api, stationId, editing, input)
-        : await createService(api, stationId, input);
-      services.setData(previous => (editing ? previous.map(item => (item.id === editing ? saved : item)) : [saved, ...previous]));
+      // La mutation invalide la clé `services` : la liste relue vient du
+      // serveur, pas d'une copie locale supposée identique.
+      if (editing) {
+        await updateMutation.mutateAsync({ serviceId: editing, changes: input });
+      } else {
+        await createMutation.mutateAsync(input);
+      }
       setMessage(editing ? 'Prestation modifiée avec succès.' : 'Nouvelle prestation ajoutée au catalogue.');
       resetForm();
     } catch (cause) {

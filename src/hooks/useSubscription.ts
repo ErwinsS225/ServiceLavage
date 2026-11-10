@@ -1,6 +1,6 @@
-import { useCallback } from 'react';
-import { fetchSubscription, resolveClient, type OwnerSubscription, type StationClient } from '../lib/stationApi';
-import { useResource } from './useResource';
+import type { StationClient } from '../lib/stationApi';
+import { describeError } from '../lib/queryResult';
+import { useSubscriptionQuery } from './useStationQueries';
 
 /**
  * Formule du propriétaire connecté, telle que le serveur la calcule.
@@ -17,17 +17,12 @@ export function useSubscription({
   enabled?: boolean;
   client?: StationClient | null;
 } = {}) {
-  const api = useCallback(() => resolveClient(client), [client]);
-  const resource = useResource<OwnerSubscription | null>(
-    () => fetchSubscription(api()),
-    [client],
-    { fallback: 'Impossible de charger la formule. Vérifiez votre connexion.', initial: null, enabled },
-  );
+  const query = useSubscriptionQuery(enabled, client);
 
   return {
-    subscription: resource.data,
-    loading: resource.loading,
-    error: resource.error,
-    reload: resource.reload,
+    subscription: query.data ?? null,
+    loading: query.isPending,
+    error: query.error ? describeError(query.error, 'Impossible de charger la formule. Vérifiez votre connexion.') : '',
+    reload: () => { void query.refetch(); },
   };
 }

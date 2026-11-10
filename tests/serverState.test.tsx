@@ -34,7 +34,7 @@ afterEach(() => {
   for (const client of clients.splice(0)) client.clear();
 });
 
-function countingClient(customers: Array<{ id: string; name: string; phone: string }>) {
+function countingClient(customers: Array<Record<string, unknown>>) {
   const calls: string[] = [];
   const client = {
     from(table: string) {
@@ -54,6 +54,13 @@ function countingClient(customers: Array<{ id: string; name: string; phone: stri
           Promise.resolve({ data: customers, error: null }).catch(reject),
       };
       return builder;
+    },
+    // La création d'un article passe par `apply_inventory_operation` : le
+    // serveur renvoie une ligne, ce que le code vérifie.
+    rpc: (name: string, args: unknown) => {
+      calls.push(`rpc:${name}`);
+      void args;
+      return Promise.resolve({ data: [{ item_id: 'i2', quantity: 2 }], error: null });
     },
   } as unknown as StationClient;
   return { client, calls };
@@ -150,4 +157,39 @@ test('les requêtes du personnel respectent le rôle avant de toucher la base', 
   assert.equal(result.current.fetchStatus, 'idle', 'aucune requête ne doit partir');
   assert.deepEqual(calls, []);
   assert.equal(result.current.data, undefined, 'aucune donnée inventée en attendant le rôle');
+});
+
+test('l’inventaire ne demande rien au serveur hors ligne et retombe sur le cache', async () => {
+  const { renderHook } = await import('@testing-library/react');
+  const { useInventory } = await import('../src/hooks/useStationQueries');
+  const { client, calls } = countingClient([]);
+  const queryClient = newClient();
+
+  const { result } = renderHook(() => useInventory('station-1', { enabled: false, client }), {
+    wrapper: ({ children }: { children: React.ReactNode }) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    ),
+  });
+
+  assert.equal(result.current.fetchStatus, 'idle');
+  assert.deepEqual(calls, [], 'hors ligne, aucune requête ne doit partir');
+});
+
+test('une écriture invalide la lecture correspondante', async () => {
+  // L'invalidation est la garantie qu'aucune liste n'est corrigée à la main :
+  // on vérifie la règle sur le cache directement, ce qui évite de dépendre de
+  // l'ordre des minuteries de rechargement dans le test.
+  const queryClient = newClient();
+  queryClient.setQueryData(queryKeys.inventory('station-1'), [{ id: 'i1' }]);
+  queryClient.setQueryData(queryKeys.services('station-1'), [{ id: 's1' }]);
+  assert.ok(queryClient.getQueryData(queryKeys.inventory('station-1')));
+
+  await queryClient.invalidateQueries({ queryKey: queryKeys.inventory('station-1') });
+
+  assert.equal(queryClient.getQueryState(queryKeys.inventory('station-1'))?.isInvalidated, true);
+  assert.equal(
+    queryClient.getQueryState(queryKeys.services('station-1'))?.isInvalidated,
+    false,
+    'invalider l’inventaire ne doit pas jeter le catalogue',
+  );
 });

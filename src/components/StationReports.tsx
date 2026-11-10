@@ -2,10 +2,10 @@ import { useState, useMemo, useRef } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabase as defaultClient } from '../lib/supabase';
 import { formatXof } from '../lib/money';
-import { fetchReportOrders } from '../lib/stationApi';
+import { describeError } from '../lib/queryResult';
 import { buildOrdersCsv, downloadCsv } from '../lib/csvExport';
 import { ReportDocument } from './reports/ReportDocument';
-import { useResource } from '../hooks/useResource';
+import { useReportOrders } from '../hooks/useStationQueries';
 import {
   reportMetrics,
   periodLabel,
@@ -63,17 +63,15 @@ export function StationReports({ stationId, stationName, client = defaultClient 
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const reportRef = useRef<HTMLDivElement>(null);
 
-  // The query lives in `stationApi`; this component only declares the window:
-  // the current year, because an unbounded select would grow with every wash.
-  const { data, loading, error, reload: load } = useResource<StationOrderRow[]>(
-    async () => {
-      if (!client || !stationId) return [];
-      return fetchReportOrders(client, stationId, new Date(startOfYear(new Date())));
-    },
-    [client, stationId],
-    { fallback: 'Chargement du rapport impossible. Vérifiez votre connexion.', initial: [] },
-  );
-  const orders = data;
+  // La requête vit dans `stationApi`, son cache dans `useStationQueries`. La
+  // fenêtre reste déclarée ici : l'année en cours, parce qu'un `select` sans
+  // borne grandirait à chaque lavage.
+  const yearStart = useMemo(() => new Date(startOfYear(new Date())), []);
+  const reportQuery = useReportOrders(stationId, yearStart, client);
+  const orders: StationOrderRow[] = reportQuery.data ?? [];
+  const loading = reportQuery.isPending;
+  const error = reportQuery.error ? describeError(reportQuery.error, 'Chargement du rapport impossible. Vérifiez votre connexion.') : '';
+  const load = () => { void reportQuery.refetch(); };
 
   const reference = useMemo(() => new Date(), [orders, period]);
   const metrics = useMemo(() => reportMetrics(orders, period, reference), [orders, period, reference]);

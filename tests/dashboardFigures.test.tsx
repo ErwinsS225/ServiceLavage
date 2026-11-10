@@ -6,6 +6,8 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { StationDashboard } from '../src/components/StationDashboard';
 import { StationReports } from '../src/components/StationReports';
 import { formatXof } from '../src/lib/money';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { createQueryClient } from '../src/lib/queryClient';
 
 /**
  * The dashboard and the reports used to display figures that no row in the
@@ -90,10 +92,30 @@ async function renderDashboard(orders: unknown[], customers = 3) {
   return { ...view, calls };
 }
 
+/**
+ * Les écrans lisent leurs données via TanStack Query : un client de cache est
+ * donc nécessaire. Il est créé par test et purgé ensuite, sinon ses minuteries
+ * (staleTime, gcTime) empêchent le processus de test de se terminer.
+ */
+const queryClients: QueryClient[] = [];
+function withQueryClient(node: React.ReactNode) {
+  const client = createQueryClient();
+  queryClients.push(client);
+  return <QueryClientProvider client={client}>{node}</QueryClientProvider>;
+}
+
+afterEach(() => {
+  cleanup();
+  for (const client of queryClients.splice(0)) client.clear();
+});
+
 async function renderReports(orders: unknown[], customers = 3) {
   const { client } = fakeClient(orders, customers);
-  const view = render(<StationReports stationId="station-1" stationName="Station Test" client={client} />);
+  const view = render(withQueryClient(<StationReports stationId="station-1" stationName="Station Test" client={client} />));
   await waitFor(() => assert.match(view.container.textContent ?? '', /Rapport d’activité/));
+  // La requête passe maintenant par un cache : attendre la fin du chargement,
+  // sinon l'assertion lit l'écran « Chargement du rapport… ».
+  await waitFor(() => assert.doesNotMatch(view.container.textContent ?? '', /Chargement du rapport/));
   return view;
 }
 

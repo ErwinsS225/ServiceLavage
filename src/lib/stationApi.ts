@@ -273,9 +273,18 @@ export async function fetchInventory(client: StationClient, stationId: string): 
 }
 
 /** Création d'article : la RPC renvoie la ligne créée, ou refuse (rôle, quota). */
+/** Champs d'un nouvel article, séparés de la station pour les mutations typées. */
+export interface InventoryItemInput {
+  stationId: string;
+  name: string;
+  unit: string;
+  quantity: number;
+  minThreshold: number;
+}
+
 export async function createInventoryItem(
   client: StationClient,
-  input: { stationId: string; name: string; unit: string; quantity: number; minThreshold: number },
+  input: InventoryItemInput,
 ): Promise<void> {
   const { data, error } = await client.rpc('apply_inventory_operation', {
     p_request_id: crypto.randomUUID(),
