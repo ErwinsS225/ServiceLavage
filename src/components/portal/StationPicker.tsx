@@ -139,8 +139,9 @@ export function StationPicker({
             </CardHeader>
             <CardContent>
               <form onSubmit={onCreateStation} className="space-y-3">
-                <FormField label="Nom commercial de la station" required>
+                <FormField label="Nom commercial de la station" required htmlFor="new-station-name">
                   <input
+                    id="new-station-name"
                     className={formControlStyles.input}
                     value={newStationName}
                     onChange={event => onChangeNewStationName(event.target.value)}
@@ -174,8 +175,14 @@ export function StationPicker({
             </CardHeader>
             <CardContent>
               <form onSubmit={onAcceptInvitation} className="space-y-3">
-                <FormField label="Référence d’invitation" required hint="Identifiant à 36 caractères transmis par le gérant">
+                <FormField
+                  label="Référence d’invitation"
+                  required
+                  hint="Identifiant à 36 caractères transmis par le gérant"
+                  htmlFor="invitation-reference"
+                >
                   <input
+                    id="invitation-reference"
                     className={formControlStyles.input}
                     value={invitationCode}
                     onChange={event => onChangeInvitationCode(event.target.value)}

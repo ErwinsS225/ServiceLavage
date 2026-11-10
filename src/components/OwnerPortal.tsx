@@ -10,7 +10,9 @@ import { usePortalSession } from '../hooks/usePortalSession';
 import { useStations } from '../hooks/useStations';
 import { useStationRole } from '../hooks/useStationRole';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
-import { acceptInvitation, isInvitationReference, resolvePortalClient } from '../lib/portalApi';
+import { acceptInvitation, resolvePortalClient } from '../lib/portalApi';
+import { invitationReferenceSchema, parseForm, stationNameSchema } from '../lib/schemas';
+import { errorText } from '../lib/errorMessages';
 import { describeError } from '../lib/queryResult';
 import { resolveTab, type StationTabId } from '../lib/portalNavigation';
 
@@ -112,15 +114,21 @@ export function OwnerPortal({ client }: { client?: SupabaseClient | null }) {
 
   async function handleCreateStation(event: React.FormEvent) {
     event.preventDefault();
-    if (!newStationName.trim()) return;
+    // Auparavant un nom vide provoquait un `return` muet : le bouton semblait
+    // inerte. La borne est celle de `stations.name` (1..120 après trim).
+    const parsed = parseForm(stationNameSchema, newStationName);
+    if (!parsed.ok) {
+      setActionError(parsed.errors._form ?? 'Nom de la station invalide.');
+      return;
+    }
     setBusy(true);
     setActionError('');
     try {
-      await createStation(newStationName);
+      await createStation(parsed.data);
       setNewStationName('');
       setTab('dashboard');
     } catch (cause) {
-      setActionError(describeError(cause, 'Création de la station impossible.'));
+      setActionError(errorText(cause));
     } finally {
       setBusy(false);
     }
@@ -128,12 +136,15 @@ export function OwnerPortal({ client }: { client?: SupabaseClient | null }) {
 
   async function handleAcceptInvitation(event: React.FormEvent) {
     event.preventDefault();
-    const reference = invitationCode.trim();
-    // Validated locally to avoid a pointless round trip; the RPC re-validates.
-    if (!isInvitationReference(reference)) {
-      setActionError('Référence d’invitation invalide : elle doit comporter 36 caractères.');
+    // Validée localement pour éviter un aller-retour inutile ; la RPC revalide.
+    // Le message vient du schéma, donc il dit ce qui est attendu (format UUID)
+    // au lieu de se contenter d'une longueur.
+    const parsed = parseForm(invitationReferenceSchema, invitationCode);
+    if (!parsed.ok) {
+      setActionError(parsed.errors._form ?? 'Référence d’invitation invalide.');
       return;
     }
+    const reference = parsed.data;
     setBusy(true);
     setActionError('');
     try {
@@ -142,7 +153,7 @@ export function OwnerPortal({ client }: { client?: SupabaseClient | null }) {
       setMessage('Invitation acceptée. La station apparaît dans votre liste.');
       refreshStations();
     } catch (cause) {
-      setActionError(describeError(cause, 'Acceptation de l’invitation impossible.'));
+      setActionError(errorText(cause));
     } finally {
       setBusy(false);
     }

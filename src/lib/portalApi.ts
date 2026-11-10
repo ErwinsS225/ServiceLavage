@@ -1,3 +1,4 @@
+import { invitationReferenceSchema } from './schemas';
 import type { Session, SupabaseClient } from '@supabase/supabase-js';
 import { isRecoveryLink, supabase as defaultClient } from './supabase';
 import { unwrap } from './queryResult';
@@ -91,8 +92,13 @@ export async function acceptInvitation(client: SupabaseClient, invitationId: str
 }
 
 /** UUID v1–v8, la seule forme que `accept_station_invitation` accepte. */
+/**
+ * Délègue au schéma partagé : la même référence est validée ici et dans
+ * `StationStaff`. Deux expressions séparées de la même règle finissent par
+ * diverger, et c'est alors l'écran qui refuse ce que la RPC accepte.
+ */
 export function isInvitationReference(value: string): boolean {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+  return invitationReferenceSchema.safeParse(value).success;
 }
 
 export interface SessionSnapshot {
