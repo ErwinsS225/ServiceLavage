@@ -142,7 +142,7 @@ export function StationOrders({
             onClick={() => { setActionError(''); reload(); }}
             disabled={loading || busy}
           >
-            <RotateCw className={`w-3.5 h-3.5 mr-1.5 ${loading ? 'animate-spin' : ''}`} />
+            <RotateCw className={`w-3.5 h-3.5 mr-1.5 ${loading ? 'animate-spin motion-safe-keep' : ''}`} />
             Actualiser
           </button>
           {canManageOrders && (

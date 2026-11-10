@@ -8,7 +8,7 @@ const deliveryColors: Record<FeatureDelivery, string> = {
   operational: 'text-emerald-300',
   prepared: 'text-cyan-300',
   partial: 'text-amber-300',
-  planned: 'text-gray-400',
+  planned: 'text-[var(--text-secondary)]',
   service: 'text-purple-300',
 };
 
@@ -59,7 +59,7 @@ export function SubscriptionPlans() {
           {error}
         </Alert>
       ) : subscription ? (
-        <div role="status" className="space-y-4 p-4 rounded-xl border border-[#262c3a] bg-[var(--surface-card)]">
+        <div role="status" className="space-y-4 p-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)]">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="space-y-1">
               <p className="text-xs text-[var(--text-secondary)]">Formule actuelle</p>
@@ -98,7 +98,7 @@ export function SubscriptionPlans() {
               key={plan.id}
               className={`rounded-2xl border p-5 flex flex-col justify-between transition-all ${
                 isCurrent
-                  ? 'border-indigo-500/50 bg-[#161a25] shadow-lg shadow-indigo-950/30'
+                  ? 'border-indigo-500/50 bg-[var(--surface-elevated)] shadow-lg shadow-indigo-950/30'
                   : 'border-[var(--border-subtle)] bg-[var(--surface-card)]'
               }`}
             >
@@ -195,7 +195,7 @@ function QuotaGauge({
       </p>
       {usage !== null && (
         <div
-          className="h-1.5 rounded-full bg-slate-800 overflow-hidden"
+          className="h-1.5 rounded-full bg-[var(--border-strong)] overflow-hidden"
           role="img"
           aria-label={`${used} sur ${limit} utilisés (${usage} %)`}
         >

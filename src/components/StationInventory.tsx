@@ -210,7 +210,7 @@ export function StationInventory({ stationId, userId }: { stationId: string; use
             onClick={() => { setFormError(''); items.reload(); }}
             disabled={items.loading || busy}
           >
-            <RotateCw className={`w-3.5 h-3.5 mr-1.5 ${items.loading ? 'animate-spin' : ''}`} />
+            <RotateCw className={`w-3.5 h-3.5 mr-1.5 ${items.loading ? 'animate-spin motion-safe-keep' : ''}`} />
             Actualiser
           </button>
           <button

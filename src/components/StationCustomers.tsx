@@ -124,7 +124,7 @@ export function StationCustomers({ stationId, client }: { stationId: string; cli
             onClick={() => { setFormError(''); customers.reload(); }}
             disabled={customers.loading || busy}
           >
-            <RotateCw className={`w-3.5 h-3.5 mr-1.5 ${customers.loading ? 'animate-spin' : ''}`} />
+            <RotateCw className={`w-3.5 h-3.5 mr-1.5 ${customers.loading ? 'animate-spin motion-safe-keep' : ''}`} />
             Actualiser
           </button>
           <button

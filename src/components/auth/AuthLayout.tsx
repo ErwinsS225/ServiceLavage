@@ -40,7 +40,7 @@ export function AuthLayout({ title, screen, scene = 'signin', children, footer }
     const timer = window.setInterval(() => setFrame(value => (value + 1) % images.length), 9000);
     return () => window.clearInterval(timer);
   }, [images]);
-  return <main className="min-h-screen bg-[var(--surface-canvas)] text-gray-100 flex items-center justify-center p-0 sm:p-6">
+  return <main className="min-h-screen bg-[var(--surface-canvas)] text-[var(--text-primary)] flex items-center justify-center p-0 sm:p-6">
     <div className="auth-rim w-full max-w-5xl sm:rounded-2xl">
       <div className="auth-rim-body lg:grid lg:grid-cols-[45%_55%]">
 
@@ -88,7 +88,7 @@ export function AuthLayout({ title, screen, scene = 'signin', children, footer }
         <div className="mb-10 lg:hidden">
           <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-gray-500">ServiceLavage CI</p>
           <h1 className="mt-2 text-2xl font-bold">{copy.headline}</h1>
-          <p className="mt-1 text-sm text-gray-400">{copy.intro}</p>
+          <p className="mt-1 text-sm text-white/80">{copy.intro}</p>
         </div>
         {children}
         {footer && <div className="mt-10 border-t border-[#262b35] pt-5">{footer}</div>}

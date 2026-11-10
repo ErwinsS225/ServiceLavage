@@ -66,7 +66,7 @@ export function Button({
       {...props}
     >
       {loading ? (
-        <Loader2 className="w-4 h-4 animate-spin text-current" />
+        <Loader2 className="w-4 h-4 animate-spin motion-safe-keep text-current" />
       ) : (
         <>
           {icon && iconPosition === 'left' && <span className="shrink-0">{icon}</span>}

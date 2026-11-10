@@ -55,7 +55,7 @@ export function StationDashboard({ stationId, userId, onNavigateTab, client = de
             disabled={refreshing}
             className={buttonStyles({ variant: 'outline', size: 'sm' })}
           >
-            <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${refreshing ? 'animate-spin text-indigo-400' : ''}`} />
+            <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${refreshing ? 'animate-spin motion-safe-keep text-indigo-400' : ''}`} />
             <span>{refreshing ? 'Actualisation…' : 'Actualiser'}</span>
           </button>
         </div>
