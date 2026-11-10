@@ -29,11 +29,14 @@
     --surface-card: #ffffff;
     --surface-elevated: #f1f5f9;
     --surface-hover: #e2e8f0;
-    --border-subtle: #e2e8f0;
-    --border-strong: #cbd5e1;
+    /* Idem en clair : #e2e8f0 ne donnait que 1,25:1 sur blanc. */
+    --border-subtle: #c7d0dd;
+    --border-strong: #828fa1;
     --text-primary: #0f172a;
     --text-secondary: #475569;
-    --text-muted: #64748b;
+    /* 4,76:1 sur carte, 4,55:1 sur le fond de page : juste au-dessus du seuil,
+       compromis assumé pour un texte de moindre importance qui doit rester lisible. */
+    --text-muted: #5b6779;
     /* Alertes — mode clair.
        Les teintes 300 convenaient au fond sombre ; sur fond clair elles
        tombent sous 2:1. On descend en 700/800 pour le texte et on garde un
@@ -70,11 +73,16 @@
     --surface-card: #12151c;
     --surface-elevated: #181c25;
     --surface-hover: #1e2330;
-    --border-subtle: #232834;
-    --border-strong: #32394a;
+    /* Une bordure qui délimite un champ ou un bouton est un composant
+       d'interface : 3:1 minimum (WCAG 1.4.11). #232834 (1,58:1) et #32394a
+       (2,0:1) ne séparaient rien de perceptible sur le fond sombre. */
+    --border-subtle: #3a4254;
+    --border-strong: #5c6880;
     --text-primary: #f8fafc;
     --text-secondary: #94a3b8;
-    --text-muted: #64748b;
+    /* 7,33:1 sur la carte, 7,74:1 sur le fond de page. L'ancien #64748b
+       tombait à 3,84:1, sous le minimum AA pour du texte. */
+    --text-muted: #9aa5b5;
     /* Alertes — mode sombre : les teintes 300 ont été mesurées entre 8,8:1 et
        10,8:1 sur les surfaces sombres, on les conserve. */
     --alert-info-bg: rgba(14, 165, 233, 0.10);

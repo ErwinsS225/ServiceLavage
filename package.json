@@ -17,7 +17,8 @@
     "db:link": "npx --yes supabase@latest link --project-ref avvkzliysacpyavmetsx",
     "db:status": "npx --yes supabase@latest migration list",
     "db:drift": "tsx --test tests/productionSchemaDrift.test.ts",
-    "db:content": "node scripts/checkMigrationContent.mjs"
+    "db:content": "node scripts/checkMigrationContent.mjs",
+    "check:contrast": "node scripts/checkContrast.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.119.0",
