@@ -175,9 +175,9 @@ export function ReceiptModal({
             type="button"
             onClick={onClose}
             aria-label="Fermer"
-            className="p-1 rounded-lg bg-[var(--surface-hover)] text-[var(--text-secondary)] hover:text-white transition-colors cursor-pointer"
+            className="p-1 rounded-lg bg-[var(--surface-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
           >
-            <X className="w-4 h-4" />
+            <X className="w-4 h-4" aria-hidden="true" />
           </button>
         </div>
 

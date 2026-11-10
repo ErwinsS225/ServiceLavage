@@ -289,7 +289,7 @@ export function StationInventory({ stationId, userId }: { stationId: string; use
           Chargement de l’inventaire…
         </div>
       ) : items.data.length ? (
-        <Table>
+        <Table label="Articles en stock">
           <TableHeader>
             <TableRow>
               <TableHead>Produit / Consommable</TableHead>

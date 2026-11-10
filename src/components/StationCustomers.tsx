@@ -164,7 +164,7 @@ export function StationCustomers({ stationId, client }: { stationId: string; cli
           Chargement des clients…
         </div>
       ) : customers.data.length ? (
-        <Table>
+        <Table label="Clients enregistrés dans la station">
           <TableHeader>
             <TableRow>
               <TableHead>Client</TableHead>

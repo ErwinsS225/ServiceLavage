@@ -68,8 +68,9 @@ export function StationPicker({
         <CardContent className="space-y-4">
           {stations.length > 0 ? (
             <div className="space-y-3">
-              <FormField label="Station en cours d'exploitation">
+              <FormField label="Station en cours d'exploitation" htmlFor="active-station">
                 <select
+                  id="active-station"
                   className={formControlStyles.select}
                   value={stationId}
                   onChange={event => onSelectStation(event.target.value)}

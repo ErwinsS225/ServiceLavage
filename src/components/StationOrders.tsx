@@ -265,7 +265,7 @@ export function StationOrders({
           }
         />
       ) : (
-        <Table>
+        <Table label="Prestations en cours et terminées">
           <TableHeader>
             <TableRow>
               <TableHead>Véhicule & Immat</TableHead>
@@ -343,7 +343,7 @@ export function StationOrders({
                             <label className="sr-only" htmlFor={`washer-${order.id}`}>Laveur à affecter</label>
                             <select
                               id={`washer-${order.id}`}
-                              className="w-full text-xs rounded bg-[var(--surface-elevated)] border border-[var(--border-strong)] px-1.5 py-1 text-slate-200 outline-none"
+                              className="w-full text-xs rounded bg-[var(--surface-elevated)] border border-[var(--border-strong)] px-1.5 py-1 text-[var(--text-primary)]"
                               value={assignTarget[order.id] ?? ''}
                               onChange={event => setAssignTarget(previous => ({ ...previous, [order.id]: event.target.value }))}
                             >

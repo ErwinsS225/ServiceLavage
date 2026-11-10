@@ -1,9 +1,27 @@
 import React from 'react';
 
-export function Table({ children, className = '' }: { children: React.ReactNode; className?: string }) {
+export function Table({
+  children,
+  className = '',
+  label,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  /**
+   * Nom du tableau, pour les lecteurs d'écran. Un tableau sans nom est annoncé
+   * comme « tableau » sans que l'utilisateur sache ce qu'il liste — il y en a
+   * un par module, donc la confusion est certaine.
+   */
+  label?: string;
+}) {
   return (
     <div className="w-full overflow-x-auto rounded-xl border border-[var(--border-subtle)]">
-      <table className={`w-full text-left text-sm text-slate-300 ${className}`}>{children}</table>
+      <table
+        aria-label={label}
+        className={`w-full text-left text-sm text-[var(--text-primary)] ${className}`}
+      >
+        {children}
+      </table>
     </div>
   );
 }
@@ -41,7 +59,14 @@ export function TableHead({
   className?: string;
 }) {
   const alignClass = align === 'right' ? 'text-right' : align === 'center' ? 'text-center' : 'text-left';
-  return <th className={`px-4 py-3 font-semibold ${alignClass} ${className}`}>{children}</th>;
+  // `scope="col"` : sans lui, l'association en-tête/cellule dépend du
+  // navigateur (heuristique). Un lecteur d'écran annonce alors « 5 000 » sans
+  // dire « Tarif ».
+  return (
+    <th scope="col" className={`px-4 py-3 font-semibold ${alignClass} ${className}`}>
+      {children}
+    </th>
+  );
 }
 
 export function TableCell({

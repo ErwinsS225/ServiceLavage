@@ -175,7 +175,7 @@ export function StationStaff({
                 description="Invitez un gérant, un caissier ou un laveur pour lui déléguer des fonctions au sein de la station."
               />
             ) : (
-              <Table>
+              <Table label="Membres de la station">
                 <TableHeader>
                   <TableRow>
                     <TableHead>Collaborateur</TableHead>
@@ -244,7 +244,7 @@ export function StationStaff({
               {invitations.length === 0 ? (
                 <p className="text-xs text-[var(--text-secondary)]">Aucune invitation émise pour l’instant.</p>
               ) : (
-                <Table>
+                <Table label="Invitations en attente">
                   <TableHeader>
                     <TableRow>
                       <TableHead>Email destinataire</TableHead>

@@ -178,7 +178,7 @@ export function StationServices({ stationId, client }: { stationId: string; clie
           Chargement du catalogue…
         </div>
       ) : services.data.length ? (
-        <Table>
+        <Table label="Catalogue des prestations">
           <TableHeader>
             <TableRow>
               <TableHead>Prestation</TableHead>
