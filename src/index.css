@@ -1,27 +1,176 @@
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
 
 @layer base {
+  :root {
+    --brand-primary: #4f46e5;
+    --brand-primary-hover: #4338ca;
+    --brand-accent: #38bdf8;
+
+    /* Spacing tokens */
+    --spacing-xs: 0.25rem;
+    --spacing-sm: 0.5rem;
+    --spacing-md: 1rem;
+    --spacing-lg: 1.5rem;
+    --spacing-xl: 2rem;
+
+    /* Radius tokens */
+    --radius-sm: 0.375rem;
+    --radius-md: 0.5rem;
+    --radius-lg: 0.75rem;
+    --radius-xl: 1rem;
+    --radius-2xl: 1.25rem;
+
+    /* Light mode surfaces and text */
+    --surface-canvas: #f8fafc;
+    --surface-card: #ffffff;
+    --surface-elevated: #f1f5f9;
+    --surface-hover: #e2e8f0;
+    --border-subtle: #e2e8f0;
+    --border-strong: #cbd5e1;
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --text-muted: #64748b;
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-card: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+    --shadow-modal: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  }
+
+  .dark {
+    --brand-primary: #4f46e5;
+    --brand-primary-hover: #4338ca;
+    --brand-accent: #38bdf8;
+
+    /* Dark mode surfaces and text */
+    --surface-canvas: #0c0e14;
+    --surface-card: #12151c;
+    --surface-elevated: #181c25;
+    --surface-hover: #1e2330;
+    --border-subtle: #232834;
+    --border-strong: #32394a;
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.4);
+    --shadow-card: 0 2px 8px -1px rgba(0, 0, 0, 0.45);
+    --shadow-modal: 0 20px 40px -10px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.08);
+  }
+
   body {
     font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    background-color: var(--surface-canvas);
+    color: var(--text-primary);
+    transition: background-color 0.2s ease, color 0.2s ease;
   }
 }
 
-/* Print styling for POS thermal ticket */
+/* ==========================================================================
+   Print styling: Financial Reports & POS Thermal Receipts
+   ========================================================================== */
 @media print {
-  body * {
-    visibility: hidden;
+  /* Set pure white background and crisp black typography for physical printers */
+  html, body {
+    background: #ffffff !important;
+    color: #111827 !important;
+    font-size: 12pt;
+    line-height: 1.4;
   }
-  .printable-ticket, .printable-ticket * {
-    visibility: visible;
+
+  /* Hide interactive non-printable elements */
+  nav,
+  header,
+  aside,
+  button,
+  .no-print,
+  .auth-rim::before,
+  .auth-rim::after {
+    display: none !important;
   }
-  .printable-ticket {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 80mm;
-    margin: 0;
-    padding: 5mm;
+
+  /* Printable Financial Report (ReportsAndAnalytics) */
+  .printable-report {
+    display: block !important;
+    position: static !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 10mm !important;
+    background: #ffffff !important;
+    color: #111827 !important;
+    border: none !important;
     box-shadow: none !important;
+    page-break-inside: avoid;
+  }
+
+  .printable-report * {
+    color: #111827 !important;
+    background-color: transparent !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  .printable-report .report-header {
+    border-bottom: 2pt solid #111827 !important;
+    padding-bottom: 8mm !important;
+    margin-bottom: 8mm !important;
+  }
+
+  .printable-report table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    margin-top: 6mm !important;
+    page-break-inside: auto;
+  }
+
+  .printable-report tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
+  }
+
+  .printable-report th,
+  .printable-report td {
+    border: 1px solid #d1d5db !important;
+    padding: 6pt 8pt !important;
+    font-size: 10pt !important;
+  }
+
+  .printable-report th {
+    background-color: #f3f4f6 !important;
+    font-weight: 700 !important;
+  }
+
+  .printable-report .kpi-card {
+    border: 1px solid #d1d5db !important;
+    background: #f9fafb !important;
+    padding: 8pt !important;
+    border-radius: 4pt !important;
+  }
+
+  .printable-report .signature-zone {
+    margin-top: 15mm !important;
+    page-break-inside: avoid;
+  }
+
+  /* Printable POS Thermal / Customer Receipt */
+  .printable-ticket {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 80mm !important;
+    margin: 0 !important;
+    padding: 5mm !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    box-shadow: none !important;
+    border: none !important;
+    font-family: 'JetBrains Mono', monospace !important;
+    font-size: 10pt !important;
+    line-height: 1.3 !important;
+  }
+
+  .printable-ticket * {
+    color: #000000 !important;
+    background-color: transparent !important;
   }
 }
 

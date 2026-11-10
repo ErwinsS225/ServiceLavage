@@ -1,5 +1,10 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
+import { 
+  Table, TableHeader, TableBody, TableHead, TableRow, TableCell, 
+  buttonStyles, formControlStyles, FormField, Modal, Alert, EmptyState 
+} from './ui/designSystem';
+import { Plus, User, Phone, Edit2, RotateCw } from 'lucide-react';
 
 type Customer = { id: string; name: string; phone: string };
 
@@ -11,6 +16,7 @@ export function StationCustomers({ stationId }: { stationId: string }) {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [editing, setEditing] = useState<string | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [reload, setReload] = useState(0);
@@ -29,6 +35,31 @@ export function StationCustomers({ stationId }: { stationId: string }) {
     return () => { active = false; };
   }, [stationId, reload]);
 
+  function startAdd() {
+    setEditing(null);
+    setName('');
+    setPhone('');
+    setError('');
+    setMessage('');
+    setModalOpen(true);
+  }
+
+  function startEdit(customer: Customer) {
+    setEditing(customer.id);
+    setName(customer.name);
+    setPhone(customer.phone);
+    setError('');
+    setMessage('');
+    setModalOpen(true);
+  }
+
+  function closeModal() {
+    setModalOpen(false);
+    setEditing(null);
+    setName('');
+    setPhone('');
+  }
+
   async function save(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const cleanName = name.trim();
@@ -42,31 +73,175 @@ export function StationCustomers({ stationId }: { stationId: string }) {
       const { data, error } = await request.select('id,name,phone').single();
       if (error) { setError(`Enregistrement impossible : ${error.message}`); return; }
       setCustomers(prev => editing ? prev.map(c => c.id === editing ? data : c) : [data, ...prev]);
-      setName(''); setPhone(''); setEditing(null);
-      setMessage(editing ? 'Client modifié.' : 'Client ajouté.');
+      closeModal();
+      setMessage(editing ? 'Client modifié avec succès.' : 'Nouveau client enregistré.');
     } catch {
       setError('Enregistrement impossible. Vérifiez votre connexion et réessayez.');
     } finally { setBusy(false); }
   }
 
-  const input = 'w-full rounded-xl bg-[#20242e] border border-[#343b48] px-4 py-3 text-white';
-  return <section className="space-y-4 border-t border-[#303640] pt-5" aria-label="Clients de la station">
-    <h2 className="font-bold">Clients de la station</h2>
-    <p className="text-xs text-gray-400">Clients enregistrés dans Supabase pour cette station uniquement.</p>
-    {loading ? <p className="text-sm">Chargement des clients…</p> : customers.length ?
-      <ul className="space-y-2">{customers.map(customer => <li key={customer.id} className="flex justify-between items-center gap-3 rounded-xl bg-[#20242e] p-3 text-sm">
-        <span><strong>{customer.name}</strong><br /><span className="text-gray-400">{customer.phone}</span></span>
-        <button type="button" disabled={busy} className="text-cyan-400 underline disabled:opacity-50" onClick={() => { setEditing(customer.id); setName(customer.name); setPhone(customer.phone); setMessage(''); setError(''); }}>Modifier</button>
-      </li>)}</ul> : !error && <p className="text-sm text-gray-400">Aucun client enregistré.</p>}
-    {error && <div role="alert" className="text-sm text-red-400">{error} <button type="button" className="underline" onClick={() => setReload(v => v + 1)}>Réessayer le chargement</button></div>}
-    {message && <p role="status" className="text-sm text-emerald-400">{message}</p>}
-    <form onSubmit={save} className="space-y-3">
-      <h3 className="text-sm font-semibold">{editing ? 'Modifier le client' : 'Ajouter un client'}</h3>
-      <label className="block text-sm">Nom<input className={`${input} mt-1`} required maxLength={120} value={name} onChange={e => setName(e.target.value)} /></label>
-      <label className="block text-sm">Téléphone<input className={`${input} mt-1`} type="tel" required maxLength={40} value={phone} onChange={e => setPhone(e.target.value)} /></label>
-      <div className="flex gap-4"><button type="submit" disabled={busy || loading} className="rounded-xl bg-cyan-500 px-4 py-2 font-semibold text-gray-950 disabled:opacity-50">{editing ? 'Enregistrer' : 'Ajouter'}</button>
-        {editing && <button type="button" disabled={busy} className="text-gray-300 underline" onClick={() => { setEditing(null); setName(''); setPhone(''); setError(''); }}>Annuler</button>}
+  return (
+    <section className="space-y-5 border-t border-[#232834] pt-6" aria-label="Clients de la station">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-bold text-white tracking-tight">Répertoire Clients</h2>
+          <p className="text-xs text-slate-400 mt-0.5">Clients enregistrés dans la station active (isolation multitenant Supabase)</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            className={buttonStyles({ variant: 'outline', size: 'sm' })}
+            onClick={() => setReload(v => v + 1)}
+            disabled={loading || busy}
+          >
+            <RotateCw className={`w-3.5 h-3.5 mr-1.5 ${loading ? 'animate-spin' : ''}`} />
+            Actualiser
+          </button>
+          <button
+            type="button"
+            className={buttonStyles({ variant: 'primary', size: 'sm' })}
+            onClick={startAdd}
+            disabled={loading || busy}
+          >
+            <Plus className="w-4 h-4 mr-1.5" />
+            Nouveau client
+          </button>
+        </div>
       </div>
-    </form>
-  </section>;
+
+      {error && (
+        <Alert variant="error" action={
+          <button type="button" className="underline text-xs font-semibold text-rose-300" onClick={() => setReload(v => v + 1)}>
+            Réessayer
+          </button>
+        }>
+          {error}
+        </Alert>
+      )}
+
+      {message && (
+        <Alert variant="success">
+          {message}
+        </Alert>
+      )}
+
+      {loading ? (
+        <div className="p-8 text-center text-sm text-slate-400 rounded-xl bg-[#141720] border border-[#232834]">
+          Chargement des clients…
+        </div>
+      ) : customers.length ? (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Client</TableHead>
+              <TableHead>Téléphone</TableHead>
+              <TableHead align="right">Action</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {customers.map(customer => (
+              <TableRow key={customer.id}>
+                <TableCell>
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 flex items-center justify-center font-bold text-xs uppercase">
+                      {customer.name.slice(0, 2)}
+                    </div>
+                    <div>
+                      <span className="font-semibold text-white block">{customer.name}</span>
+                      <span className="text-[11px] text-slate-400 font-mono">ID: {customer.id.slice(0, 8)}</span>
+                    </div>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <span className="font-mono text-slate-300 flex items-center gap-1.5">
+                    <Phone className="w-3.5 h-3.5 text-slate-500" />
+                    {customer.phone}
+                  </span>
+                </TableCell>
+                <TableCell align="right">
+                  <button
+                    type="button"
+                    disabled={busy}
+                    className={buttonStyles({ variant: 'ghost', size: 'sm' })}
+                    onClick={() => startEdit(customer)}
+                  >
+                    <Edit2 className="w-3.5 h-3.5 mr-1 text-sky-400" />
+                    Modifier
+                  </button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      ) : (
+        <EmptyState
+          icon={<User className="w-6 h-6 text-slate-400" />}
+          title="Aucun client enregistré"
+          description="Enregistrez les coordonnées de vos clients réguliers pour faciliter la création des prestations."
+          action={
+            <button
+              type="button"
+              className={buttonStyles({ variant: 'primary', size: 'sm' })}
+              onClick={startAdd}
+            >
+              <Plus className="w-4 h-4 mr-1.5" />
+              Ajouter un premier client
+            </button>
+          }
+        />
+      )}
+
+      {/* Customer Modal Dialog */}
+      <Modal
+        isOpen={modalOpen}
+        onClose={closeModal}
+        title={editing ? 'Modifier le client' : 'Ajouter un nouveau client'}
+        description="Les coordonnées sont protégées et isolées par station."
+      >
+        <form onSubmit={save} className="space-y-4">
+          <FormField label="Nom complet ou raison sociale" required>
+            <input
+              className={formControlStyles.input}
+              required
+              maxLength={120}
+              value={name}
+              onChange={e => setName(e.target.value)}
+              placeholder="Ex: Jean Kouassi"
+              autoFocus
+            />
+          </FormField>
+
+          <FormField label="Numéro de téléphone" required hint="Format recommandé : +225 07..." >
+            <input
+              className={formControlStyles.input}
+              type="tel"
+              required
+              maxLength={40}
+              value={phone}
+              onChange={e => setPhone(e.target.value)}
+              placeholder="Ex: +225 07 00 00 00 00"
+            />
+          </FormField>
+
+          <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#232834]">
+            <button
+              type="button"
+              disabled={busy}
+              className={buttonStyles({ variant: 'ghost', size: 'md' })}
+              onClick={closeModal}
+            >
+              Annuler
+            </button>
+            <button
+              type="submit"
+              disabled={busy || loading}
+              className={buttonStyles({ variant: 'primary', size: 'md' })}
+            >
+              {busy ? 'Enregistrement…' : editing ? 'Enregistrer les modifications' : 'Créer la fiche client'}
+            </button>
+          </div>
+        </form>
+      </Modal>
+    </section>
+  );
 }

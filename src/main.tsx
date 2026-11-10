@@ -1,11 +1,14 @@
-import {createRoot} from 'react-dom/client';
-import { OwnerPortal } from './components/OwnerPortal';
+import { createRoot } from 'react-dom/client';
+import { App } from './App';
+import { ThemeProvider } from './context/ThemeContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import './index.css';
 
 createRoot(document.getElementById('root')!).render(
   <ErrorBoundary>
-    <OwnerPortal />
+    <ThemeProvider>
+      <App />
+    </ThemeProvider>
   </ErrorBoundary>,
 );
 

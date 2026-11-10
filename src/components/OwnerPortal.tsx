@@ -10,9 +10,41 @@ import { StationCustomers } from './StationCustomers';
 import { StationServices } from './StationServices';
 import { StationOrders } from './StationOrders';
 import { SubscriptionPlans } from './SubscriptionPlans';
+import { 
+  BrandLogo, 
+  buttonStyles, 
+  formControlStyles, 
+  FormField, 
+  Card, 
+  CardHeader, 
+  CardTitle, 
+  CardDescription, 
+  CardContent, 
+  StatusBadge, 
+  Alert 
+} from './ui/designSystem';
+import { useTheme } from '../context/ThemeContext';
+import { 
+  LogOut, 
+  Building2, 
+  Plus, 
+  Users, 
+  Sparkles, 
+  Car, 
+  Boxes, 
+  CreditCard, 
+  ShieldCheck, 
+  WifiOff,
+  Sun,
+  Moon,
+  TrendingUp,
+  FileText
+} from 'lucide-react';
 
 const StationInventory = lazy(() => import('./StationInventory').then(module => ({ default: module.StationInventory })));
 const StationStaff = lazy(() => import('./StationStaff').then(module => ({ default: module.StationStaff })));
+const StationDashboard = lazy(() => import('./StationDashboard').then(module => ({ default: module.StationDashboard })));
+const StationReports = lazy(() => import('./StationReports').then(module => ({ default: module.StationReports })));
 
 type Station = { id: string; name: string; owner_id?: string };
 type StationRole = 'owner' | 'gerant' | 'caissier' | 'laveur';
@@ -34,7 +66,7 @@ export function OwnerPortal() {
   const [rolesReady, setRolesReady] = useState(false);
   const [stationReload, setStationReload] = useState(0);
   const [inviteCode, setInviteCode] = useState('');
-  const [tab, setTab] = useState<'orders' | 'services' | 'customers' | 'inventory' | 'staff' | 'subscription'>('orders');
+  const [tab, setTab] = useState<'dashboard' | 'orders' | 'services' | 'customers' | 'inventory' | 'staff' | 'reports' | 'subscription'>('dashboard');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
@@ -159,18 +191,32 @@ export function OwnerPortal() {
       const { data, error } = await supabase.from('stations')
         .insert({ name: name.trim(), owner_id: session.user.id }).select('id,name,owner_id').single();
       if (error) setError(error.message);
-      else { setStations(prev => [...prev, data]); setStationId(data.id); setStationRole('owner'); setName(''); setMessage('Station créée.'); }
+      else { setStations(prev => [...prev, data]); setStationId(data.id); setStationRole('owner'); setName(''); setMessage('Station créée avec succès.'); }
     } catch { setError('Impossible de créer la station. Vérifiez votre connexion.'); }
     finally { setBusy(false); }
   }
 
-  const input = 'w-full rounded-xl bg-[#20242e] border border-[#343b48] px-4 py-3 text-white';
-  const button = 'rounded-xl bg-cyan-500 px-4 py-3 font-semibold text-gray-950 disabled:opacity-50';
-  const banner = <>
-    {!online && <p role="status" className="mb-5 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-300">Connexion indisponible. Les prestations peuvent être mises en attente si les données de la station ont été chargées auparavant ; les autres modules ne fonctionnent pas encore hors ligne.</p>}
-    {error && <p role="alert" className="mb-5 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2.5 text-sm text-red-300">{error}</p>}
-    {message && <p role="status" className="mb-5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2.5 text-sm text-emerald-300">{message}</p>}
-  </>;
+  const roleDisplayNames: Record<StationRole, string> = {
+    owner: 'Propriétaire',
+    gerant: 'Gérant',
+    caissier: 'Caissier',
+    laveur: 'Laveur',
+  };
+
+  const banner = (
+    <div className="space-y-3">
+      {!online && (
+        <Alert variant="warning">
+          <div className="flex items-center gap-2">
+            <WifiOff className="w-4 h-4 shrink-0 text-amber-400" />
+            <span>Connexion indisponible. Les prestations peuvent être mises en attente si les données de la station ont été chargées auparavant ; les autres modules ne fonctionnent pas encore hors ligne.</span>
+          </div>
+        </Alert>
+      )}
+      {error && <Alert variant="error">{error}</Alert>}
+      {message && <Alert variant="success">{message}</Alert>}
+    </div>
+  );
 
   if (!supabase) return <AuthLayout title="Configuration requise" screen="signin">
     <p className="text-sm leading-relaxed text-gray-400">
@@ -209,77 +255,339 @@ export function OwnerPortal() {
     </AuthLayout>;
   }
 
-  return <main className="min-h-screen bg-[#111317] text-gray-100 flex items-start justify-center p-6">
-    <section className="w-full max-w-3xl space-y-5 py-6">
-      {banner}
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-gray-500">Clean It CI</p>
-          <h1 className="mt-1 text-2xl font-bold">Espace propriétaire</h1>
+  const { isDarkMode, toggleDarkMode } = useTheme();
+  const activeStation = stations.find(s => s.id === stationId);
+
+  return (
+    <main className="min-h-screen bg-[var(--surface-canvas)] text-[var(--text-primary)] flex items-start justify-center p-4 sm:p-6 lg:p-8">
+      <div className="w-full max-w-5xl space-y-6">
+        {/* Top Header */}
+        <header className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-4 sm:p-5 flex flex-wrap items-center justify-between gap-4 shadow-[var(--shadow-card)]">
+          <div className="flex items-center gap-4">
+            <BrandLogo size="md" showTagline={true} />
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="text-right hidden sm:block">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-muted)] block">Compte actif</span>
+              <span className="text-xs font-mono text-[var(--text-secondary)] font-medium">{session.user.email}</span>
+            </div>
+            <button
+              type="button"
+              aria-label={isDarkMode ? 'Passer en mode clair' : 'Passer en mode sombre'}
+              className={buttonStyles({ variant: 'outline', size: 'sm' })}
+              onClick={toggleDarkMode}
+            >
+              {isDarkMode ? <Sun className="w-3.5 h-3.5 mr-1.5 text-amber-300" /> : <Moon className="w-3.5 h-3.5 mr-1.5 text-indigo-400" />}
+              {isDarkMode ? 'Clair' : 'Sombre'}
+            </button>
+            <button
+              type="button"
+              className={buttonStyles({ variant: 'outline', size: 'sm' })}
+              onClick={async () => { const { error: signErr } = await supabase!.auth.signOut(); if (signErr) setError(signErr.message); }}
+            >
+              <LogOut className="w-3.5 h-3.5 mr-1.5 text-[var(--text-muted)]" />
+              Se déconnecter
+            </button>
+          </div>
+        </header>
+
+        {banner}
+
+        {/* Stations & Team Workspace Grid */}
+        <div className="grid gap-5 md:grid-cols-2">
+          {/* Active Station Selector */}
+          <Card>
+            <CardHeader
+              action={
+                activeStation && stationRole && (
+                  <StatusBadge
+                    status="info"
+                    label={roleDisplayNames[stationRole]}
+                    size="sm"
+                  />
+                )
+              }
+            >
+              <CardTitle as="h2" className="flex items-center gap-2">
+                <Building2 className="w-4 h-4 text-indigo-400" />
+                Mes stations de lavage
+              </CardTitle>
+              <CardDescription>
+                Sélectionnez la station de travail pour charger ses données isolées
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {stations.length > 0 ? (
+                <div className="space-y-3">
+                  <FormField label="Station en cours d'exploitation">
+                    <select
+                      className={formControlStyles.select}
+                      value={stationId}
+                      onChange={e => setStationId(e.target.value)}
+                    >
+                      <option value="">Sélectionner une station</option>
+                      {stations.map(s => (
+                        <option key={s.id} value={s.id}>
+                          {s.name} {s.owner_id === session.user.id ? '· (Propriétaire)' : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </FormField>
+
+                  <div className="space-y-2 pt-1">
+                    <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block">
+                      Stations rattachées ({stations.length})
+                    </span>
+                    <ul className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                      {stations.map(s => {
+                        const isSelected = stationId === s.id;
+                        return (
+                          <li
+                            key={s.id}
+                            onClick={() => setStationId(s.id)}
+                            className={`p-2.5 rounded-xl border text-xs cursor-pointer flex items-center justify-between transition-all ${
+                              isSelected
+                                ? 'border-indigo-500 bg-indigo-500/10 text-white font-semibold shadow-sm'
+                                : 'border-[#242936] bg-[#161a23] text-slate-300 hover:border-slate-600'
+                            }`}
+                          >
+                            <span className="truncate">{s.name}</span>
+                            <span className="text-[10px] font-mono text-slate-500 shrink-0 ml-2">
+                              {s.owner_id === session.user.id ? 'Propriétaire' : 'Membre'}
+                            </span>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-1 p-3 rounded-xl bg-[#161a23] border border-[#242936]">
+                  <p className="text-xs font-semibold text-white">{NO_STATION_COPY.title}</p>
+                  <p className="text-xs text-slate-400">{NO_STATION_COPY.body}</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Create Station & Join Team */}
+          <div className="space-y-5">
+            {(stationRole === 'owner' || stations.length === 0) && (
+              <Card>
+                <CardHeader>
+                  <CardTitle as="h2" className="flex items-center gap-2">
+                    <Plus className="w-4 h-4 text-sky-400" />
+                    Créer une station
+                  </CardTitle>
+                  <CardDescription>
+                    Crée un nouveau tenant étanche rattaché à votre compte propriétaire
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <form onSubmit={createStation} className="space-y-3">
+                    <FormField label="Nom commercial de la station" required>
+                      <input
+                        className={formControlStyles.input}
+                        value={name}
+                        onChange={e => setName(e.target.value)}
+                        placeholder="Ex: Station Express Riviera 2"
+                        maxLength={120}
+                        required
+                      />
+                    </FormField>
+                    <button
+                      type="submit"
+                      className={`${buttonStyles({ variant: 'primary', size: 'md' })} w-full`}
+                      disabled={busy}
+                    >
+                      {busy ? 'Création en cours…' : 'Créer la station'}
+                    </button>
+                  </form>
+                </CardContent>
+              </Card>
+            )}
+
+            <Card>
+              <CardHeader>
+                <CardTitle as="h2" className="flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                  Rejoindre une équipe
+                </CardTitle>
+                <CardDescription>
+                  Activez un accès collaborateur à partir d'un code d'invitation reçu
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={acceptInvitation} className="space-y-3">
+                  <FormField label="Référence UUID d'invitation" required hint="Code à 36 caractères transmis par le gérant">
+                    <input
+                      className={formControlStyles.input}
+                      value={inviteCode}
+                      onChange={event => setInviteCode(event.target.value)}
+                      placeholder="Ex: 12345678-abcd-1234-abcd-1234567890ab"
+                    />
+                  </FormField>
+                  <button
+                    type="submit"
+                    className={`${buttonStyles({ variant: 'secondary', size: 'md' })} w-full`}
+                    disabled={busy || !online}
+                  >
+                    Vérifier et accepter l’invitation
+                  </button>
+                </form>
+              </CardContent>
+            </Card>
+          </div>
         </div>
-        <button type="button" className="rounded-lg border border-[#343b48] px-4 py-2 text-sm font-semibold text-gray-300 hover:border-violet-500/50 hover:text-white" onClick={async () => { const { error } = await supabase!.auth.signOut(); if (error) setError(error.message); }}>Se déconnecter</button>
-      </header>
-      <p className="text-sm text-gray-400">Connecté : {session.user.email}</p>
 
-      <div className="grid gap-5 md:grid-cols-2">
-        <section className="rounded-2xl border border-[#303640] bg-[#16181d] p-5">
-          <h2 className="font-bold">Mes stations</h2>
-          {stations.length
-            ? <ul className="mt-3 space-y-2">{stations.map(s => <li className={stationId === s.id ? 'rounded-xl border border-violet-500/40 bg-violet-500/10 p-3 text-sm text-white' : 'rounded-xl bg-[#20242e] p-3 text-sm'} key={s.id}>{s.name}</li>)}</ul>
-            : <div className="mt-3 space-y-1">
-                <p className="text-sm font-semibold text-white">{NO_STATION_COPY.title}</p>
-                <p className="text-sm text-gray-400">{NO_STATION_COPY.body}</p>
-              </div>}
-          {stations.length > 0 && <label className="mt-4 block text-sm">Station active
-            <select className={`${input} mt-1`} value={stationId} onChange={e => setStationId(e.target.value)}>
-              <option value="">Choisir une station</option>{stations.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
-          </label>}
-        </section>
+        {/* Dynamic Station Navigation & Content */}
+        {stationId && roleLoading ? (
+          <div className="p-8 text-center text-sm text-slate-400 rounded-2xl bg-[#12151c] border border-[#232834]">
+            Vérification des accès serveur…
+          </div>
+        ) : stationId && !stationRole ? (
+          <Alert variant="warning">
+            Votre compte n’a pas d’accès actif à cette station. Demandez une invitation au propriétaire.
+          </Alert>
+        ) : (
+          <>
+            {(() => {
+              const tabs: Array<{ id: 'dashboard' | 'orders' | 'services' | 'customers' | 'inventory' | 'staff' | 'reports' | 'subscription'; label: string; icon: React.ReactNode }> = [
+                ...(stationRole === 'owner' || stationRole === 'gerant' || stationRole === 'caissier'
+                  ? [{ id: 'dashboard' as const, label: 'Tableau de bord', icon: <TrendingUp className="w-4 h-4" /> }]
+                  : []),
+                ...(stationRole === 'owner' || stationRole === 'gerant' || stationRole === 'laveur'
+                  ? [{ id: 'orders' as const, label: 'Prestations', icon: <Car className="w-4 h-4" /> }]
+                  : []),
+                ...(stationRole === 'owner' || stationRole === 'gerant'
+                  ? [{ id: 'services' as const, label: 'Catalogue', icon: <Sparkles className="w-4 h-4" /> }]
+                  : []),
+                ...(stationRole === 'owner' || stationRole === 'gerant' || stationRole === 'caissier'
+                  ? [{ id: 'customers' as const, label: 'Clients', icon: <Users className="w-4 h-4" /> }]
+                  : []),
+                ...(stationRole === 'owner' || stationRole === 'gerant'
+                  ? [{ id: 'inventory' as const, label: 'Inventaire', icon: <Boxes className="w-4 h-4" /> }]
+                  : []),
+                ...(stationRole === 'owner' || stationRole === 'gerant'
+                  ? [{ id: 'staff' as const, label: 'Personnel', icon: <ShieldCheck className="w-4 h-4" /> }]
+                  : []),
+                ...(stationRole === 'owner' || stationRole === 'gerant'
+                  ? [{ id: 'reports' as const, label: 'Rapports', icon: <FileText className="w-4 h-4" /> }]
+                  : []),
+                ...(stationRole === 'owner'
+                  ? [{ id: 'subscription' as const, label: 'Abonnements', icon: <CreditCard className="w-4 h-4" /> }]
+                  : []),
+              ];
 
-        <div className="space-y-5">
-          {(stationRole === 'owner' || stations.length === 0) && <section className="rounded-2xl border border-[#303640] bg-[#16181d] p-5">
-            <h2 className="font-bold">Créer une station</h2>
-            <p className="mt-1 text-sm text-gray-400">Elle sera rattachée à votre compte propriétaire.</p>
-            <form onSubmit={createStation} className="mt-3 space-y-2">
-              <input className={input} value={name} onChange={e => setName(e.target.value)} placeholder="Nom de la station" maxLength={120} required />
-              <button type="submit" className={`${button} w-full`} disabled={busy}>Créer la station</button>
-            </form>
-          </section>}
+              return (
+                <div className="space-y-4">
+                  {/* Segmented Modules Tab Navigation */}
+                  <nav
+                    aria-label="Modules autorisés"
+                    className="flex flex-wrap gap-1.5 p-1.5 rounded-2xl bg-[#12151c] border border-[#232834]"
+                  >
+                    {tabs.map(item => {
+                      const isActive = tab === item.id;
+                      return (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => setTab(item.id)}
+                          aria-current={isActive ? 'page' : undefined}
+                          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-150 select-none ${
+                            isActive
+                              ? 'bg-indigo-600 text-white shadow-md shadow-indigo-950/40 border border-indigo-400/30'
+                              : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.04]'
+                          }`}
+                        >
+                          <span className={isActive ? 'text-white' : 'text-slate-500'}>
+                            {item.icon}
+                          </span>
+                          <span>{item.label}</span>
+                        </button>
+                      );
+                    })}
+                  </nav>
 
-          <section className="rounded-2xl border border-[#303640] bg-[#16181d] p-5">
-            <h2 className="font-bold">Rejoindre une équipe</h2>
-            <form onSubmit={acceptInvitation} className="mt-3 space-y-2">
-              <label className="block text-sm">Référence d’invitation
-                <input className={`${input} mt-1`} value={inviteCode} onChange={event => setInviteCode(event.target.value)} placeholder="Référence communiquée par le propriétaire" />
-              </label>
-              <button type="submit" className={`${button} w-full`} disabled={busy || !online}>Vérifier et accepter</button>
-              <p className="text-xs text-gray-500">L’adresse de connexion doit être confirmée. L’acceptation est validée côté serveur.</p>
-            </form>
-          </section>
-        </div>
+                  {/* Main Station Active Module Panel */}
+                  <div className="rounded-2xl border border-[#232834] bg-[#12151c] p-5 sm:p-6 shadow-sm">
+                    {tab === 'subscription' && stationRole === 'owner' && <SubscriptionPlans />}
+                    {stationId && stationRole && (
+                      <>
+                        {tab === 'dashboard' && (stationRole === 'owner' || stationRole === 'gerant' || stationRole === 'caissier') && (
+                          <Suspense fallback={<p className="text-sm text-slate-400">Chargement du tableau de bord…</p>}>
+                            <StationDashboard
+                              key={`dashboard:${session.user.id}:${stationId}`}
+                              stationId={stationId}
+                              userId={session.user.id}
+                              onNavigateTab={nextTab => setTab(nextTab)}
+                            />
+                          </Suspense>
+                        )}
+                        {tab === 'orders' && (
+                          <StationOrders
+                            key={`orders:${session.user.id}:${stationId}`}
+                            stationId={stationId}
+                            userId={session.user.id}
+                            role={stationRole}
+                            roleFeaturesReady={rolesReady}
+                          />
+                        )}
+                        {tab === 'services' && (stationRole === 'owner' || stationRole === 'gerant') && (
+                          <StationServices
+                            key={`services:${session.user.id}:${stationId}`}
+                            stationId={stationId}
+                          />
+                        )}
+                        {tab === 'customers' && (stationRole === 'owner' || stationRole === 'gerant' || stationRole === 'caissier') && (
+                          <StationCustomers
+                            key={`customers:${session.user.id}:${stationId}`}
+                            stationId={stationId}
+                          />
+                        )}
+                        {tab === 'inventory' && (stationRole === 'owner' || stationRole === 'gerant') && (
+                          <Suspense fallback={<p className="text-sm text-slate-400">Chargement de l’inventaire…</p>}>
+                            <StationInventory
+                              key={`inventory:${session.user.id}:${stationId}`}
+                              stationId={stationId}
+                              userId={session.user.id}
+                            />
+                          </Suspense>
+                        )}
+                        {tab === 'staff' && (stationRole === 'owner' || stationRole === 'gerant') && (
+                          rolesReady ? (
+                            <Suspense fallback={<p className="text-sm text-slate-400">Chargement du personnel…</p>}>
+                              <StationStaff
+                                key={`staff:${session.user.id}:${stationId}`}
+                                stationId={stationId}
+                                canManageRoles={stationRole === 'owner'}
+                              />
+                            </Suspense>
+                          ) : (
+                            <Alert variant="warning">
+                              Le module Personnel nécessite le déploiement préalable des migrations de rôles sur l’instance.
+                            </Alert>
+                          )
+                        )}
+                        {tab === 'reports' && (stationRole === 'owner' || stationRole === 'gerant') && (
+                          <Suspense fallback={<p className="text-sm text-slate-400">Chargement des rapports…</p>}>
+                            <StationReports
+                              key={`reports:${session.user.id}:${stationId}`}
+                              stationId={stationId}
+                              stationName={activeStation?.name || 'Station ServiceLavage'}
+                            />
+                          </Suspense>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
+          </>
+        )}
       </div>
-
-      {stationId && roleLoading ? <p role="status" className="text-sm text-gray-400">Vérification des accès…</p> : stationId && !stationRole ? <p role="alert" className="text-sm text-amber-300">Votre compte n’a pas d’accès actif à cette station. Demandez une invitation au propriétaire.</p> : <>{(() => {
-        const tabs = [
-          ...(stationRole === 'owner' || stationRole === 'gerant' || stationRole === 'laveur' ? [['orders', 'Prestations'] as const] : []),
-          ...(stationRole === 'owner' || stationRole === 'gerant' ? [['services', 'Catalogue'] as const] : []),
-          ...(stationRole === 'owner' || stationRole === 'gerant' || stationRole === 'caissier' ? [['customers', 'Clients'] as const] : []),
-          ...(stationRole === 'owner' || stationRole === 'gerant' ? [['inventory', 'Inventaire'] as const] : []),
-          ...(stationRole === 'owner' || stationRole === 'gerant' ? [['staff', 'Personnel'] as const] : []),
-          ...(stationRole === 'owner' ? [['subscription', 'Abonnements'] as const] : []),
-        ];
-        return <><nav aria-label="Modules autorisés" className="flex flex-wrap gap-2">{tabs.map(([key, label]) => <button key={key} type="button" onClick={() => setTab(key)} aria-current={tab === key ? 'page' : undefined} className={`rounded-xl px-3 py-2 text-sm font-semibold transition ${tab === key ? 'bg-violet-600 text-white' : 'bg-[#20242e] text-gray-300 hover:bg-[#262b35]'}`}>{label}</button>)}</nav>
-          <div className="rounded-2xl border border-[#303640] bg-[#16181d] p-5">
-          {tab === 'subscription' && stationRole === 'owner' && <SubscriptionPlans />}
-          {stationId && stationRole && <>{tab === 'orders' && <StationOrders key={`orders:${session.user.id}:${stationId}`} stationId={stationId} userId={session.user.id} role={stationRole} roleFeaturesReady={rolesReady} />}
-            {tab === 'services' && (stationRole === 'owner' || stationRole === 'gerant') && <StationServices key={`services:${session.user.id}:${stationId}`} stationId={stationId} />}
-            {tab === 'customers' && (stationRole === 'owner' || stationRole === 'gerant' || stationRole === 'caissier') && <StationCustomers key={`customers:${session.user.id}:${stationId}`} stationId={stationId} />}
-            {tab === 'inventory' && (stationRole === 'owner' || stationRole === 'gerant') && <Suspense fallback={<p className="text-sm text-gray-400">Chargement de l’inventaire…</p>}><StationInventory key={`inventory:${session.user.id}:${stationId}`} stationId={stationId} userId={session.user.id} /></Suspense>}
-            {tab === 'staff' && (stationRole === 'owner' || stationRole === 'gerant') && (rolesReady ? <Suspense fallback={<p className="text-sm text-gray-400">Chargement du personnel…</p>}><StationStaff key={`staff:${session.user.id}:${stationId}`} stationId={stationId} canManageRoles={stationRole === 'owner'} /></Suspense> : <p role="status" className="text-sm text-amber-300">Le module Personnel nécessite le déploiement préalable des migrations de rôles.</p>)}
-          </>}
-          </div></>;
-      })()}</>}
-    </section>
-  </main>;
+    </main>
+  );
 }

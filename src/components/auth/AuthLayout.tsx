@@ -60,7 +60,10 @@ export function AuthLayout({ title, screen, scene = 'signin', children, footer }
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/40" />
         <div className="relative flex h-full flex-col justify-between p-10">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/70">Clean It CI</p>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-bold tracking-tight text-white uppercase">ServiceLavage</span>
+              <span className="text-[10px] font-mono uppercase tracking-widest px-1.5 py-0.5 rounded bg-white/10 text-white/90 border border-white/20">CI</span>
+            </div>
             <h2 className="mt-6 text-4xl font-light leading-tight text-white">{copy.headline}</h2>
             <p className="mt-4 max-w-sm text-sm leading-relaxed text-white/75">{copy.intro}</p>
             <ul className="mt-8 space-y-3">
@@ -83,7 +86,7 @@ export function AuthLayout({ title, screen, scene = 'signin', children, footer }
       <section className="flex flex-col justify-center px-6 py-10 sm:px-12 lg:px-16 lg:py-14">
         <h1 className="mb-8 hidden text-2xl font-bold lg:block">{title}</h1>
         <div className="mb-10 lg:hidden">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-gray-500">Clean It CI</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-gray-500">ServiceLavage CI</p>
           <h1 className="mt-2 text-2xl font-bold">{copy.headline}</h1>
           <p className="mt-1 text-sm text-gray-400">{copy.intro}</p>
         </div>
