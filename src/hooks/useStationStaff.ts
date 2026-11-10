@@ -1,21 +1,11 @@
 import { useCallback, useState } from 'react';
-import {
-  cancelInvitation as cancelInvitationRequest,
-  createInvitation as createInvitationRequest,
-  fetchStaff,
-  resolveClient,
-  revokeMembership,
-  type InvitationRow,
-  type MemberRow,
-  type StaffRole,
-  type StationClient,
-} from '../lib/stationApi';
+import { type StaffRole, type StationClient } from '../lib/stationApi';
 import {
   isValidInvitationEmail,
   normalizeInvitationEmail,
 } from '../lib/staffRules';
 import { describeError } from '../lib/queryResult';
-import { useResource } from './useResource';
+import { useInvitationMutations, useStaff } from './useStationQueries';
 
 /**
  * Données et mutations du module Personnel.
@@ -42,20 +32,14 @@ export function useStationStaff({
   enabled?: boolean;
   client?: StationClient | null;
 }) {
-  const api = useCallback(() => resolveClient(client), [client]);
+  const rosterQuery = useStaff(stationId, canManageRoles, enabled, client);
+  const { invite: inviteMutation, cancel: cancelMutation, revoke: revokeMutation } = useInvitationMutations(stationId, client);
 
-  const roster = useResource(
-    async () => {
-      const { members, invitations } = await fetchStaff(api(), stationId, canManageRoles);
-      return { members, invitations };
-    },
-    [stationId, canManageRoles],
-    {
-      fallback: 'Chargement du personnel impossible.',
-      initial: { members: [] as MemberRow[], invitations: [] as InvitationRow[] },
-      enabled,
-    },
-  );
+  const members = rosterQuery.data?.members ?? [];
+  const invitations = rosterQuery.data?.invitations ?? [];
+  const loading = rosterQuery.isPending;
+  const error = rosterQuery.error ? describeError(rosterQuery.error, 'Chargement du personnel impossible.') : '';
+  const reload = () => { void rosterQuery.refetch(); };
 
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState('');
@@ -71,55 +55,52 @@ export function useStationStaff({
     setActionError('');
     setMessage('');
     try {
-      const reference = await createInvitationRequest(api(), stationId, email, role);
-      roster.reload();
+      const reference = await inviteMutation.mutateAsync({ email, role });
       return reference;
     } catch (cause) {
       throw new Error(describeError(cause, 'Création de l’invitation impossible.'));
     } finally {
       setBusy(false);
     }
-  }, [api, stationId, roster]);
+  }, [inviteMutation]);
 
   const cancel = useCallback(async (invitationId: string): Promise<void> => {
     setBusy(true);
     setActionError('');
     setMessage('');
     try {
-      await cancelInvitationRequest(api(), invitationId);
+      await cancelMutation.mutateAsync(invitationId);
       setMessage('Invitation annulée.');
-      roster.reload();
     } catch (cause) {
       setActionError(describeError(cause, 'Annulation impossible.'));
     } finally {
       setBusy(false);
     }
-  }, [api, roster]);
+  }, [cancelMutation]);
 
   const revoke = useCallback(async (userId: string): Promise<void> => {
     setBusy(true);
     setActionError('');
     setMessage('');
     try {
-      await revokeMembership(api(), stationId, userId);
+      await revokeMutation.mutateAsync(userId);
       setMessage('Accès révoqué.');
-      roster.reload();
     } catch (cause) {
       setActionError(describeError(cause, 'Révocation impossible.'));
     } finally {
       setBusy(false);
     }
-  }, [api, stationId, roster]);
+  }, [revokeMutation]);
 
   return {
-    members: roster.data.members,
-    invitations: roster.data.invitations,
-    loading: roster.loading,
-    error: roster.error,
+    members,
+    invitations,
+    loading,
+    error,
     actionError,
     message,
     busy,
-    reload: roster.reload,
+    reload,
     setActionError,
     setMessage,
     clearMessages,

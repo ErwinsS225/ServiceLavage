@@ -1,13 +1,7 @@
 import { useState } from 'react';
 import { describeError } from '../lib/queryResult';
-import {
-  createCustomer,
-  fetchCustomers,
-  resolveClient,
-  updateCustomer,
-  type CustomerRow,
-} from '../lib/stationApi';
-import { useResource } from '../hooks/useResource';
+import { type CustomerRow, type StationClient } from '../lib/stationApi';
+import { useCreateCustomer, useCustomers, useUpdateCustomer } from '../hooks/useStationQueries';
 import {
   Table, TableHeader, TableBody, TableHead, TableRow, TableCell,
   buttonStyles, formControlStyles, FormField, Modal, Alert, EmptyState
@@ -17,20 +11,28 @@ import { Plus, User, Phone, Edit2, RotateCw } from 'lucide-react';
 /**
  * Répertoire clients de la station.
  *
- * Même découpage que `StationServices` : les deux requêtes (liste, création,
- * mise à jour) vivent dans `lib/stationApi.ts`, l'état de chargement dans
- * `useResource`, et ce fichier ne garde que le formulaire et le rendu.
+ * Les requêtes (liste, création, mise à jour) vivent dans `lib/stationApi.ts`,
+ * leur cache dans TanStack Query via `hooks/useStationQueries`, et ce fichier
+ * ne garde que le formulaire et le rendu. Concrètement : revenir sur l'onglet
+ * ne relance pas la requête avant 30 s, et une création invalide la clé plutôt
+ * que de rafistoler la liste en mémoire.
  *
  * L'isolation multitenant n'est pas assurée ici : elle l'est par RLS sur
  * `station_customers` (le `station_id` passé à PostgREST ne fait que filtrer
  * ce que la politique autorise déjà).
  */
-export function StationCustomers({ stationId, client }: { stationId: string; client?: Parameters<typeof resolveClient>[0] }) {
-  const customers = useResource<CustomerRow[]>(
-    () => fetchCustomers(resolveClient(client), stationId),
-    [stationId, client],
-    { fallback: 'Impossible de charger les clients.', initial: [] },
-  );
+export function StationCustomers({ stationId, client }: { stationId: string; client?: StationClient | null }) {
+  const customersQuery = useCustomers(stationId, client);
+  const createMutation = useCreateCustomer(stationId, client);
+  const updateMutation = useUpdateCustomer(stationId, client);
+
+  // Même contrat qu'avant pour le rendu : `data`, `loading`, `error`, `reload`.
+  const customers = {
+    data: customersQuery.data ?? [],
+    loading: customersQuery.isPending,
+    error: customersQuery.error ? describeError(customersQuery.error, 'Impossible de charger les clients.') : '',
+    reload: () => { void customersQuery.refetch(); },
+  };
 
   const [busy, setBusy] = useState(false);
   const [name, setName] = useState('');
@@ -77,11 +79,13 @@ export function StationCustomers({ stationId, client }: { stationId: string; cli
     setFormError('');
     setMessage('');
     try {
-      const api = resolveClient(client);
-      const saved = editing
-        ? await updateCustomer(api, stationId, editing, { name: cleanName, phone: cleanPhone })
-        : await createCustomer(api, stationId, { name: cleanName, phone: cleanPhone });
-      customers.setData(previous => (editing ? previous.map(item => (item.id === editing ? saved : item)) : [saved, ...previous]));
+      // La mutation invalide la clé `customers` : la liste relue est celle du
+      // serveur, pas une copie locale supposée identique.
+      if (editing) {
+        await updateMutation.mutateAsync({ customerId: editing, changes: { name: cleanName, phone: cleanPhone } });
+      } else {
+        await createMutation.mutateAsync({ name: cleanName, phone: cleanPhone });
+      }
       closeModal();
       setMessage(editing ? 'Client modifié avec succès.' : 'Nouveau client enregistré.');
     } catch (cause) {
