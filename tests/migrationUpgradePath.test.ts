@@ -8,6 +8,11 @@ import { PGlite } from '@electric-sql/pglite';
  * the six first migrations applied and four pending ones. Applying all ten at
  * once (as tenantIsolation.test.ts does) cannot prove that the pending set
  * applies cleanly on top of the deployed state.
+ *
+ * Les versions de `PENDING` et `REVOKE` sont celles réellement enregistrées en
+ * base : les fichiers ont été renommés le 10 novembre 2026 pour les rejoindre
+ * (voir `docs/runbook-migrations.md`, étape 3). L'ordre d'application, lui, est
+ * inchangé et reste ce que ce test protège.
  */
 const DEPLOYED = [
   '20261109121406_owner_stations.sql',
@@ -18,14 +23,14 @@ const DEPLOYED = [
   '20261109130602_restrict_station_privileges.sql',
 ];
 const PENDING = [
-  '20261109140000_station_memberships.sql',
-  '20261109141000_subscription_limits.sql',
-  '20261109142000_station_inventory.sql',
-  '20261109150000_station_role_permissions.sql',
+  '20261109182442_station_memberships.sql',
+  '20261109182456_subscription_limits.sql',
+  '20261109182509_station_inventory.sql',
+  '20261109182534_station_role_permissions.sql',
 ];
 // Written after the four above were deployed, so it is a separate increment:
 // it only tightens a grant and adds no table.
-const REVOKE = ['20261109160000_revoke_legacy_order_rpc.sql'];
+const REVOKE = ['20261109184205_revoke_legacy_order_rpc.sql'];
 
 async function apply(db: PGlite, file: string) {
   await db.exec(await readFile(`supabase/migrations/${file}`, 'utf8'));

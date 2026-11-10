@@ -4,11 +4,15 @@
  *
  * Pourquoi ce script existe : `supabase db push` compare des *versions*, pas du
  * SQL. Le 9 novembre, cinq migrations ont été appliquées via le connecteur
- * Supabase, qui les a horodatées au moment de l'exécution : le dépôt contient
+ * Supabase, qui les a horodatées au moment de l'exécution : le dépôt contenait
  * `20261109140000_station_memberships.sql`, la base a enregistré
- * `20261109182442` avec le même contenu. Le CLI voit donc cinq fichiers « non
- * appliqués » et les rejouerait. Ce script vérifie que « même contenu » est
- * vrai, au caractère près, avant qu'on aligne quoi que ce soit.
+ * `20261109182442` avec le même contenu.
+ *
+ * Ce script a servi à le prouver (étape 1). Les cinq fichiers ont ensuite été
+ * renommés vers les versions réellement enregistrées (étape 3), donc en
+ * fonctionnement normal chaque fichier porte sa propre version et la
+ * correspondance croisée n'est plus utilisée. Elle reste dans le relevé, et le
+ * script l'accepte encore : c'est la trace de ce qui a été vérifié.
  *
  * Méthode : la table `supabase_migrations.schema_migrations` conserve, depuis
  * la CLI 2.x, le texte exécuté dans `statements[1]`. On en dérive une empreinte
@@ -70,7 +74,9 @@ async function main() {
     const localSql = await readFile(path.join(MIGRATIONS_DIR, file), 'utf8');
     // Une version locale peut avoir été exercée sous un autre horodatage
     // (application via connecteur) : la correspondance vient de l'historique.
-    const record = remote.get(version) ?? history.migrations.find(item => item.fichier === file);
+    const record =
+      remote.get(version) ??
+      history.migrations.find(item => item.fichier === file || item.version_fichier === file);
     if (!record) {
       problems.push(`${file} : aucune entrée dans l'historique distant`);
       results.push({ file, version, statut: 'inconnu' });
@@ -84,11 +90,17 @@ async function main() {
     results.push({ file, version: record.version, statut: 'identique' });
   }
 
-  // Une migration enregistrée en base doit avoir un fichier : sinon un
-  // `db push` futur la considérerait absente et la rejouerait.
+  // Une migration enregistrée en base doit avoir un fichier portant sa version :
+  // sinon un `db push` futur la considérerait absente et la rejouerait.
+  //
+  // Après l'étape 3, le fichier a été renommé : `version_fichier` contient la
+  // version réelle, et `fichier` garde le nom historique (preuve de l'étape 1).
+  // Accepter l'un ou l'autre évite que cette trace devienne une fausse alerte.
   const knownFiles = new Set(localFiles.map(item => item.file));
   for (const item of history.migrations) {
-    if (item.fichier && !knownFiles.has(item.fichier)) {
+    const renamed = item.version_fichier && knownFiles.has(item.version_fichier);
+    const original = item.fichier && knownFiles.has(item.fichier);
+    if (!renamed && !original) {
       problems.push(`${item.version} (${item.name}) est appliquée mais aucun fichier ne la représente`);
     }
   }

@@ -116,7 +116,7 @@ const QUANTITY_MAX = 1_000_000_000;
 
 /**
  * `station_inventory` : nom 1..120, unité 1..30, quantité et seuil
- * 0..1 000 000 000. Voir `20261109142000_station_inventory.sql`.
+ * 0..1 000 000 000. Voir `20261109182509_station_inventory.sql`.
  */
 export const inventoryItemSchema = z.object({
   name: trimmedText('Nom de l’article', 120),
@@ -151,7 +151,7 @@ export const inventoryAdjustmentSchema = z
 /**
  * `station_invitations.email` : `email = lower(btrim(email))` et longueur
  * 3..254 ; la RPC exige de plus une forme `x@y` sans espace
- * (`20261109140000_station_memberships.sql`).
+ * (`20261109182442_station_memberships.sql`).
  */
 export const invitationSchema = z.object({
   email: z

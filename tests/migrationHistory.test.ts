@@ -27,9 +27,13 @@ const HISTORY = 'docs/sauvegardes/prod-migration-historique-2026-11-10.json';
 interface MigrationRecord {
   version: string;
   name: string;
+  /** Nom du fichier à l'époque de l'écart (étape 1). */
   fichier: string;
+  /** Nom actuel du fichier, après le renommage de l'étape 3. */
+  version_fichier?: string;
   fingerprint: string;
   version_locale_du_fichier: string;
+  fichier_renomme_le?: string;
 }
 
 interface HistoryFile {
@@ -38,6 +42,9 @@ interface HistoryFile {
 
 const history = JSON.parse(await readFile(HISTORY, 'utf8')) as HistoryFile;
 const run = promisify(execFile);
+
+/** Nom de fichier actuel d'une migration : renommé si l'étape 3 est passée. */
+const currentFile = (record: MigrationRecord) => record.version_fichier ?? record.fichier;
 
 test('l’empreinte ne dépend ni des commentaires ni de la mise en forme', () => {
   const base = 'create table public.t (id uuid);';
@@ -53,7 +60,7 @@ test('les onze migrations du dépôt ont chacune une empreinte distante', async 
   assert.equal(files.length, 11);
   assert.equal(history.migrations.length, 11);
 
-  const byFile = new Map(history.migrations.map(item => [item.fichier, item]));
+  const byFile = new Map(history.migrations.map(item => [currentFile(item), item]));
   for (const file of files) {
     const record = byFile.get(file);
     assert.ok(record, `${file} n'a pas d'entrée dans l'historique distant`);
@@ -67,7 +74,23 @@ test('les onze migrations du dépôt ont chacune une empreinte distante', async 
   assert.equal(new Set(versions).size, versions.length, 'deux migrations sous la même version');
 });
 
-test('les cinq versions divergentes sont bien celles documentées', () => {
+test('chaque fichier porte désormais la version réellement enregistrée', async () => {
+  // C'est l'invariant introduit par l'étape 3 : `supabase db push` compare des
+  // versions, donc un fichier dont le préfixe ne correspond pas à la base est
+  // rejoué — ou pire, considéré comme une migration neuve.
+  const files = (await readdir('supabase/migrations')).filter(name => name.endsWith('.sql')).sort();
+  const byVersion = new Map(history.migrations.map(item => [item.version, item]));
+
+  for (const file of files) {
+    const version = file.slice(0, 14);
+    assert.ok(byVersion.has(version), `${file} : version absente de l'historique distant`);
+    assert.equal(currentFile(byVersion.get(version)!), file, `${file} : nom incohérent avec le relevé`);
+  }
+  // Et symétriquement : aucune migration appliquée n'est absente du dépôt.
+  assert.equal(files.length, history.migrations.length);
+});
+
+test('les cinq écarts historiques restent tracés, avec leur correction', () => {
   const divergent = history.migrations.filter(item => item.version !== item.version_locale_du_fichier);
   assert.deepEqual(
     divergent.map(item => [item.fichier, item.version]),
@@ -79,6 +102,15 @@ test('les cinq versions divergentes sont bien celles documentées', () => {
       ['20261109160000_revoke_legacy_order_rpc.sql', '20261109184205'],
     ],
   );
+  // Chacun de ces cinq fichiers a été renommé vers la version enregistrée : le
+  // relevé doit donc dire quel nom est en vigueur, sinon la trace devient
+  // ambiguë au prochain lecteur.
+  for (const item of divergent) {
+    assert.ok(item.version_fichier, `${item.fichier} : nom actuel non consigné`);
+    assert.ok(item.version_fichier!.startsWith(item.version), `${item.fichier} : renommage incohérent`);
+    assert.notEqual(item.version_fichier, item.fichier);
+  }
+
   // Et l'ordre chronologique distant est respecté : memberships avant
   // role_permissions, sinon l'application aurait échoué en DDL.
   const versions = history.migrations.map(item => item.version);
