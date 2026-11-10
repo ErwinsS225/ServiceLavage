@@ -24,8 +24,13 @@ test('the sign-in form asks the browser for an existing password only', async ()
   assert.match(source, /autoComplete=\{signup \? 'new-password' : 'current-password'\}/);
   assert.match(source, /signInWithPassword/);
   // A wrong password must not echo Supabase's English message to a French UI.
-  assert.match(source, /Invalid login credentials/);
-  assert.match(source, /Adresse e-mail ou mot de passe incorrect/);
+  // La traduction est centralisée : le formulaire passe par `describeError`,
+  // et c'est `tests/errorMessages.test.ts` qui garantit la couverture des
+  // messages GoTrue. Ici on exige seulement qu'aucun message brut ne soit
+  // concaténé dans le JSX.
+  assert.match(source, /describeError/);
+  assert.doesNotMatch(source, /failure\.message/);
+  assert.doesNotMatch(source, /Invalid login credentials/);
 });
 
 test('the password is hidden until the user explicitly reveals it', async () => {
@@ -47,11 +52,14 @@ test('the forgot-password flow never confirms whether an account exists', async 
 
 test('the reset form checks the confirmation locally before calling the server', async () => {
   const source = await readFile(FILES.reset, 'utf8');
-  const validateAt = source.indexOf('validateNewPassword');
+  // La validation est passée du helper local au schéma partagé, qui porte les
+  // mêmes règles et nomme le champ fautif.
+  const validateAt = source.indexOf('newPasswordSchema');
   const updateAt = source.indexOf('updateUser');
-  assert.ok(validateAt > 0, 'validateNewPassword must be used');
+  assert.ok(validateAt > 0, 'newPasswordSchema must be used');
   assert.ok(validateAt < updateAt, 'validation must run before the server call');
   assert.match(source, /MIN_PASSWORD_LENGTH/);
+  assert.doesNotMatch(source, /failure\.message/);
 });
 
 test('the layout panel is decorative and hidden on small screens', async () => {

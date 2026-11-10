@@ -2,6 +2,8 @@ import { useState } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { AuthField, authButton, authInput, authLink } from './AuthLayout';
 import { RECOVERY_SENT_MESSAGE, authRedirectUrl } from '../../lib/passwordRecovery';
+import { parseForm, signInSchema } from '../../lib/schemas';
+import { describeError } from '../../lib/errorMessages';
 
 /** Step one of "forgot password": ask for the address and send the link. */
 export function AuthForgotForm({ supabase, onBack, onMessage }: {
@@ -16,19 +18,22 @@ export function AuthForgotForm({ supabase, onBack, onMessage }: {
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
-    if (!email.trim()) { setFieldError('Saisissez l’adresse de votre compte.'); return; }
+    // Seule la forme de l'adresse est vérifiée : refuser une adresse inconnue
+    // ici révélerait quels comptes existent, ce que cette écran évite.
+    const parsed = parseForm(signInSchema.shape.email, email);
+    if (!parsed.ok) { setFieldError(parsed.errors._form ?? 'Saisissez l’adresse de votre compte.'); return; }
     setFieldError('');
     setBusy(true); setError(''); onMessage('');
     try {
-      const { error: failure } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      const { error: failure } = await supabase.auth.resetPasswordForEmail(parsed.data, {
         redirectTo: authRedirectUrl(window.location.origin),
       });
-      if (failure) setError(`Envoi impossible : ${failure.message}`);
+      if (failure) setError(describeError(failure).message);
       // Same message whether or not the address exists: never confirm
       // that an account is registered.
       else onMessage(RECOVERY_SENT_MESSAGE);
-    } catch {
-      setError('Envoi impossible. Vérifiez votre connexion et réessayez.');
+    } catch (cause) {
+      setError(describeError(cause).message);
     } finally {
       setBusy(false);
     }
@@ -40,6 +45,7 @@ export function AuthForgotForm({ supabase, onBack, onMessage }: {
     </p>
     <AuthField label="E-mail" error={fieldError}>
       <input
+        id="forgot-email"
         className={authInput}
         type="email"
         name="email"

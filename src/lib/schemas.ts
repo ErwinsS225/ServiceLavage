@@ -174,34 +174,52 @@ export const invitationReferenceSchema = z
 /* ------------------------------------------------------------------ */
 
 /**
- * La longueur minimale est celle configurée sur le projet Supabase (6 par
- * défaut). Volontairement permissive sur la forme : Supabase n'exige pas de
- * classe de caractères, inventer une règle plus stricte empêcherait un compte
- * existant de se connecter.
+ * Connexion : aucune longueur minimale n'est imposée ici.
+ *
+ * Le projet Supabase exige 6 caractères à l'inscription, l'application en
+ * demande 8 (`MIN_PASSWORD_LENGTH`). Appliquer le minimum local à la connexion
+ * empêcherait un compte plus ancien de se connecter — un contrôle de saisie
+ * n'a pas à décider qui a le droit d'entrer : c'est le rôle du serveur.
  */
-export const credentialsSchema = z.object({
+export const signInSchema = z.object({
   email: z
     .string()
     .trim()
-    .min(3, 'Adresse email : trop courte.')
+    .min(1, 'Adresse email : champ obligatoire.')
     .max(254, 'Adresse email : 254 caractères maximum.')
-    .refine(value => /^[^\s@]+@[^\s@]+$/.test(value), { message: 'Adresse email invalide.' }),
+    .refine(value => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value), {
+      message: 'Cette adresse email ne semble pas valide (exemple : nom@domaine.ci).',
+    }),
   password: z
     .string()
-    .min(6, 'Mot de passe : 6 caractères minimum.')
+    .min(1, 'Mot de passe : champ obligatoire.')
     .max(72, 'Mot de passe : 72 caractères maximum.'),
 });
 
 /**
- * Nouveau mot de passe : mêmes bornes que la connexion, plus une confirmation
+ * Inscription : le minimum est celui que l'application annonce, et il doit
+ * correspondre à `MIN_PASSWORD_LENGTH` (vérifié par `tests/schemas.test.ts`).
+ * Le maximum de 72 vient de bcrypt, qui ignore les octets au-delà : accepter
+ * plus long donnerait un mot de passe tronqué sans le dire.
+ */
+export const signUpSchema = z.object({
+  email: signInSchema.shape.email,
+  password: z
+    .string()
+    .min(8, 'Le mot de passe doit contenir au moins 8 caractères.')
+    .max(72, 'Mot de passe : 72 caractères maximum.')
+    .refine(value => value.trim().length > 0, {
+      message: 'Le mot de passe ne peut pas être composé uniquement d’espaces.',
+    }),
+});
+
+/**
+ * Nouveau mot de passe : mêmes bornes que l'inscription, plus une confirmation
  * vérifiée ici (le serveur ne la voit jamais).
  */
 export const newPasswordSchema = z
   .object({
-    password: z
-      .string()
-      .min(6, 'Mot de passe : 6 caractères minimum.')
-      .max(72, 'Mot de passe : 72 caractères maximum.'),
+    password: signUpSchema.shape.password,
     confirmation: z.string(),
   })
   .refine(values => values.password === values.confirmation, {

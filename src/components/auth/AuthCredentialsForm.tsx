@@ -2,6 +2,8 @@ import { useState } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { AuthField, authButton, authInput, authLink } from './AuthLayout';
 import { MIN_PASSWORD_LENGTH } from '../../lib/passwordRecovery';
+import { parseForm, signInSchema, signUpSchema } from '../../lib/schemas';
+import { describeError } from '../../lib/errorMessages';
 
 /**
  * Sign-in / sign-up form. Both modes share the same fields so switching keeps
@@ -26,15 +28,15 @@ export function AuthCredentialsForm({ supabase, mode, onModeChange, onForgot, on
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
-    const next: typeof fieldErrors = {};
-    if (!email.trim()) next.email = 'Saisissez votre adresse e-mail.';
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) next.email = 'Cette adresse e-mail ne semble pas valide.';
-    if (!password) next.password = 'Saisissez votre mot de passe.';
-    else if (signup && password.length < MIN_PASSWORD_LENGTH) {
-      next.password = `Le mot de passe doit contenir au moins ${MIN_PASSWORD_LENGTH} caractères.`;
+    // Deux schémas distincts : à l'inscription, le minimum annoncé par
+    // l'application ; à la connexion, aucune longueur minimale, sinon un
+    // compte plus ancien ne pourrait plus entrer.
+    const parsed = parseForm(signup ? signUpSchema : signInSchema, { email, password });
+    if (!parsed.ok) {
+      setFieldErrors(parsed.errors);
+      return;
     }
-    setFieldErrors(next);
-    if (Object.keys(next).length) return;
+    setFieldErrors({});
 
     setBusy(true); setError(''); onMessage('');
     try {
@@ -46,18 +48,19 @@ export function AuthCredentialsForm({ supabase, mode, onModeChange, onForgot, on
         });
         // Supabase returns a fake user for an address that already exists, so
         // a success here proves nothing about the account being new.
-        if (failure) setError(`Inscription impossible : ${failure.message}`);
+        // `describeError` traduit le code GoTrue ; afficher le texte brut
+        // montrait « User already registered » en anglais.
+        if (failure) setError(describeError(failure).message);
         else onMessage('Compte créé. Vérifiez votre boîte de réception : un e-mail de confirmation vous a été envoyé.');
       } else {
         const { error: failure } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
         if (failure) {
-          setError(failure.message === 'Invalid login credentials'
-            ? 'Adresse e-mail ou mot de passe incorrect.'
-            : `Connexion impossible : ${failure.message}`);
+          const described = describeError(failure);
+          setError(described.action ? `${described.message} ${described.action}` : described.message);
         }
       }
-    } catch {
-      setError('Connexion au service impossible. Vérifiez votre réseau et réessayez.');
+    } catch (cause) {
+      setError(describeError(cause).message);
     } finally {
       setBusy(false);
     }

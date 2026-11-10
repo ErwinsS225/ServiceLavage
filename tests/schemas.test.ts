@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
-  credentialsSchema,
+  signInSchema,
+  signUpSchema,
   customerSchema,
   inventoryAdjustmentSchema,
   inventoryItemSchema,
@@ -145,12 +146,25 @@ test('référence d’invitation : UUID accepté, texte libre refusé', () => {
   ko(invitationReferenceSchema, '');
 });
 
-test('identifiants : email valide, mot de passe 6..72', () => {
-  ok(credentialsSchema, { email: 'a@b.co', password: '123456' });
-  ko(credentialsSchema, { email: 'a@b.co', password: '12345' });
-  ko(credentialsSchema, { email: 'a@b.co', password: 'x'.repeat(73) });
-  ko(credentialsSchema, { email: 'invalide', password: '123456' });
-  ko(credentialsSchema, { email: '', password: '123456' });
+test('connexion : aucune longueur minimale, le serveur décide', () => {
+  // Un compte créé avant le passage à 8 caractères doit pouvoir se connecter :
+  // imposer le minimum local en connexion l'en empêcherait.
+  ok(signInSchema, { email: 'a@b.co', password: 'x' });
+  ok(signInSchema, { email: 'a@b.co', password: 'x'.repeat(72) });
+  ko(signInSchema, { email: 'a@b.co', password: '' });
+  ko(signInSchema, { email: 'a@b.co', password: 'x'.repeat(73) });
+  ko(signInSchema, { email: 'invalide', password: 'secret123' });
+  ko(signInSchema, { email: 'a@b', password: 'secret123' });
+  ko(signInSchema, { email: '', password: 'secret123' });
+});
+
+test('inscription : minimum aligné sur MIN_PASSWORD_LENGTH', async () => {
+  const { MIN_PASSWORD_LENGTH } = await import('../src/lib/passwordRecovery');
+  ok(signUpSchema, { email: 'a@b.co', password: 'x'.repeat(MIN_PASSWORD_LENGTH) });
+  ko(signUpSchema, { email: 'a@b.co', password: 'x'.repeat(MIN_PASSWORD_LENGTH - 1) });
+  ko(signUpSchema, { email: 'a@b.co', password: '        ' });
+  // bcrypt tronque au-delà de 72 octets : mieux vaut refuser que tronquer.
+  ko(signUpSchema, { email: 'a@b.co', password: 'x'.repeat(73) });
 });
 
 test('nouveau mot de passe : la confirmation est vérifiée côté client', () => {

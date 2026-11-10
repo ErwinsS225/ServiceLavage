@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { AuthField, authButton, authInput, authLink } from './AuthLayout';
-import { MIN_PASSWORD_LENGTH, validateNewPassword } from '../../lib/passwordRecovery';
+import { MIN_PASSWORD_LENGTH } from '../../lib/passwordRecovery';
+import { newPasswordSchema, parseForm } from '../../lib/schemas';
+import { describeError } from '../../lib/errorMessages';
 
 /**
  * Step two of "forgot password": the user arrived from the e-mail link with a
@@ -18,27 +20,27 @@ export function AuthResetForm({ supabase, onLeave, onMessage }: {
   const [reveal, setReveal] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [fieldError, setFieldError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
-    const check = validateNewPassword(password, confirmation);
-    if (!check.ok) {
-      setFieldError(check.reason === 'too_short'
-        ? `Le nouveau mot de passe doit contenir au moins ${MIN_PASSWORD_LENGTH} caractères.`
-        : check.reason === 'mismatch'
-          ? 'Les deux mots de passe ne correspondent pas.'
-          : 'Saisissez un nouveau mot de passe.');
+    // Le schéma porte les mêmes règles que `validateNewPassword` (longueur
+    // annoncée, concordance) et nomme le champ fautif : l'erreur s'affiche
+    // sous « Nouveau mot de passe » ou sous « Confirmation », pas au hasard.
+    const parsed = parseForm(newPasswordSchema, { password, confirmation });
+    if (!parsed.ok) {
+      setFieldErrors(parsed.errors);
       return;
     }
-    setFieldError('');
+    setFieldErrors({});
     setBusy(true); setError(''); onMessage('');
     try {
       const { error: failure } = await supabase.auth.updateUser({ password });
-      if (failure) setError(`Mot de passe non modifié : ${failure.message}`);
+      // Le message brut de GoTrue est en anglais ; la traduction est centralisée.
+      if (failure) setError(describeError(failure).message);
       else onMessage('Mot de passe modifié. Vous pouvez utiliser votre nouveau mot de passe.');
-    } catch {
-      setError('Mot de passe non modifié. Vérifiez votre connexion et réessayez.');
+    } catch (cause) {
+      setError(describeError(cause).message);
     } finally {
       setBusy(false);
     }
@@ -49,7 +51,11 @@ export function AuthResetForm({ supabase, onLeave, onMessage }: {
       Choisissez un nouveau mot de passe pour votre compte.
     </p>
 
-    <AuthField label="Nouveau mot de passe" hint={`Au moins ${MIN_PASSWORD_LENGTH} caractères.`}>
+    <AuthField
+      label="Nouveau mot de passe"
+      hint={`Au moins ${MIN_PASSWORD_LENGTH} caractères.`}
+      error={fieldErrors.password}
+    >
       <div className="relative">
         <input
           className={`${authInput} pr-20`}
@@ -58,8 +64,8 @@ export function AuthResetForm({ supabase, onLeave, onMessage }: {
           autoComplete="new-password"
           placeholder="••••••••"
           value={password}
-          aria-invalid={!!fieldError}
-          onChange={event => setPassword(event.target.value)}
+          aria-invalid={!!fieldErrors.password}
+          onChange={event => { setPassword(event.target.value); setFieldErrors(previous => { const next = { ...previous }; delete next.password; return next; }); }}
         />
         <button
           type="button"
@@ -72,7 +78,7 @@ export function AuthResetForm({ supabase, onLeave, onMessage }: {
       </div>
     </AuthField>
 
-    <AuthField label="Confirmation" error={fieldError}>
+    <AuthField label="Confirmation" error={fieldErrors.confirmation}>
       <input
         className={authInput}
         type={reveal ? 'text' : 'password'}
@@ -80,8 +86,8 @@ export function AuthResetForm({ supabase, onLeave, onMessage }: {
         autoComplete="new-password"
         placeholder="••••••••"
         value={confirmation}
-        aria-invalid={!!fieldError}
-        onChange={event => { setConfirmation(event.target.value); setFieldError(''); }}
+        aria-invalid={!!fieldErrors.confirmation}
+        onChange={event => { setConfirmation(event.target.value); setFieldErrors(previous => { const next = { ...previous }; delete next.confirmation; return next; }); }}
       />
     </AuthField>
 

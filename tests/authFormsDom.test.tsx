@@ -42,7 +42,9 @@ test('a wrong password shows a French message and never leaks the raw one', asyn
   await user.click(screen.getByRole('button', { name: 'Accéder à ma station' }));
 
   const alert = await screen.findByRole('alert');
-  assert.match(alert.textContent ?? '', /Adresse e-mail ou mot de passe incorrect/);
+  // L'intention du test est « l'utilisateur lit un franc¸ais utile, jamais le
+  // texte GoTrue ». Le libellé exact est celui de `describeError`.
+  assert.match(alert.textContent ?? '', /ne correspondent à aucun compte/);
   assert.doesNotMatch(alert.textContent ?? '', /Invalid login credentials/);
 });
 
