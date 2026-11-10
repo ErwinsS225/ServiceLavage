@@ -1,6 +1,21 @@
 # ServiceLavage
 
-Application React / TypeScript pour la gestion de stations de lavage, avec Supabase Auth et PostgreSQL. Les **10 migrations sont déployées** (voir [runbook](docs/runbook-migrations.md)) : l'espace propriétaire couvre les stations, le catalogue, les clients, les prestations, l'inventaire, le personnel avec rôles (gérant, caissier, laveur) et les limites d'abonnement appliquées par PostgreSQL. La caisse, les paiements, les rapports et les vitrines restent à développer ; les anciens écrans ne sont pas opérationnels et restent dans le dépôt comme référence. Les anciens composants et données fictives ne doivent pas être utilisés comme données de production.
+Application React / TypeScript pour la gestion de stations de lavage, avec Supabase Auth et PostgreSQL. Les **11 migrations sont déployées** — vérifié sur la base le 10 novembre 2026 : l'historique distant compte 11 versions et le catalogue déployé est identique à celui que produisent les fichiers du dépôt (`tests/productionSchemaDrift.test.ts`, voir [runbook](docs/runbook-migrations.md)) : l'espace propriétaire couvre les stations, le catalogue, les clients, les prestations, l'inventaire, le personnel avec rôles (gérant, caissier, laveur) et les limites d'abonnement appliquées par PostgreSQL. Les rapports existent mais restent partiels (aucune dépense ni moyen de paiement n'est enregistré) ; la caisse, les paiements et les vitrines restent à développer ; les anciens écrans ne sont pas opérationnels et restent dans le dépôt comme référence. Les anciens composants et données fictives ne doivent pas être utilisés comme données de production.
+
+## CLI Supabase
+
+La CLI s'invoque via `npx` et la configuration du projet est versionnée
+(`supabase/config.toml`, aucun secret) :
+
+```bash
+npm run db:version   # la CLI répond
+npm run db:login     # jeton personnel (navigateur, --no-browser)
+npm run db:link      # lie le poste au projet avvkzliysacpyavmetsx (aucun SQL)
+npm run db:status    # migration list : local ↔ distant
+npm run db:drift     # le schéma du dépôt est-il toujours celui de la production ?
+```
+
+Détail et procédure de déploiement : [runbook des migrations](docs/runbook-migrations.md).
 
 ## Prérequis
 
@@ -33,6 +48,9 @@ npm run preview    # prévisualisation locale du build
 npm run clean      # supprime uniquement dist/
 ```
 
+Le dernier état des lieux (limites et améliorations) est dans
+[audit général du 10 novembre 2026](docs/audit-general-2026-11-10.md).
+
 Pour que le build contienne le parcours Supabase complet, les deux variables Vite doivent être renseignées. La CI utilise des valeurs d'exemple non fonctionnelles ; elle ne contacte ni ne modifie un projet Supabase. La PWA nécessite HTTPS ou localhost et une première visite en ligne ; voir [PWA et hors ligne](docs/pwa-hors-ligne.md). Les files locales couvrent progressivement la création de prestations et les ajustements de stock existant ; pas les paiements, la création d’articles hors ligne ni les autres opérations.
 
 ## Migrations et sécurité
@@ -42,6 +60,20 @@ Les migrations versionnées sont dans `supabase/migrations/`. Leurs versions cor
 Avec la CLI Supabase, initialiser si nécessaire sa configuration locale (`supabase init`), démarrer une instance de test (`supabase start`) et examiner les migrations avant de les appliquer à cette instance (`supabase db reset`). Ces commandes nécessitent Docker ; `db reset` détruit les données de l'instance ciblée. Pour un projet distant, utiliser la procédure officielle de liaison et vérifier le projet et le résultat de `supabase migration list` et `supabase db push --dry-run` avant toute application. Ne jamais lancer `db reset` contre une base contenant des données à conserver.
 
 Les tests PGlite appliquent les migrations sur une base en mémoire et émulent `auth.uid()` ainsi que les rôles Supabase. Ils ne remplacent pas les tests avec de vrais jetons, PostgREST et la configuration d'un projet Supabase de test.
+
+## Brancher un projet Supabase existant (Arena)
+
+L'aperçu Arena s'exécute sous `https://<port>-<id>.e2b.app`. Pour que les liens
+de confirmation et de réinitialisation fonctionnent depuis cet aperçu, l'URL
+réelle doit figurer dans **Auth → URL Configuration** (`site_url` et
+`uri_allow_list`). Sans cela l'inscription aboutit mais le lien reçu renvoie
+vers une autre origine et la redirection échoue silencieusement.
+
+Configurer aussi :
+
+- `mailer_autoconfirm = false` (ne jamais désactiver la confirmation e-mail pour tester) ;
+- un SMTP dédié avant toute mise en service : le service e-mail par défaut de
+  Supabase est fortement limité et peu délivrable.
 
 ## Organisation
 

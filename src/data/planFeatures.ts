@@ -10,6 +10,8 @@ export type PlanFeature = {
 export type PlanFeatureSet = {
   id: 'starter' | 'pro' | 'business';
   title: string;
+  /** Tarif mensuel affiché, en FCFA. Indicatif : aucun prélèvement n'existe. */
+  monthlyPriceXof: number;
   stationLimit: number;
   monthlyOrderLimit: number;
   userTarget: number;
@@ -49,23 +51,60 @@ const businessAdditions: readonly PlanFeature[] = [
 
 export const planFeatures: readonly PlanFeatureSet[] = [
   {
-    id: 'starter', title: 'Starter', stationLimit: 1, monthlyOrderLimit: 500,
+    id: 'starter', title: 'Starter', monthlyPriceXof: 5000, stationLimit: 1, monthlyOrderLimit: 500,
     userTarget: 2, galleryTarget: 5, features: starter,
   },
   {
-    id: 'pro', title: 'Pro', stationLimit: 2, monthlyOrderLimit: 2500,
+    id: 'pro', title: 'Pro', monthlyPriceXof: 15000, stationLimit: 2, monthlyOrderLimit: 2500,
     userTarget: 8, galleryTarget: 20, features: [...starter, ...proAdditions],
   },
   {
-    id: 'business', title: 'Business', stationLimit: 10, monthlyOrderLimit: 10000,
+    id: 'business', title: 'Business', monthlyPriceXof: 35000, stationLimit: 10, monthlyOrderLimit: 10000,
     userTarget: 50, galleryTarget: 100, features: [...starter, ...proAdditions, ...businessAdditions],
   },
 ];
 
 export const featureDeliveryLabels: Record<FeatureDelivery, string> = {
   operational: 'Opérationnel dans le portail',
-  prepared: 'Code prêt, migration non déployée',
+  prepared: 'Préparé, non actif',
   partial: 'Partiel',
   planned: 'À développer',
   service: 'Service opérationnel à organiser',
 };
+
+/**
+ * Fonctionnalités que le serveur sait réellement limiter, et par quel mécanisme.
+ *
+ * Pourquoi cette distinction existe : `subscription_limits` applique trois
+ * plafonds (stations, prestations du mois, écriture d'inventaire) et rien
+ * d'autre. Le nombre d'utilisateurs et de photos n'est contrôlé nulle part. Une
+ * ligne « Opérationnel » sur une fonctionnalité non limitée laissait croire à
+ * un contrôle qui n'existe pas : cette constante dit lequel est réel.
+ */
+export interface ServerLimit {
+  /** Ce que le plafond compte, à l'écran. */
+  label: string;
+  /** Mécanisme serveur, en une phrase, vérifié dans les migrations. */
+  mechanism: string;
+}
+
+export const SERVER_LIMITS: Record<'stations' | 'monthlyOrders' | 'inventory', ServerLimit> = {
+  stations: {
+    label: 'Stations',
+    mechanism: 'Trigger enforce_station_limit sur l’insertion d’une station.',
+  },
+  monthlyOrders: {
+    label: 'Prestations par mois',
+    mechanism: 'Trigger enforce_monthly_order_limit sur la création d’une prestation.',
+  },
+  inventory: {
+    label: 'Modification du stock',
+    mechanism: 'apply_inventory_operation exige la formule Pro ou Business (erreur 42501).',
+  },
+};
+
+/** Limites absentes du serveur aujourd'hui, affichées comme telles. */
+export const UNCONTROLLED_LIMITS = [
+  'Nombre d’utilisateurs par station',
+  'Nombre de photos de vitrine',
+] as const;

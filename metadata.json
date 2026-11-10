@@ -1,7 +1,5 @@
 {
   "name": "ServiceLavage - ERP Lavage Auto",
   "description": "Plateforme ERP SaaS multitenant pour la gestion des stations de lavage automobile en Côte d'Ivoire.",
-  "capabilities": [
-    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
-  ]
+  "capabilities": []
 }

@@ -1,54 +1,61 @@
-import { useEffect, useState } from 'react';
-import { supabase } from '../lib/supabase';
-import { 
-  Table, TableHeader, TableBody, TableHead, TableRow, TableCell, 
-  buttonStyles, formControlStyles, FormField, Modal, Alert, EmptyState 
+import { useState } from 'react';
+import { describeError } from '../lib/queryResult';
+import { type CustomerRow, type StationClient } from '../lib/stationApi';
+import { useCreateCustomer, useCustomers, useUpdateCustomer } from '../hooks/useStationQueries';
+import {
+  Table, TableHeader, TableBody, TableHead, TableRow, TableCell,
+  buttonStyles, formControlStyles, FormField, Modal, Alert, EmptyState
 } from './ui/designSystem';
 import { Plus, User, Phone, Edit2, RotateCw } from 'lucide-react';
 
-type Customer = { id: string; name: string; phone: string };
+/**
+ * Répertoire clients de la station.
+ *
+ * Les requêtes (liste, création, mise à jour) vivent dans `lib/stationApi.ts`,
+ * leur cache dans TanStack Query via `hooks/useStationQueries`, et ce fichier
+ * ne garde que le formulaire et le rendu. Concrètement : revenir sur l'onglet
+ * ne relance pas la requête avant 30 s, et une création invalide la clé plutôt
+ * que de rafistoler la liste en mémoire.
+ *
+ * L'isolation multitenant n'est pas assurée ici : elle l'est par RLS sur
+ * `station_customers` (le `station_id` passé à PostgREST ne fait que filtrer
+ * ce que la politique autorise déjà).
+ */
+export function StationCustomers({ stationId, client }: { stationId: string; client?: StationClient | null }) {
+  const customersQuery = useCustomers(stationId, client);
+  const createMutation = useCreateCustomer(stationId, client);
+  const updateMutation = useUpdateCustomer(stationId, client);
 
-/** The server and RLS, not this component's station filter, enforce access. */
-export function StationCustomers({ stationId }: { stationId: string }) {
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Même contrat qu'avant pour le rendu : `data`, `loading`, `error`, `reload`.
+  const customers = {
+    data: customersQuery.data ?? [],
+    loading: customersQuery.isPending,
+    error: customersQuery.error ? describeError(customersQuery.error, 'Impossible de charger les clients.') : '',
+    reload: () => { void customersQuery.refetch(); },
+  };
+
   const [busy, setBusy] = useState(false);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [editing, setEditing] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
-  const [error, setError] = useState('');
+  const [formError, setFormError] = useState('');
   const [message, setMessage] = useState('');
-  const [reload, setReload] = useState(0);
-
-  useEffect(() => {
-    let active = true;
-    setLoading(true);
-    setError('');
-    supabase!.from('station_customers').select('id,name,phone').eq('station_id', stationId)
-      .order('created_at', { ascending: false }).then(({ data, error }) => {
-        if (!active) return;
-        if (error) setError(`Impossible de charger les clients : ${error.message}`);
-        else setCustomers(data ?? []);
-        setLoading(false);
-      });
-    return () => { active = false; };
-  }, [stationId, reload]);
 
   function startAdd() {
     setEditing(null);
     setName('');
     setPhone('');
-    setError('');
+    setFormError('');
     setMessage('');
     setModalOpen(true);
   }
 
-  function startEdit(customer: Customer) {
+  function startEdit(customer: CustomerRow) {
     setEditing(customer.id);
     setName(customer.name);
     setPhone(customer.phone);
-    setError('');
+    setFormError('');
     setMessage('');
     setModalOpen(true);
   }
@@ -64,21 +71,31 @@ export function StationCustomers({ stationId }: { stationId: string }) {
     e.preventDefault();
     const cleanName = name.trim();
     const cleanPhone = phone.trim();
-    if (!cleanName || !cleanPhone) { setError('Le nom et le téléphone sont obligatoires.'); return; }
-    setBusy(true); setError(''); setMessage('');
+    if (!cleanName || !cleanPhone) {
+      setFormError('Le nom et le téléphone sont obligatoires.');
+      return;
+    }
+    setBusy(true);
+    setFormError('');
+    setMessage('');
     try {
-      const request = editing
-        ? supabase!.from('station_customers').update({ name: cleanName, phone: cleanPhone }).eq('id', editing).eq('station_id', stationId)
-        : supabase!.from('station_customers').insert({ station_id: stationId, name: cleanName, phone: cleanPhone });
-      const { data, error } = await request.select('id,name,phone').single();
-      if (error) { setError(`Enregistrement impossible : ${error.message}`); return; }
-      setCustomers(prev => editing ? prev.map(c => c.id === editing ? data : c) : [data, ...prev]);
+      // La mutation invalide la clé `customers` : la liste relue est celle du
+      // serveur, pas une copie locale supposée identique.
+      if (editing) {
+        await updateMutation.mutateAsync({ customerId: editing, changes: { name: cleanName, phone: cleanPhone } });
+      } else {
+        await createMutation.mutateAsync({ name: cleanName, phone: cleanPhone });
+      }
       closeModal();
       setMessage(editing ? 'Client modifié avec succès.' : 'Nouveau client enregistré.');
-    } catch {
-      setError('Enregistrement impossible. Vérifiez votre connexion et réessayez.');
-    } finally { setBusy(false); }
+    } catch (cause) {
+      setFormError(describeError(cause, 'Enregistrement impossible. Vérifiez votre connexion et réessayez.'));
+    } finally {
+      setBusy(false);
+    }
   }
+
+  const error = formError || customers.error;
 
   return (
     <section className="space-y-5 border-t border-[#232834] pt-6" aria-label="Clients de la station">
@@ -91,17 +108,17 @@ export function StationCustomers({ stationId }: { stationId: string }) {
           <button
             type="button"
             className={buttonStyles({ variant: 'outline', size: 'sm' })}
-            onClick={() => setReload(v => v + 1)}
-            disabled={loading || busy}
+            onClick={() => { setFormError(''); customers.reload(); }}
+            disabled={customers.loading || busy}
           >
-            <RotateCw className={`w-3.5 h-3.5 mr-1.5 ${loading ? 'animate-spin' : ''}`} />
+            <RotateCw className={`w-3.5 h-3.5 mr-1.5 ${customers.loading ? 'animate-spin' : ''}`} />
             Actualiser
           </button>
           <button
             type="button"
             className={buttonStyles({ variant: 'primary', size: 'sm' })}
             onClick={startAdd}
-            disabled={loading || busy}
+            disabled={customers.loading || busy}
           >
             <Plus className="w-4 h-4 mr-1.5" />
             Nouveau client
@@ -111,7 +128,11 @@ export function StationCustomers({ stationId }: { stationId: string }) {
 
       {error && (
         <Alert variant="error" action={
-          <button type="button" className="underline text-xs font-semibold text-rose-300" onClick={() => setReload(v => v + 1)}>
+          <button
+            type="button"
+            className="underline text-xs font-semibold text-rose-300"
+            onClick={() => { setFormError(''); customers.reload(); }}
+          >
             Réessayer
           </button>
         }>
@@ -125,11 +146,11 @@ export function StationCustomers({ stationId }: { stationId: string }) {
         </Alert>
       )}
 
-      {loading ? (
+      {customers.loading ? (
         <div className="p-8 text-center text-sm text-slate-400 rounded-xl bg-[#141720] border border-[#232834]">
           Chargement des clients…
         </div>
-      ) : customers.length ? (
+      ) : customers.data.length ? (
         <Table>
           <TableHeader>
             <TableRow>
@@ -139,7 +160,7 @@ export function StationCustomers({ stationId }: { stationId: string }) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {customers.map(customer => (
+            {customers.data.map(customer => (
               <TableRow key={customer.id}>
                 <TableCell>
                   <div className="flex items-center gap-2.5">
@@ -191,7 +212,6 @@ export function StationCustomers({ stationId }: { stationId: string }) {
         />
       )}
 
-      {/* Customer Modal Dialog */}
       <Modal
         isOpen={modalOpen}
         onClose={closeModal}
@@ -223,6 +243,8 @@ export function StationCustomers({ stationId }: { stationId: string }) {
             />
           </FormField>
 
+          {formError && <Alert variant="error">{formError}</Alert>}
+
           <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#232834]">
             <button
               type="button"
@@ -234,7 +256,7 @@ export function StationCustomers({ stationId }: { stationId: string }) {
             </button>
             <button
               type="submit"
-              disabled={busy || loading}
+              disabled={busy || customers.loading}
               className={buttonStyles({ variant: 'primary', size: 'md' })}
             >
               {busy ? 'Enregistrement…' : editing ? 'Enregistrer les modifications' : 'Créer la fiche client'}

@@ -1,6 +1,35 @@
 # Rapport d'audit complet — ServiceLavage / Clean It CI
 
-**Date :** 9 novembre 2026
+**Date :** 9 novembre 2026 — **DOCUMENT HISTORIQUE, NE PAS UTILISER COMME ÉTAT ACTUEL**
+
+> ## ⚠️ Ce rapport est périmé sur son constat central
+>
+> Il concluait que **4 migrations sur 10 n'étaient pas déployées**, que cinq modules
+> sur six étaient inertes en production et que les quotas d'abonnement n'étaient pas
+> appliqués (risques R1/R3, notes « État de déploiement : D », « produit non
+> fonctionnel à 60 % »). **Ces constats ne sont plus vrais.**
+>
+> Vérifié le **10 novembre 2026** sur le projet réel `avvkzliysacpyavmetsx` (LavAuto),
+> via le connecteur Supabase :
+>
+> | Point | Constat du 9 novembre | État vérifié le 10 novembre |
+> | --- | --- | --- |
+> | Historique des migrations | 6 versions sur 10 | **11 versions sur 11** (`list_migrations`) |
+> | Corrections en attente | 4 migrations manquantes | catalogues **identiques** à ceux produits par `supabase/migrations` (12 tables, 69 colonnes, 29 politiques, 16 fonctions, 3 déclencheurs, 21 index, 53 contraintes, 11 privilèges) — voir `docs/sauvegardes/prod-schema-2026-11-10.json` et `tests/productionSchemaDrift.test.ts` |
+> | Quotas d'abonnement | Déclencheurs absents | `enforce_station_limit`, `enforce_monthly_order_limit`, `owner_subscription_lock` présents |
+> | CI sur `main` | Rouge (type-check) | Verte (run `42866410264`, puis `42868345071` sur la branche d'audit) |
+> | Configuration Auth | `site_url` morte | Corrigée (aperçus `e2b.app` + localhost) |
+> | Volumétrie | 1 station vide | 2 stations, 2 comptes, 0 prestation |
+>
+> **Pour l'état actuel, lire [`audit-general-2026-11-10.md`](audit-general-2026-11-10.md)**
+> et [`runbook-migrations.md`](runbook-migrations.md) — ce dernier porte la procédure
+> à jour, y compris la réconciliation des cinq versions distantes qui diffèrent des
+> noms de fichiers locaux.
+>
+> Ce document est conservé pour sa méthode (lecture du catalogue, privilèges réels,
+> limites du produit) et pour la traçabilité des décisions du 9 novembre. **Aucun
+> chiffre de ce rapport ne doit être cité comme l'état de la base.**
+
 **Branche auditée :** `arena/5a866d29-servicelavage` (HEAD `dc7f314`, identique à `main`)
 **Périmètre :** code source, schéma PostgreSQL/RLS, configuration Supabase déployée (projet LavAuto `avvkzliysacpyavmetsx`), build, tests, PWA, documentation.
 
