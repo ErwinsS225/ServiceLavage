@@ -2,6 +2,9 @@ import { lazy, Suspense, useState } from 'react';
 import { formatXof } from '../lib/money';
 import { orderCounts, selectedServicesTotal, toReceiptData } from '../lib/orderPresentation';
 import { describeError } from '../lib/queryResult';
+import { orderSchema, parseForm } from '../lib/schemas';
+import { errorText } from '../lib/errorMessages';
+import { useToastActions } from '../context/ToastContext';
 import { useStationOrders, type NewOrderInput } from '../hooks/useStationOrders';
 import {
   Table, TableHeader, TableBody, TableHead, TableRow, TableCell,
@@ -51,6 +54,9 @@ export function StationOrders({
 
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState<NewOrderInput>(EMPTY_FORM);
+  /** Erreurs par champ issues du schéma, affichées sous le champ concerné. */
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const toast = useToastActions();
   const [assignTarget, setAssignTarget] = useState<Record<string, string>>({});
   const [modalOpen, setModalOpen] = useState(false);
   const [receiptOrder, setReceiptOrder] = useState<OrderReceiptData | null>(null);
@@ -66,11 +72,13 @@ export function StationOrders({
     setModalOpen(true);
     setActionError('');
     setActionMessage('');
+    setFieldErrors({});
   }
 
   function resetForm() {
     setForm(EMPTY_FORM);
     setModalOpen(false);
+    setFieldErrors({});
   }
 
   async function runAction(action: () => Promise<void>, success: string) {
@@ -89,19 +97,31 @@ export function StationOrders({
 
   async function create(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!form.vehicle.trim() || form.serviceIds.length < 1 || form.serviceIds.length > 20) {
-      setActionError('Renseignez le véhicule et sélectionnez entre 1 et 20 services.');
+    // Bornes reprises de `create_station_order` : véhicule 1..120, 1..20
+    // services distincts. La vérification est faite ici pour nommer le champ
+    // fautif ; le serveur reste l'autorité en dernier ressort.
+    const parsed = parseForm(orderSchema, {
+      vehicle: form.vehicle,
+      plate: form.plate,
+      customerId: form.customerId || null,
+      serviceIds: form.serviceIds,
+    });
+    if (!parsed.ok) {
+      setFieldErrors(parsed.errors);
+      setActionError(Object.values(parsed.errors)[0] ?? '');
       return;
     }
     setBusy(true);
     setActionError('');
     setActionMessage('');
+    setFieldErrors({});
     try {
       await createOrder(form);
       resetForm();
       setActionMessage('Prestation enregistrée sur cet appareil, en attente de synchronisation.');
+      toast.success('Prestation enregistrée.', 'Elle part en file de synchronisation.');
     } catch (cause) {
-      setActionError(describeError(cause, 'Enregistrement local impossible.'));
+      setActionError(errorText(cause));
     } finally {
       setBusy(false);
     }
@@ -380,11 +400,18 @@ export function StationOrders({
       >
         <form onSubmit={create} className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <FormField label="Véhicule (Marque & Modèle)" required>
+            <FormField
+              label="Véhicule (Marque & Modèle)"
+              required
+              htmlFor="order-vehicle"
+              error={fieldErrors.vehicle}
+            >
               <input
+                id="order-vehicle"
                 className={formControlStyles.input}
                 required
                 maxLength={120}
+                aria-invalid={fieldErrors.vehicle ? true : undefined}
                 value={form.vehicle}
                 onChange={event => setForm({ ...form, vehicle: event.target.value })}
                 placeholder="Ex: Toyota RAV4 Blanc"
@@ -392,19 +419,32 @@ export function StationOrders({
               />
             </FormField>
 
-            <FormField label="Plaque d'immatriculation" hint="Facultatif">
+            <FormField
+              label="Plaque d'immatriculation"
+              hint="Facultatif"
+              htmlFor="order-plate"
+              error={fieldErrors.plate}
+            >
               <input
+                id="order-plate"
                 className={formControlStyles.input}
                 maxLength={40}
+                aria-invalid={fieldErrors.plate ? true : undefined}
+                placeholder="Ex: 1234 AB 01"
                 value={form.plate}
                 onChange={event => setForm({ ...form, plate: event.target.value })}
-                placeholder="Ex: 1234 AB 01"
               />
             </FormField>
           </div>
 
-          <FormField label="Client rattaché" hint="Facultatif — laissez vide pour un client de passage">
+          <FormField
+            label="Client rattaché"
+            hint="Facultatif — laissez vide pour un client de passage"
+            htmlFor="order-customer"
+            error={fieldErrors.customerId}
+          >
             <select
+              id="order-customer"
               className={formControlStyles.select}
               value={form.customerId}
               onChange={event => setForm({ ...form, customerId: event.target.value })}
@@ -416,10 +456,21 @@ export function StationOrders({
             </select>
           </FormField>
 
-          <div className="space-y-2">
-            <label className="block text-xs font-semibold text-slate-300">
-              Services à réaliser <span className="text-rose-400">*</span>
-            </label>
+          {/*
+            Un groupe de cases à cocher ne se décrit pas par un `<label>` : il
+            faut `role="group"` + `aria-labelledby`, sinon le lecteur d'écran
+            annonce vingt cases sans dire de quoi elles sont la liste.
+          */}
+          <div
+            className="space-y-2"
+            role="group"
+            aria-labelledby="order-services-label"
+            aria-invalid={fieldErrors.serviceIds ? true : undefined}
+            aria-describedby={fieldErrors.serviceIds ? 'order-services-error' : undefined}
+          >
+            <span id="order-services-label" className="block text-xs font-semibold text-slate-300">
+              Services à réaliser <span className="text-rose-400" aria-hidden="true">*</span>
+            </span>
             {!services.length ? (
               <p className="text-xs text-amber-300">
                 Aucun service actif configuré dans le catalogue.
@@ -460,6 +511,12 @@ export function StationOrders({
               </div>
             )}
           </div>
+
+          {fieldErrors.serviceIds && (
+            <p id="order-services-error" role="alert" className="text-xs text-rose-400 font-medium">
+              {fieldErrors.serviceIds}
+            </p>
+          )}
 
           <div className="p-3.5 rounded-xl bg-[#181c25] border border-[#2d3444] flex items-center justify-between">
             <span className="text-xs text-slate-300">Total estimé ({form.serviceIds.length} service{form.serviceIds.length > 1 ? 's' : ''}) :</span>
