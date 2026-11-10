@@ -1,16 +1,52 @@
 name: CI
+
+# Pipeline de qualité. Chaque étape échoue pour une raison différente, et le nom
+# de l'étape dit laquelle : « Type check » qui casse n'a rien à voir avec
+# « Contraste » qui casse, et la personne qui ouvre la PR doit le voir sans lire
+# les journaux.
+#
+# Ordre choisi du moins coûteux au plus coûteux : une faute de format se corrige
+# en une seconde, un test d'intégration en une minute. Inutile de faire attendre
+# quelqu'un devant un build complet pour lui dire qu'une virgule manque.
+
 on:
   push:
   pull_request:
+
 permissions:
   contents: read
+
 jobs:
-  verify:
+  qualite:
+    name: Qualité statique
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    concurrency:
+      group: qualite-${{ github.ref }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      # `npm ci` et non `npm install` : le verrou fait foi, une PR ne doit pas
+      # pouvoir changer silencieusement une version de dépendance.
+      - name: Install locked dependencies
+        run: npm ci --legacy-peer-deps
+      - name: Format (Prettier)
+        run: npm run format:check
+      - name: Lint (ESLint)
+        run: npm run lint
+      - name: Type check
+        run: npm run typecheck
+
+  tests:
+    name: Tests et invariants
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    # A pull request must be able to turn green on its own merits.
     concurrency:
-      group: ci-${{ github.ref }}
+      group: tests-${{ github.ref }}
       cancel-in-progress: true
     steps:
       - uses: actions/checkout@v4
@@ -19,13 +55,31 @@ jobs:
           node-version: '22'
           cache: npm
       - name: Install locked dependencies
-        run: npm ci
-      - name: Type check
-        run: npm run lint
-      - name: No unreachable source files
-        run: npm run check:reachability
+        run: npm ci --legacy-peer-deps
       - name: Unit and database isolation tests
         run: npm test
+      - name: No unreachable source files
+        run: npm run check:reachability
+      - name: Contrastes WCAG (les deux thèmes)
+        run: npm run check:contrast
+      - name: Contenu des migrations = SQL exécuté
+        run: npm run db:content
+
+  build:
+    name: Build de production
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    concurrency:
+      group: build-${{ github.ref }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci --legacy-peer-deps
       - name: Build with non-secret example configuration
         env:
           VITE_SUPABASE_URL: https://example.supabase.co
