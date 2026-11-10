@@ -1,7 +1,9 @@
 import { useCallback, useState } from 'react';
 import { formatXof } from '../lib/money';
-import { parseServiceInteger } from '../lib/serviceValidation';
 import { describeError } from '../lib/queryResult';
+import { parseForm, serviceSchema } from '../lib/schemas';
+import { errorText } from '../lib/errorMessages';
+import { useToastActions } from '../context/ToastContext';
 import { type ServiceInput, type ServiceRow, type StationClient } from '../lib/stationApi';
 import { useCreateService, useServices, useUpdateService } from '../hooks/useStationQueries';
 import {
@@ -44,6 +46,8 @@ export function StationServices({ stationId, client }: { stationId: string; clie
   const [modalOpen, setModalOpen] = useState(false);
   const [formError, setFormError] = useState('');
   const [message, setMessage] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const toast = useToastActions();
 
   const resetForm = useCallback(() => {
     setEditing(null);
@@ -51,6 +55,7 @@ export function StationServices({ stationId, client }: { stationId: string; clie
     setPrice('');
     setDuration('');
     setActive(true);
+    setFieldErrors({});
     setModalOpen(false);
   }, []);
 
@@ -61,6 +66,7 @@ export function StationServices({ stationId, client }: { stationId: string; clie
     setDuration('30');
     setActive(true);
     setFormError('');
+    setFieldErrors({});
     setMessage('');
     setModalOpen(true);
   }
@@ -72,21 +78,30 @@ export function StationServices({ stationId, client }: { stationId: string; clie
     setDuration(String(service.duration_minutes));
     setActive(service.is_active);
     setFormError('');
+    setFieldErrors({});
     setMessage('');
     setModalOpen(true);
   }
 
   async function save(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const priceXof = parseServiceInteger(price, 0, 100000000);
-    const minutes = parseServiceInteger(duration, 1, 1440);
-    if (!name.trim() || priceXof === null || minutes === null) {
-      setFormError('Saisissez un nom, un prix entier de 0 à 100 000 000 FCFA et une durée entière de 1 à 1 440 minutes.');
+    // Bornes de `station_services` : nom 1..120, prix 0..100 000 000,
+    // durée 1..1440. Le message nomme désormais le champ fautif.
+    const parsed = parseForm(serviceSchema, {
+      name,
+      price_xof: price,
+      duration_minutes: duration,
+      is_active: active,
+    });
+    if (!parsed.ok) {
+      setFieldErrors(parsed.errors);
+      setFormError(Object.values(parsed.errors)[0] ?? '');
       return;
     }
-    const input: ServiceInput = { name: name.trim(), price_xof: priceXof, duration_minutes: minutes, is_active: active };
+    const input: ServiceInput = parsed.data;
     setBusy(true);
     setFormError('');
+    setFieldErrors({});
     setMessage('');
     try {
       // La mutation invalide la clé `services` : la liste relue vient du
@@ -96,10 +111,12 @@ export function StationServices({ stationId, client }: { stationId: string; clie
       } else {
         await createMutation.mutateAsync(input);
       }
-      setMessage(editing ? 'Prestation modifiée avec succès.' : 'Nouvelle prestation ajoutée au catalogue.');
+      const wasEditing = editing !== null;
+      setMessage(wasEditing ? 'Prestation modifiée avec succès.' : 'Nouvelle prestation ajoutée au catalogue.');
+      toast.success(wasEditing ? 'Prestation modifiée.' : 'Prestation ajoutée au catalogue.', input.name);
       resetForm();
     } catch (cause) {
-      setFormError(describeError(cause, 'Enregistrement impossible. Vérifiez votre connexion et réessayez.'));
+      setFormError(errorText(cause));
     } finally {
       setBusy(false);
     }
@@ -239,9 +256,16 @@ export function StationServices({ stationId, client }: { stationId: string; clie
         description="Le tarif est figé au moment de la création d’une prestation : le modifier ici ne change pas les prestations déjà enregistrées."
       >
         <form onSubmit={save} className="space-y-4">
-          <FormField label="Nom de la prestation" required>
+          <FormField
+            label="Nom de la prestation"
+            required
+            htmlFor="service-name"
+            error={fieldErrors.name}
+          >
             <input
+              id="service-name"
               className={formControlStyles.input}
+              aria-invalid={fieldErrors.name ? true : undefined}
               required
               maxLength={120}
               value={name}
@@ -252,9 +276,17 @@ export function StationServices({ stationId, client }: { stationId: string; clie
           </FormField>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <FormField label="Tarif (FCFA)" required hint="Nombre entier, sans espace">
+            <FormField
+              label="Tarif (FCFA)"
+              required
+              hint="Nombre entier, sans espace"
+              htmlFor="service-price"
+              error={fieldErrors.price_xof}
+            >
               <input
+                id="service-price"
                 className={formControlStyles.input}
+                aria-invalid={fieldErrors.price_xof ? true : undefined}
                 required
                 inputMode="numeric"
                 value={price}
@@ -262,9 +294,16 @@ export function StationServices({ stationId, client }: { stationId: string; clie
                 placeholder="Ex: 5000"
               />
             </FormField>
-            <FormField label="Durée indicative (minutes)" required>
+            <FormField
+              label="Durée indicative (minutes)"
+              required
+              htmlFor="service-duration"
+              error={fieldErrors.duration_minutes}
+            >
               <input
+                id="service-duration"
                 className={formControlStyles.input}
+                aria-invalid={fieldErrors.duration_minutes ? true : undefined}
                 required
                 inputMode="numeric"
                 value={duration}

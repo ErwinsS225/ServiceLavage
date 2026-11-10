@@ -63,6 +63,18 @@ test('service : prix 0..100 000 000, durée 1..1440', () => {
   assert.equal(ok<{ price_xof: number }>(serviceSchema, base).data.price_xof, 5000);
 });
 
+test('un entier très long est refusé, pas arrondi', () => {
+  // `999999999999999999999` dépasse `Number.MAX_SAFE_INTEGER` : `Number()`
+  // l'arrondirait sans le test de sûreté, et la base recevrait une valeur
+  // différente de celle tapée.
+  ko(serviceSchema, { name: 'Lavage', is_active: true, price_xof: '999999999999999999999', duration_minutes: '30' });
+  ko(serviceSchema, { name: 'Lavage', is_active: true, price_xof: '1e3', duration_minutes: '30' });
+  // Les espaces autour d'un entier restent acceptés : le trim est explicitement
+  // fait par le schéma, et 1500 est bien la valeur transmise.
+  const padded = ok<{ price_xof: number }>(serviceSchema, { name: 'Lavage', is_active: true, price_xof: ' 1500 ', duration_minutes: '30' });
+  assert.equal(padded.data.price_xof, 1500);
+});
+
 test('client : nom 1..120, téléphone 1..40 avec caractères d’un numéro seulement', () => {
   ok(customerSchema, { name: 'Awa', phone: '+225 07 00 00 00 00' });
   ok(customerSchema, { name: 'Awa', phone: '07.00.00.00.00' });
