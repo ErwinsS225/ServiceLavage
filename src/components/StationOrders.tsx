@@ -7,7 +7,8 @@ import {
   Table, TableHeader, TableBody, TableHead, TableRow, TableCell,
   StatusBadge, buttonStyles, formControlStyles, FormField, Modal, Alert, EmptyState, StatCard
 } from './ui/designSystem';
-import { Plus, Car, Clock, CheckCircle2, Play, XCircle, RotateCw, Sparkles, FileText } from 'lucide-react';
+import { Plus, Car, Clock, CheckCircle2, RotateCw, Sparkles } from 'lucide-react';
+import { OrderActions } from './orders/OrderActions';
 import type { OrderReceiptData } from './ReceiptModal';
 const ReceiptModal = lazy(() => import('./ReceiptModal').then(m => ({ default: m.ReceiptModal })));
 
@@ -352,50 +353,15 @@ export function StationOrders({
                     </TableCell>
                   )}
                   <TableCell align="right">
-                    <div className="flex items-center justify-end gap-1.5">
-                      {order.status === 'en_attente' && (
-                        <button
-                          type="button"
-                          disabled={busy}
-                          className={buttonStyles({ variant: 'primary', size: 'sm' })}
-                          onClick={() => void runAction(() => transition(order.id, 'en_cours'), 'Statut mis à jour.')}
-                        >
-                          <Play className="w-3.5 h-3.5 mr-1" />
-                          Démarrer
-                        </button>
-                      )}
-                      {order.status === 'en_cours' && (
-                        <button
-                          type="button"
-                          disabled={busy}
-                          className={buttonStyles({ variant: 'success', size: 'sm' })}
-                          onClick={() => void runAction(() => transition(order.id, 'termine'), 'Statut mis à jour.')}
-                        >
-                          <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
-                          Terminer
-                        </button>
-                      )}
-                      {canManageOrders && (order.status === 'en_attente' || order.status === 'en_cours') && (
-                        <button
-                          type="button"
-                          disabled={busy}
-                          className={buttonStyles({ variant: 'danger', size: 'sm' })}
-                          onClick={() => setCancelTarget(order.id)}
-                        >
-                          <XCircle className="w-3.5 h-3.5 mr-1" />
-                          Annuler
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        className={buttonStyles({ variant: 'outline', size: 'sm' })}
-                        onClick={() => setReceiptOrder(toReceiptData(order))}
-                        title="Imprimer ou envoyer le reçu par WhatsApp (PDF)"
-                      >
-                        <FileText className="w-3.5 h-3.5 mr-1 text-cyan-400" />
-                        Reçu
-                      </button>
-                    </div>
+                    <OrderActions
+                      status={order.status}
+                      busy={busy}
+                      canCancel={canManageOrders}
+                      onStart={() => void runAction(() => transition(order.id, 'en_cours'), 'Statut mis à jour.')}
+                      onFinish={() => void runAction(() => transition(order.id, 'termine'), 'Statut mis à jour.')}
+                      onCancel={() => setCancelTarget(order.id)}
+                      onReceipt={() => setReceiptOrder(toReceiptData(order))}
+                    />
                   </TableCell>
                 </TableRow>
               );

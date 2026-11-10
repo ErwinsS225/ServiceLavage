@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo, useCallback } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabase as defaultClient } from '../lib/supabase';
 import { formatXof } from '../lib/money';
+import { countCustomers, fetchOrders } from '../lib/stationApi';
 import { listQueuedOrders } from '../lib/offlineOrders';
 import {
   dailyBilledSeries,
@@ -82,27 +83,21 @@ export function StationDashboard({ stationId, userId, onNavigateTab, client = de
     if (!client || !stationId) return;
     setError('');
     try {
-      // (1) Orders of the station. RLS already restricts them to this tenant.
-      const { data: ordersData, error: ordersError } = await client
-        .from('station_orders')
-        .select('id, total_xof, status, created_at, vehicle_info, plate_number')
-        .eq('station_id', stationId)
-        .order('created_at', { ascending: false });
+      // (1) Prestations de la station. RLS les restreint déjà au tenant ; le
+      // filtre `.eq('station_id')` est un garde-fou contre une erreur d'appel.
+      await fetchOrders(client, stationId)
+        .then(rows => setOrders(rows as StationOrderRow[]))
+        .catch((cause: unknown) => {
+          setError(cause instanceof Error ? cause.message : 'Chargement des prestations impossible.');
+        });
 
-      if (ordersError) {
-        setError(`Chargement des prestations impossible : ${ordersError.message}`);
-      } else {
-        setOrders((ordersData ?? []) as StationOrderRow[]);
-      }
-
-      // (2) Customer count: a count query, not a download of the table.
-      const { count: custCount, error: countError } = await client
-        .from('station_customers')
-        .select('id', { count: 'exact', head: true })
-        .eq('station_id', stationId);
-
-      if (countError) setError(previous => previous || `Comptage des clients impossible : ${countError.message}`);
-      else setCustomerCount(custCount ?? 0);
+      // (2) Comptage côté serveur, sans rapatrier la table des clients.
+      await countCustomers(client, stationId)
+        .then(setCustomerCount)
+        .catch((cause: unknown) => {
+          const message = cause instanceof Error ? cause.message : 'Comptage des clients impossible.';
+          setError(previous => previous || message);
+        });
 
       // (3) Local queue: counted, never priced (see stationMetrics).
       try {

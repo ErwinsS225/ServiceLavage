@@ -98,8 +98,12 @@ test('the receipt PDF library is not loaded with the portal', () => {
   assert.match(orders, /lazy\(\(\) => import\('\.\/ReceiptModal'\)/);
 });
 
-test('the CSV export neutralises spreadsheet formulas', () => {
-  const cell = reports.slice(reports.indexOf('const csvCell'), reports.indexOf('const handleExportCsv'));
+test('the CSV export neutralises spreadsheet formulas', async () => {
+  // Extrait dans `lib/csvExport` (P1) : la règle est testée sur sa fonction,
+  // pas relue au regex dans le JSX.
+  const { readFile: read } = await import('node:fs/promises');
+  const source = await read('src/lib/csvExport.ts', 'utf8');
+  const cell = source.slice(source.indexOf('export function csvCell'), source.indexOf('export interface CsvOrderRow'));
   // A leading =, +, -, @, tab or CR must be prefixed so Excel keeps it as text.
   assert.match(cell, /\/\^\[=\+/);
   // Quotes inside a value must be doubled, otherwise the column escapes.

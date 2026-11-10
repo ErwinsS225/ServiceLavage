@@ -47,7 +47,10 @@ function fakeClient(orders: unknown[], customers = 3) {
         select: () => builder,
         eq: () => builder,
         gte: () => builder,
-        order: () => Promise.resolve({ data: orders, error: null }) as never,
+        // The data layer bounds the list (`.limit(200)`): the fake has to
+        // accept the whole chain the real client accepts.
+        limit: () => builder,
+        order: () => builder,
         then: (resolve: (value: unknown) => void, reject: (reason: unknown) => void) => {
           const payload = table === 'station_customers'
             ? { data: null, count: customers, error: null }

@@ -374,4 +374,96 @@ export async function revokeMembership(client: StationClient, stationId: string,
   if (error) throw new Error(`Révocation impossible : ${error.message}`);
 }
 
+/* ------------------------------------------------------------------ */
+/* Rapport d'activité                                                  */
+/* ------------------------------------------------------------------ */
+
+export interface ReportOrderRow {
+  id: string;
+  total_xof: number;
+  status: OrderStatus;
+  created_at: string;
+  vehicle_info: string;
+  plate_number: string | null;
+}
+
+/**
+ * Prestations de l'année en cours pour une station.
+ *
+ * Bornée à `since` : un `select` sans borne grandirait à chaque lavage. Le
+ * rapport ne prétend donc pas couvrir l'historique complet, et l'écran le dit.
+ */
+export async function fetchReportOrders(
+  client: StationClient,
+  stationId: string,
+  since: Date,
+): Promise<ReportOrderRow[]> {
+  const result = await client
+    .from('station_orders')
+    .select('id, total_xof, status, created_at, vehicle_info, plate_number')
+    .eq('station_id', stationId)
+    .gte('created_at', since.toISOString())
+    .order('created_at', { ascending: false });
+  return unwrap(result as { data: ReportOrderRow[] | null; error: { message: string } | null }, 'Chargement du rapport impossible');
+}
+
+/**
+ * Comptage des clients d'une station sans rapatrier la table.
+ * `head: true` + `count: 'exact'` : le serveur renvoie un entier, pas des lignes.
+ */
+export async function countCustomers(client: StationClient, stationId: string): Promise<number> {
+  const { count, error } = await client
+    .from('station_customers')
+    .select('id', { count: 'exact', head: true })
+    .eq('station_id', stationId);
+  if (error) throw new Error(`Comptage des clients impossible : ${error.message}`);
+  return count ?? 0;
+}
+
 export { describeError };
+
+/* ------------------------------------------------------------------ */
+/* Abonnement du propriétaire                                          */
+/* ------------------------------------------------------------------ */
+
+export interface OwnerSubscription {
+  plan: 'starter' | 'pro' | 'business';
+  max_stations: number;
+  max_monthly_orders: number;
+  /** Nombre de stations réellement rattachées au propriétaire. */
+  station_count: number;
+  /** Prestations du mois courant, toutes stations confondues. */
+  monthly_orders: number;
+}
+
+/**
+ * Formule, plafonds et consommation réels via `my_subscription()`.
+ *
+ * La RPC est `SECURITY DEFINER` et filtre sur `auth.uid()` : elle ne renvoie
+ * qu'une ligne, celle du propriétaire connecté, et calcule elle-même les deux
+ * compteurs (stations rattachées, prestations du mois). Ces valeurs sont donc
+ * mesurées côté serveur, pas déduites du cache local — un compteur de quota
+ * affiché depuis le navigateur serait faux dès la deuxième session.
+ */
+export async function fetchSubscription(client: StationClient): Promise<OwnerSubscription> {
+  const { data, error } = await client.rpc('my_subscription');
+  if (error) throw new Error(`Lecture de la formule impossible : ${error.message}`);
+  const rows = (data ?? []) as OwnerSubscription[];
+  if (!Array.isArray(rows) || rows.length === 0) {
+    throw new Error('Aucune formule retournée par le serveur.');
+  }
+  const row = rows[0];
+  return {
+    plan: row.plan,
+    max_stations: Number(row.max_stations),
+    max_monthly_orders: Number(row.max_monthly_orders),
+    station_count: Number(row.station_count),
+    monthly_orders: Number(row.monthly_orders),
+  };
+}
+
+/** Pourcentage de consommation d'un quota, borné à [0, 100]. `null` si le quota est nul. */
+export function quotaUsage(used: number, limit: number): number | null {
+  if (!Number.isFinite(used) || !Number.isFinite(limit) || limit <= 0) return null;
+  return Math.min(100, Math.max(0, Math.round((used / limit) * 100)));
+}
