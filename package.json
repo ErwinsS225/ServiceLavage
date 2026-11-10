@@ -16,7 +16,8 @@
     "db:login": "npx --yes supabase@latest login --no-browser",
     "db:link": "npx --yes supabase@latest link --project-ref avvkzliysacpyavmetsx",
     "db:status": "npx --yes supabase@latest migration list",
-    "db:drift": "tsx --test tests/productionSchemaDrift.test.ts"
+    "db:drift": "tsx --test tests/productionSchemaDrift.test.ts",
+    "db:content": "node scripts/checkMigrationContent.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.119.0",

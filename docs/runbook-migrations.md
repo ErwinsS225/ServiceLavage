@@ -79,7 +79,44 @@ distant. `supabase db push` les croit « en attente » et tenterait de les rejou
 ```bash
 # 1. Le schéma produit par les migrations est-il toujours celui de la production ?
 npx tsx --test tests/productionSchemaDrift.test.ts
+
+# 2. Le *contenu* exécuté correspond-il aux fichiers du dépôt ?
+npm run db:content
 ```
+
+### Étape 1 — le contenu a été vérifié le 10 novembre 2026
+
+Le runbook affirmait « même schéma, seules les versions diffèrent ». C'était
+déduit d'une comparaison de catalogue ; c'est désormais **prouvé au caractère
+près**, y compris pour les cinq migrations appliquées sous un autre horodatage.
+
+Méthode : la table `supabase_migrations.schema_migrations` conserve le texte
+exécuté dans `statements[1]` (colonne présente sur ce projet, 11 lignes sur 11
+renseignées). On en tire une empreinte insensible à la mise en forme —
+commentaires `--` retirés, tous les blancs supprimés — et on la compare à la
+même empreinte calculée sur chaque fichier local.
+
+| Contrôle | Résultat |
+| --- | --- |
+| Fichiers locaux | 11 |
+| Empreintes identiques au SQL exécuté | **11 / 11** |
+| Divergence de contenu | **aucune** |
+| Versions divergentes (contenu identique) | 5, comme documenté |
+
+Les deux fichiers de relevé sont versionnés :
+`docs/sauvegardes/prod-migration-historique-2026-11-10.json` (versions, noms,
+empreintes ; aucun SQL recopié, aucun secret) et le script
+`scripts/checkMigrationContent.mjs` qui le vérifie, testé par
+`tests/migrationHistory.test.ts`.
+
+**Conclusion pour la suite** : puisqu'aucun contenu ne diffère, une migration
+additive n'est pas nécessaire. La réconciliation se limite à aligner les noms de
+fichiers du dépôt sur les versions distantes (`supabase migration fetch
+--remote`), puis à supprimer la table de correspondance devenue inutile dans
+`tests/productionState.test.ts` et `docs/sauvegardes/prod-schema-2026-11-10.json`.
+Rappel inchangé : `migration repair` n'exécute aucun SQL et n'est **pas**
+nécessaire dans ce chemin ; s'il était lancé avec les versions locales, il
+inscrirait cinq lignes de plus dans l'historique distant.
 
 Ce test rejoue les 11 migrations dans PGlite, puis compare le catalogue obtenu
 (tables, colonnes, politiques, fonctions, déclencheurs, index, contraintes,

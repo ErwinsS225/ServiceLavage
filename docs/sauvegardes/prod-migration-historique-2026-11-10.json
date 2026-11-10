@@ -1,0 +1,88 @@
+{
+  "_lisez_moi": "Historique réel de supabase_migrations.schema_migrations relevé le 10/11/2026 (lecture seule), avec l'empreinte du SQL exécuté. L'empreinte ignore commentaires et espaces : elle prouve le contenu, pas l'indentation. Vérifiée par scripts/checkMigrationContent.mjs et tests/migrationHistory.test.ts.",
+  "_projet": {
+    "ref": "avvkzliysacpyavmetsx",
+    "nom": "LavAuto"
+  },
+  "_capture": "2026-11-10, via le connecteur Supabase (lecture seule : list_migrations, execute_query)",
+  "_methode": "md5(regexp_replace(regexp_replace(statements[1], '--[^\\n]*', '', 'g'), '\\s', '', 'g'))",
+  "migrations": [
+    {
+      "version": "20261109121406",
+      "name": "owner_stations",
+      "fichier": "20261109121406_owner_stations.sql",
+      "fingerprint": "33e28e230fecb27be99e041debf5ed90",
+      "version_locale_du_fichier": "20261109121406"
+    },
+    {
+      "version": "20261109122729",
+      "name": "station_customers",
+      "fichier": "20261109122729_station_customers.sql",
+      "fingerprint": "e7371973c558dd4774bb597981b5a1bb",
+      "version_locale_du_fichier": "20261109122729"
+    },
+    {
+      "version": "20261109122929",
+      "name": "station_services",
+      "fichier": "20261109122929_station_services.sql",
+      "fingerprint": "00642222a71d702f0a91648bbe948917",
+      "version_locale_du_fichier": "20261109122929"
+    },
+    {
+      "version": "20261109123327",
+      "name": "station_orders",
+      "fichier": "20261109123327_station_orders.sql",
+      "fingerprint": "e99b8755c0d676f07581c80dd766b3a9",
+      "version_locale_du_fichier": "20261109123327"
+    },
+    {
+      "version": "20261109130303",
+      "name": "order_idempotency",
+      "fichier": "20261109130303_order_idempotency.sql",
+      "fingerprint": "ae805b59e96ecb1c019b2e550b29157b",
+      "version_locale_du_fichier": "20261109130303"
+    },
+    {
+      "version": "20261109130602",
+      "name": "restrict_station_privileges",
+      "fichier": "20261109130602_restrict_station_privileges.sql",
+      "fingerprint": "3018773ebfc02f23e3dcaccb0a522d93",
+      "version_locale_du_fichier": "20261109130602"
+    },
+    {
+      "version": "20261109182442",
+      "name": "station_memberships",
+      "fichier": "20261109140000_station_memberships.sql",
+      "fingerprint": "39cd5437d6534a06930eb1a92bc69f6f",
+      "version_locale_du_fichier": "20261109140000"
+    },
+    {
+      "version": "20261109182456",
+      "name": "subscription_limits",
+      "fichier": "20261109141000_subscription_limits.sql",
+      "fingerprint": "0c3c3df6bdc9987ab3d034d1bb5e137e",
+      "version_locale_du_fichier": "20261109141000"
+    },
+    {
+      "version": "20261109182509",
+      "name": "station_inventory",
+      "fichier": "20261109142000_station_inventory.sql",
+      "fingerprint": "678f6e3f8df70bedd71217e1a5bac99d",
+      "version_locale_du_fichier": "20261109142000"
+    },
+    {
+      "version": "20261109182534",
+      "name": "station_role_permissions",
+      "fichier": "20261109150000_station_role_permissions.sql",
+      "fingerprint": "0ff16ef00deb4b775e7d5b0d94eca74e",
+      "version_locale_du_fichier": "20261109150000"
+    },
+    {
+      "version": "20261109184205",
+      "name": "revoke_legacy_order_rpc",
+      "fichier": "20261109160000_revoke_legacy_order_rpc.sql",
+      "fingerprint": "0eee34cc65cb58bc8bcbb5b9f7a1590e",
+      "version_locale_du_fichier": "20261109160000"
+    }
+  ]
+}
