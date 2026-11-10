@@ -12,7 +12,12 @@ import { readFile } from 'node:fs/promises';
 const dashboard = await readFile('src/components/StationDashboard.tsx', 'utf8');
 const reports = await readFile('src/components/StationReports.tsx', 'utf8');
 const orders = await readFile('src/components/StationOrders.tsx', 'utf8');
-const receipt = await readFile('src/components/ReceiptModal.tsx', 'utf8');
+// The receipt was split in P1: wording lives in `receiptDocument`, the paper in
+// `receipt/ReceiptPaper`, the QR in `receipt/ReceiptQrCode`.
+const receiptModal = await readFile('src/components/ReceiptModal.tsx', 'utf8');
+const receipt = await readFile('src/lib/receiptDocument.ts', 'utf8')
+  + await readFile('src/components/receipt/ReceiptPaper.tsx', 'utf8')
+  + receiptModal;
 const metrics = await readFile('src/lib/stationMetrics.ts', 'utf8');
 const receiptPayload = await readFile('src/lib/receiptPayload.ts', 'utf8');
 
@@ -80,12 +85,14 @@ test('no claim of an official or approved document', () => {
   }
 });
 
-test('the receipt QR code carries real data instead of a decorative icon', () => {
+test('the receipt QR code carries real data instead of a decorative icon', async () => {
   // The old screen drew a lucide <QrCode> icon plus "Scannez pour valider".
-  assert.doesNotMatch(receipt, /from 'lucide-react'/m.source ? /\bQrCode\b/ : /$^/, 'aucune icône QR décorative');
+  assert.doesNotMatch(receiptModal, /\bQrCode\b/, 'aucune icône QR décorative');
   assert.doesNotMatch(receipt, /Scannez pour valider/);
-  assert.match(receipt, /buildReceiptPayload\(/);
-  assert.match(receipt, /receiptQrMatrix\(/);
+  assert.match(receiptModal, /buildReceiptPayload\(/);
+  // The drawing itself moved to `components/receipt/ReceiptQrCode`.
+  const qrComponent = await readFile('src/components/receipt/ReceiptQrCode.tsx', 'utf8');
+  assert.match(qrComponent, /receiptQrMatrix\(/);
   // The payload is built from the order fields, never from a constant string.
   for (const field of ['orderId', 'vehicleInfo', 'totalXof', 'status', 'createdAt']) {
     assert.ok(receiptPayload.includes(field), `${field} doit faire partie du contenu du QR`);
