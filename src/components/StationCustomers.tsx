@@ -1,5 +1,8 @@
 import { useState } from 'react';
 import { describeError } from '../lib/queryResult';
+import { customerSchema, parseForm } from '../lib/schemas';
+import { errorText } from '../lib/errorMessages';
+import { useToastActions } from '../context/ToastContext';
 import { type CustomerRow, type StationClient } from '../lib/stationApi';
 import { useCreateCustomer, useCustomers, useUpdateCustomer } from '../hooks/useStationQueries';
 import {
@@ -41,12 +44,15 @@ export function StationCustomers({ stationId, client }: { stationId: string; cli
   const [modalOpen, setModalOpen] = useState(false);
   const [formError, setFormError] = useState('');
   const [message, setMessage] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const toast = useToastActions();
 
   function startAdd() {
     setEditing(null);
     setName('');
     setPhone('');
     setFormError('');
+    setFieldErrors({});
     setMessage('');
     setModalOpen(true);
   }
@@ -56,6 +62,7 @@ export function StationCustomers({ stationId, client }: { stationId: string; cli
     setName(customer.name);
     setPhone(customer.phone);
     setFormError('');
+    setFieldErrors({});
     setMessage('');
     setModalOpen(true);
   }
@@ -65,18 +72,22 @@ export function StationCustomers({ stationId, client }: { stationId: string; cli
     setEditing(null);
     setName('');
     setPhone('');
+    setFieldErrors({});
   }
 
   async function save(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const cleanName = name.trim();
-    const cleanPhone = phone.trim();
-    if (!cleanName || !cleanPhone) {
-      setFormError('Le nom et le téléphone sont obligatoires.');
+    // Bornes de `station_customers` : nom 1..120, téléphone 1..40 (trim).
+    const parsed = parseForm(customerSchema, { name, phone });
+    if (!parsed.ok) {
+      setFieldErrors(parsed.errors);
+      setFormError(Object.values(parsed.errors)[0] ?? '');
       return;
     }
+    const { name: cleanName, phone: cleanPhone } = parsed.data;
     setBusy(true);
     setFormError('');
+    setFieldErrors({});
     setMessage('');
     try {
       // La mutation invalide la clé `customers` : la liste relue est celle du
@@ -86,10 +97,12 @@ export function StationCustomers({ stationId, client }: { stationId: string; cli
       } else {
         await createMutation.mutateAsync({ name: cleanName, phone: cleanPhone });
       }
+      const wasEditing = editing !== null;
       closeModal();
-      setMessage(editing ? 'Client modifié avec succès.' : 'Nouveau client enregistré.');
+      setMessage(wasEditing ? 'Client modifié avec succès.' : 'Nouveau client enregistré.');
+      toast.success(wasEditing ? 'Client modifié.' : 'Client enregistré.', cleanName);
     } catch (cause) {
-      setFormError(describeError(cause, 'Enregistrement impossible. Vérifiez votre connexion et réessayez.'));
+      setFormError(errorText(cause));
     } finally {
       setBusy(false);
     }
@@ -219,11 +232,18 @@ export function StationCustomers({ stationId, client }: { stationId: string; cli
         description="Les coordonnées sont protégées et isolées par station."
       >
         <form onSubmit={save} className="space-y-4">
-          <FormField label="Nom complet ou raison sociale" required>
+          <FormField
+            label="Nom complet ou raison sociale"
+            required
+            htmlFor="customer-name"
+            error={fieldErrors.name}
+          >
             <input
+              id="customer-name"
               className={formControlStyles.input}
               required
               maxLength={120}
+              aria-invalid={fieldErrors.name ? true : undefined}
               value={name}
               onChange={e => setName(e.target.value)}
               placeholder="Ex: Jean Kouassi"
@@ -231,11 +251,19 @@ export function StationCustomers({ stationId, client }: { stationId: string; cli
             />
           </FormField>
 
-          <FormField label="Numéro de téléphone" required hint="Format recommandé : +225 07..." >
+          <FormField
+            label="Numéro de téléphone"
+            required
+            hint="Format recommandé : +225 07..."
+            htmlFor="customer-phone"
+            error={fieldErrors.phone}
+          >
             <input
+              id="customer-phone"
               className={formControlStyles.input}
               type="tel"
               required
+              aria-invalid={fieldErrors.phone ? true : undefined}
               maxLength={40}
               value={phone}
               onChange={e => setPhone(e.target.value)}
