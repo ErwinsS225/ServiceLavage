@@ -1,187 +1,184 @@
-import { useEffect, useRef, useState } from 'react';
-import { supabase } from '../lib/supabase';
+import { useState } from 'react';
 import {
-  listQueuedInventoryAdjustments, saveQueuedInventoryAdjustment, synchronizeInventoryAdjustments,
+  applyInventoryAdjustment,
+  createInventoryItem,
+  fetchInventory,
+  resolveClient,
+  type InventoryRow,
+} from '../lib/stationApi';
+import {
+  listQueuedInventoryAdjustments,
+  saveQueuedInventoryAdjustment,
+  synchronizeInventoryAdjustments,
   type QueuedInventoryAdjustment,
 } from '../lib/offlineInventory';
+import { useOfflineQueue } from '../hooks/useOfflineQueue';
+import { useOnlineStatus } from '../hooks/useOnlineStatus';
+import { useResource } from '../hooks/useResource';
+import { useLocalCache, isArrayOf } from '../hooks/useLocalCache';
+import { describeError } from '../lib/queryResult';
 import {
   Table, TableHeader, TableBody, TableHead, TableRow, TableCell,
   StatusBadge, buttonStyles, formControlStyles, FormField, Modal, Alert, EmptyState
 } from './ui/designSystem';
 import { Plus, Boxes, ArrowUpDown, RotateCw } from 'lucide-react';
 
-type Item = { id: string; name: string; unit: string; quantity: number; min_threshold: number };
-const fields = 'id,name,unit,quantity,min_threshold';
 const maxStock = 1_000_000_000;
 
-function isItem(value: unknown): value is Item {
+function isItem(value: unknown): value is InventoryRow {
   if (!value || typeof value !== 'object') return false;
-  const item = value as Partial<Item>;
+  const item = value as Partial<InventoryRow>;
   return typeof item.id === 'string' && typeof item.name === 'string' && typeof item.unit === 'string' &&
     Number.isSafeInteger(item.quantity) && Number.isSafeInteger(item.min_threshold);
 }
 
+/**
+ * Inventaire de la station, avec sa file d'ajustements hors ligne.
+ *
+ * Ce qui a été sorti du composant :
+ *  - lecture, écriture et validation du cache local → `useLocalCache` ;
+ *  - file d'ajustements et boucle de synchronisation → `useOfflineQueue` ;
+ *  - appels Supabase (liste, création, ajustement) → `lib/stationApi.ts`.
+ *
+ * Ce qui reste ici, volontairement : la règle métier « le stock estimé ne peut
+ * pas devenir négatif » et le calcul de l'estimation (stock serveur + deltas en
+ * file). C'est de l'affichage d'aide à la décision ; l'arbitrage final reste
+ * `apply_inventory_operation`, qui refuse un stock négatif côté serveur.
+ */
 export function StationInventory({ stationId, userId }: { stationId: string; userId: string }) {
-  const [items, setItems] = useState<Item[]>([]);
-  const [pending, setPending] = useState<QueuedInventoryAdjustment[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState(false);
-  const [online, setOnline] = useState(() => navigator.onLine);
+  const online = useOnlineStatus();
+  const cache = useLocalCache<InventoryRow[]>(
+    `servicelavage:inventory:v1:${userId}:${stationId}`,
+    isArrayOf(isItem),
+  );
+
   const [cached, setCached] = useState(false);
+  const items = useResource<InventoryRow[]>(
+    async () => {
+      const client = resolveClient();
+      // Offline: show the last snapshot rather than an empty table.
+      if (!online) {
+        const snapshot = cache.read();
+        setCached(snapshot !== null);
+        return snapshot ?? [];
+      }
+      const fresh = await fetchInventory(client, stationId);
+      try {
+        cache.write(fresh);
+        setCached(false);
+      } catch {
+        // A full quota must not hide fresh data; the banner stays off.
+        setCached(false);
+      }
+      return fresh;
+    },
+    [stationId, online, cache],
+    { fallback: 'Impossible de charger l’inventaire.', initial: [] },
+  );
+
+  const queue = useOfflineQueue<QueuedInventoryAdjustment>({
+    list: () => listQueuedInventoryAdjustments(localStorage, userId, stationId),
+    deliver: async adjustment => {
+      await applyInventoryAdjustment(resolveClient(), adjustment);
+    },
+    synchronize: deliver => synchronizeInventoryAdjustments(localStorage, userId, stationId, deliver),
+    canSync: () => navigator.onLine,
+    onDelivered: () => items.reload(),
+    fallback: 'Synchronisation impossible. La file a été conservée.',
+  });
+
+  const [busy, setBusy] = useState(false);
   const [name, setName] = useState('');
   const [unit, setUnit] = useState('');
   const [quantity, setQuantity] = useState('');
   const [minimum, setMinimum] = useState('');
   const [adjustments, setAdjustments] = useState<Record<string, string>>({});
   const [modalOpen, setModalOpen] = useState(false);
-  const [error, setError] = useState('');
+  const [formError, setFormError] = useState('');
   const [message, setMessage] = useState('');
-  const [reload, setReload] = useState(0);
-  const syncing = useRef(false);
-  const syncAgain = useRef(false);
-  const cacheKey = `servicelavage:inventory:v1:${userId}:${stationId}`;
-
-  useEffect(() => {
-    const onOnline = () => setOnline(true);
-    const onOffline = () => setOnline(false);
-    window.addEventListener('online', onOnline);
-    window.addEventListener('offline', onOffline);
-    return () => { window.removeEventListener('online', onOnline); window.removeEventListener('offline', onOffline); };
-  }, []);
-
-  function refreshQueue() {
-    try {
-      const queue = listQueuedInventoryAdjustments(localStorage, userId, stationId);
-      setPending(queue);
-      return queue;
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'La file locale d’inventaire est illisible ; elle a été conservée.');
-      return [];
-    }
-  }
-
-  async function deliver(adjustment: QueuedInventoryAdjustment) {
-    const { data: sessionData } = await supabase!.auth.getSession();
-    if (sessionData.session?.user.id !== userId) throw new Error('Reconnectez-vous au compte d’origine pour synchroniser le stock.');
-    const { data, error } = await supabase!.rpc('apply_inventory_operation', {
-      p_request_id: adjustment.requestId, p_station_id: adjustment.stationId, p_item_id: adjustment.itemId,
-      p_name: null, p_unit: null, p_quantity: adjustment.delta, p_min_threshold: null,
-    });
-    if (error) throw new Error(error.message);
-    if (!data?.length) throw new Error('Le serveur n’a pas confirmé l’ajustement de stock.');
-  }
-
-  async function syncQueue() {
-    if (!navigator.onLine) return;
-    if (syncing.current) { syncAgain.current = true; return; }
-    syncing.current = true;
-    setError('');
-    try {
-      const result = await synchronizeInventoryAdjustments(localStorage, userId, stationId, deliver);
-      refreshQueue();
-      if (result.completed > 0) {
-        setMessage(`${result.completed} ajustement(s) confirmé(s) par le serveur.`);
-        setReload(value => value + 1);
-      }
-      if (result.error) throw result.error;
-    } catch (cause) {
-      refreshQueue();
-      setError(cause instanceof Error ? `Synchronisation en attente : ${cause.message}` : 'Synchronisation impossible. La file a été conservée.');
-    } finally {
-      syncing.current = false;
-      if (syncAgain.current) { syncAgain.current = false; void syncQueue(); }
-    }
-  }
-
-  useEffect(() => {
-    refreshQueue();
-    const onOnline = () => { void syncQueue(); };
-    const onStorage = () => { refreshQueue(); };
-    window.addEventListener('online', onOnline);
-    window.addEventListener('storage', onStorage);
-    void syncQueue();
-    return () => { window.removeEventListener('online', onOnline); window.removeEventListener('storage', onStorage); };
-  }, [stationId, userId]);
-
-  useEffect(() => {
-    let active = true;
-    setLoading(true); setError(''); setItems([]); setCached(false);
-    let hasCache = false;
-    try {
-      const snapshot = localStorage.getItem(cacheKey);
-      if (snapshot !== null) {
-        const parsed: unknown = JSON.parse(snapshot);
-        if (!Array.isArray(parsed) || !parsed.every(isItem)) throw new Error('Le cache local d’inventaire est invalide.');
-        setItems(parsed); setCached(true); hasCache = true;
-      }
-    } catch (cause) { setError(cause instanceof Error ? cause.message : 'Impossible de lire le cache local.'); }
-    if (!online) { setLoading(false); return () => { active = false; }; }
-    Promise.resolve(supabase!.from('station_inventory').select(fields).eq('station_id', stationId).order('name'))
-      .then(({ data, error }) => {
-        if (!active) return;
-        if (error) {
-          if (!hasCache) setError(`Impossible de charger l’inventaire : ${error.message}`);
-          else setError(`Connexion à l’inventaire indisponible ; affichage du dernier cache local. ${error.message}`);
-        } else {
-          const freshItems = (data ?? []) as Item[];
-          setItems(freshItems); setCached(false);
-          try { localStorage.setItem(cacheKey, JSON.stringify(freshItems)); }
-          catch { setError('Inventaire chargé, mais sauvegarde locale impossible.'); }
-        }
-        setLoading(false);
-      }).catch(() => {
-        if (!active) return;
-        if (!hasCache) setError('Impossible de charger l’inventaire. Vérifiez votre connexion.');
-        else setError('Connexion à l’inventaire indisponible ; affichage du dernier cache local.');
-        setLoading(false);
-      });
-    return () => { active = false; };
-  }, [stationId, userId, reload, online]);
 
   async function createItem(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!navigator.onLine) { setError('La création d’article nécessite une connexion ; seuls les ajustements d’articles existants peuvent être mis en file.'); return; }
-    const amount = Number(quantity); const threshold = Number(minimum);
-    if (!name.trim() || !unit.trim() || !Number.isSafeInteger(amount) || amount < 0 || amount > maxStock || !Number.isSafeInteger(threshold) || threshold < 0 || threshold > maxStock) {
-      setError('Renseignez un article, une unité et des quantités entières comprises entre 0 et 1 000 000 000.'); return;
+    if (!navigator.onLine) {
+      setFormError('La création d’article nécessite une connexion ; seuls les ajustements d’articles existants peuvent être mis en file.');
+      return;
     }
-    setBusy(true); setError(''); setMessage('');
+    const amount = Number(quantity);
+    const threshold = Number(minimum);
+    if (!name.trim() || !unit.trim() || !Number.isSafeInteger(amount) || amount < 0 || amount > maxStock ||
+        !Number.isSafeInteger(threshold) || threshold < 0 || threshold > maxStock) {
+      setFormError('Renseignez un article, une unité et des quantités entières comprises entre 0 et 1 000 000 000.');
+      return;
+    }
+    setBusy(true);
+    setFormError('');
+    setMessage('');
     try {
-      const { data, error } = await supabase!.rpc('apply_inventory_operation', {
-        p_request_id: crypto.randomUUID(), p_station_id: stationId, p_item_id: null,
-        p_name: name.trim(), p_unit: unit.trim(), p_quantity: amount, p_min_threshold: threshold,
+      await createInventoryItem(resolveClient(), {
+        stationId,
+        name: name.trim(),
+        unit: unit.trim(),
+        quantity: amount,
+        minThreshold: threshold,
       });
-      if (error) { setError(`Enregistrement impossible : ${error.message}`); return; }
-      if (!data?.length) { setError('Le serveur n’a pas confirmé la création.'); return; }
-      setName(''); setUnit(''); setQuantity(''); setMinimum(''); setMessage('Article enregistré.');
+      setName('');
+      setUnit('');
+      setQuantity('');
+      setMinimum('');
+      setMessage('Article enregistré.');
       setModalOpen(false);
-      setReload(value => value + 1);
-    } catch (cause) { setError(cause instanceof Error ? cause.message : 'Enregistrement impossible.'); }
-    finally { setBusy(false); }
+      items.reload();
+    } catch (cause) {
+      setFormError(describeError(cause, 'Enregistrement impossible.'));
+    } finally {
+      setBusy(false);
+    }
   }
 
-  async function adjust(item: Item) {
+  async function adjust(item: InventoryRow) {
     const delta = Number(adjustments[item.id]);
-    if (!Number.isSafeInteger(delta) || delta === 0 || Math.abs(delta) > maxStock) { setError('L’ajustement doit être un entier non nul compris entre −1 000 000 000 et 1 000 000 000.'); return; }
+    if (!Number.isSafeInteger(delta) || delta === 0 || Math.abs(delta) > maxStock) {
+      setFormError('L’ajustement doit être un entier non nul compris entre −1 000 000 000 et 1 000 000 000.');
+      return;
+    }
     let queuedDelta: number;
     try {
-      queuedDelta = listQueuedInventoryAdjustments(localStorage, userId, stationId).filter(entry => entry.itemId === item.id).reduce((sum, entry) => sum + entry.delta, 0);
-    } catch (cause) { setError(cause instanceof Error ? cause.message : 'La file locale est invalide.'); return; }
-    if (item.quantity + queuedDelta + delta < 0) { setError('Le stock estimé deviendrait négatif. Actualisez le stock avant de réessayer.'); return; }
-    setBusy(true); setError(''); setMessage('');
+      queuedDelta = listQueuedInventoryAdjustments(localStorage, userId, stationId)
+        .filter(entry => entry.itemId === item.id)
+        .reduce((sum, entry) => sum + entry.delta, 0);
+    } catch (cause) {
+      setFormError(describeError(cause, 'La file locale est invalide.'));
+      return;
+    }
+    if (item.quantity + queuedDelta + delta < 0) {
+      setFormError('Le stock estimé deviendrait négatif. Actualisez le stock avant de réessayer.');
+      return;
+    }
+    setBusy(true);
+    setFormError('');
+    setMessage('');
     try {
-      const operation: QueuedInventoryAdjustment = {
-        version: 1, userId, stationId, requestId: crypto.randomUUID(), itemId: item.id,
-        delta, createdAt: new Date().toISOString(),
-      };
-      saveQueuedInventoryAdjustment(localStorage, operation);
-      setAdjustments(prev => ({ ...prev, [item.id]: '' }));
-      refreshQueue();
-      if (navigator.onLine) await syncQueue();
+      saveQueuedInventoryAdjustment(localStorage, {
+        version: 1,
+        userId,
+        stationId,
+        requestId: crypto.randomUUID(),
+        itemId: item.id,
+        delta,
+        createdAt: new Date().toISOString(),
+      });
+      setAdjustments(previous => ({ ...previous, [item.id]: '' }));
+      queue.refresh();
+      if (navigator.onLine) await queue.sync();
       else setMessage('Ajustement mis en attente sur cet appareil. Le stock serveur sera vérifié à la synchronisation.');
-    } catch (cause) { setError(cause instanceof Error ? cause.message : 'Mise en file impossible.'); }
-    finally { setBusy(false); }
+    } catch (cause) {
+      setFormError(describeError(cause, 'Mise en file impossible.'));
+    } finally {
+      setBusy(false);
+    }
   }
+
+  const error = formError || items.error || queue.error;
 
   return (
     <section className="space-y-5 border-t border-[#232834] pt-6" aria-label="Inventaire de la station">
@@ -194,17 +191,17 @@ export function StationInventory({ stationId, userId }: { stationId: string; use
           <button
             type="button"
             className={buttonStyles({ variant: 'outline', size: 'sm' })}
-            onClick={() => setReload(v => v + 1)}
-            disabled={loading || busy}
+            onClick={() => { setFormError(''); items.reload(); }}
+            disabled={items.loading || busy}
           >
-            <RotateCw className={`w-3.5 h-3.5 mr-1.5 ${loading ? 'animate-spin' : ''}`} />
+            <RotateCw className={`w-3.5 h-3.5 mr-1.5 ${items.loading ? 'animate-spin' : ''}`} />
             Actualiser
           </button>
           <button
             type="button"
             className={buttonStyles({ variant: 'primary', size: 'sm' })}
-            onClick={() => { setModalOpen(true); setError(''); setMessage(''); }}
-            disabled={loading || busy || !online}
+            onClick={() => { setModalOpen(true); setFormError(''); setMessage(''); }}
+            disabled={items.loading || busy || !online}
           >
             <Plus className="w-4 h-4 mr-1.5" />
             Nouvel article
@@ -224,17 +221,17 @@ export function StationInventory({ stationId, userId }: { stationId: string; use
         </p>
       )}
 
-      {pending.length > 0 && (
+      {queue.pending.length > 0 && (
         <Alert
           variant="warning"
-          title={`${pending.length} ajustement(s) en attente de synchronisation`}
+          title={`${queue.pending.length} ajustement(s) en attente de synchronisation`}
           action={
             online && (
               <button
                 type="button"
                 disabled={busy}
                 className="underline text-xs font-semibold text-amber-200 hover:text-white"
-                onClick={() => void syncQueue()}
+                onClick={() => void queue.sync()}
               >
                 Synchroniser maintenant
               </button>
@@ -242,7 +239,7 @@ export function StationInventory({ stationId, userId }: { stationId: string; use
           }
         >
           <ul className="text-xs mt-1 space-y-0.5 font-mono">
-            {pending.map(operation => (
+            {queue.pending.map(operation => (
               <li key={operation.requestId}>
                 {operation.delta > 0 ? '+' : ''}{operation.delta} · article {operation.itemId.slice(0, 8)} · {new Date(operation.createdAt).toLocaleTimeString('fr-FR')}
               </li>
@@ -253,7 +250,11 @@ export function StationInventory({ stationId, userId }: { stationId: string; use
 
       {error && (
         <Alert variant="error" action={
-          <button type="button" className="underline text-xs font-semibold text-rose-300" onClick={() => setReload(value => value + 1)}>
+          <button
+            type="button"
+            className="underline text-xs font-semibold text-rose-300"
+            onClick={() => { setFormError(''); items.reload(); void queue.sync(); }}
+          >
             Recharger
           </button>
         }>
@@ -267,11 +268,11 @@ export function StationInventory({ stationId, userId }: { stationId: string; use
         </Alert>
       )}
 
-      {loading ? (
+      {items.loading ? (
         <div className="p-8 text-center text-sm text-slate-400 rounded-xl bg-[#141720] border border-[#232834]">
           Chargement de l’inventaire…
         </div>
-      ) : items.length ? (
+      ) : items.data.length ? (
         <Table>
           <TableHeader>
             <TableRow>
@@ -283,8 +284,8 @@ export function StationInventory({ stationId, userId }: { stationId: string; use
             </TableRow>
           </TableHeader>
           <TableBody>
-            {items.map(item => {
-              const queuedDelta = pending.filter(entry => entry.itemId === item.id).reduce((sum, entry) => sum + entry.delta, 0);
+            {items.data.map(item => {
+              const queuedDelta = queue.pending.filter(entry => entry.itemId === item.id).reduce((sum, entry) => sum + entry.delta, 0);
               const estimate = item.quantity + queuedDelta;
               const isLow = estimate <= item.min_threshold;
               const isDepleted = estimate === 0;
@@ -336,12 +337,12 @@ export function StationInventory({ stationId, userId }: { stationId: string; use
                         max={maxStock}
                         step="1"
                         value={adjustments[item.id] ?? ''}
-                        onChange={event => setAdjustments(prev => ({ ...prev, [item.id]: event.target.value }))}
+                        onChange={event => setAdjustments(previous => ({ ...previous, [item.id]: event.target.value }))}
                         placeholder="+ / −"
                       />
                       <button
                         type="button"
-                        disabled={busy || loading}
+                        disabled={busy || items.loading}
                         className={buttonStyles({ variant: 'secondary', size: 'sm' })}
                         onClick={() => void adjust(item)}
                       >
@@ -364,7 +365,7 @@ export function StationInventory({ stationId, userId }: { stationId: string; use
             <button
               type="button"
               className={buttonStyles({ variant: 'primary', size: 'sm' })}
-              onClick={() => { setModalOpen(true); setError(''); setMessage(''); }}
+              onClick={() => { setModalOpen(true); setFormError(''); setMessage(''); }}
               disabled={!online}
             >
               <Plus className="w-4 h-4 mr-1.5" />
@@ -374,7 +375,6 @@ export function StationInventory({ stationId, userId }: { stationId: string; use
         />
       )}
 
-      {/* Add Item Modal Dialog */}
       <Modal
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
@@ -435,6 +435,8 @@ export function StationInventory({ stationId, userId }: { stationId: string; use
             </FormField>
           </div>
 
+          {formError && <Alert variant="error">{formError}</Alert>}
+
           <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#232834]">
             <button
               type="button"
@@ -446,7 +448,7 @@ export function StationInventory({ stationId, userId }: { stationId: string; use
             </button>
             <button
               type="submit"
-              disabled={busy || loading || !online}
+              disabled={busy || items.loading || !online}
               className={buttonStyles({ variant: 'primary', size: 'md' })}
             >
               {busy ? 'Création…' : 'Ajouter l’article (en ligne)'}

@@ -1,56 +1,84 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import {
+  STATION_TABS,
+  allowedTabsFor,
+  canOpenTab,
+  resolveTab,
+  parseStationRole,
+  type StationRole,
+} from '../src/lib/portalNavigation';
 
 /**
- * The portal used to build its module list inline, so the navigation, the
- * rendering conditions and the station-change reset could drift apart. They
- * now read one matrix; these assertions pin the matrix itself and prove the
- * panel conditions still agree with it.
+ * La matrice d'onglets vivait dans le JSX du portail : les tests la relisaient
+ * au regex, ce qui vérifiait l'écriture du code plutôt que la règle. Depuis la
+ * P1 elle est exportée, donc ces assertions appellent la vraie fonction.
+ *
+ * Ce qui reste vérifié dans le source : que l'affichage de l'onglet et le
+ * montage du panneau passent tous deux par la même fonction. C'est le seul
+ * moyen de garantir qu'ils ne divergent pas à nouveau.
  */
-const source = await readFile('src/components/OwnerPortal.tsx', 'utf8');
+const roles: StationRole[] = ['owner', 'gerant', 'caissier', 'laveur'];
 
-const roles = ['owner', 'gerant', 'caissier', 'laveur'] as const;
-
-test('the module matrix covers the eight station modules exactly once', () => {
-  const ids = [...source.matchAll(/\{ id: '([a-z]+)', label: '[^']+', roles: \[([^\]]+)\] \}/g)]
-    .map(match => ({ id: match[1], roles: match[2] }));
-  assert.deepEqual(ids.map(entry => entry.id), [
+test('la matrice couvre les huit modules, une fois chacun', () => {
+  assert.deepEqual(STATION_TABS.map(tab => tab.id), [
     'dashboard', 'orders', 'services', 'customers', 'inventory', 'staff', 'reports', 'subscription',
   ]);
 });
 
-test('no role is left without any module', () => {
-  const entries = [...source.matchAll(/\{ id: '[a-z]+', label: '[^']+', roles: \[([^\]]+)\] \}/g)]
-    .map(match => match[1]);
+test('aucun rôle ne reste sans aucun module', () => {
   for (const role of roles) {
-    assert.ok(entries.some(entry => entry.includes(`'${role}'`)), `${role} has no module at all`);
+    assert.ok(allowedTabsFor(role).length > 0, `${role} n'a aucun module`);
   }
+  assert.deepEqual(allowedTabsFor(null), [], 'un rôle inconnu ne doit rien ouvrir');
 });
 
-test('a cashier cannot open the washes module, a washer cannot manage anything else', () => {
-  const orders = /{ id: 'orders', label: '[^']+', roles: \[([^\]]+)\] }/.exec(source)?.[1] ?? '';
-  // A cashier cannot create a wash on the server either
-  // (create_station_order_idempotent requires owner or gerant), so the tab
-  // must not be advertised. A washer only sees the washes assigned to them.
-  assert.doesNotMatch(orders, /caissier/);
-  assert.match(orders, /laveur/);
-  for (const forbidden of ['services', 'inventory', 'staff', 'reports', 'subscription']) {
-    const entry = new RegExp(`\\{ id: '${forbidden}', label: '[^']+', roles: \\[([^\\]]+)\\] \\}`).exec(source)?.[1] ?? '';
-    assert.doesNotMatch(entry, /laveur/, `le laveur ne doit pas ouvrir ${forbidden}`);
+test('un caissier ne peut pas ouvrir les prestations, un laveur ne gère rien', () => {
+  // Le serveur refuse aussi : create_station_order_idempotent exige
+  // propriétaire ou gérant.
+  assert.equal(canOpenTab('caissier', 'orders'), false);
+  assert.equal(canOpenTab('laveur', 'orders'), true, 'le laveur voit les prestations qui lui sont affectées');
+
+  for (const forbidden of ['services', 'inventory', 'staff', 'reports', 'subscription'] as const) {
+    assert.equal(canOpenTab('laveur', forbidden), false, `le laveur ne doit pas ouvrir ${forbidden}`);
   }
-  // and the panel rendering must repeat the same restriction
-  assert.match(source, /tab === 'orders' && \(stationRole === 'owner' \|\| stationRole === 'gerant' \|\| stationRole === 'laveur'\)/);
+  assert.deepEqual(allowedTabsFor('laveur'), ['orders']);
 });
 
-test('subscriptions stay owner-only, both in the matrix and in the panel', () => {
-  const subscription = /{ id: 'subscription', label: '[^']+', roles: \[([^\]]+)\] }/.exec(source)?.[1] ?? '';
-  assert.equal(subscription.trim(), "'owner'");
-  assert.match(source, /tab === 'subscription' && stationRole === 'owner'/);
+test('les abonnements restent réservés au propriétaire', async () => {
+  assert.equal(canOpenTab('owner', 'subscription'), true);
+  for (const other of ['gerant', 'caissier', 'laveur'] as const) {
+    assert.equal(canOpenTab(other, 'subscription'), false);
+  }
+  // Même règle côté module : le panneau n'est rendu que si canOpenTab passe.
+  assert.match(await readFile('src/components/portal/StationModulePanel.tsx', 'utf8'), /canOpenTab\(role, tab\)/);
 });
 
-test('a station change can never keep a forbidden tab open', () => {
-  // The reset effect must be driven by the shared helper, not a stale copy.
-  assert.match(source, /allowedTabsFor\(stationRole\)/);
-  assert.match(source, /if \(allowed\.length > 0 && !allowed\.includes\(tab\)\) setTab\(allowed\[0\]\)/);
+test('un changement de station ne peut pas laisser un onglet interdit ouvert', () => {
+  // Un gérant sur l'onglet Personnel rejoint une station où il est laveur :
+  // il doit retomber sur le premier onglet autorisé, pas sur un panneau vide.
+  assert.equal(resolveTab('gerant', 'staff'), 'staff');
+  assert.equal(resolveTab('laveur', 'staff'), 'orders');
+  assert.equal(resolveTab('caissier', 'dashboard'), 'dashboard');
+  assert.equal(resolveTab(null, 'orders'), null);
+  // Un onglet inconnu de la matrice ne fuit pas non plus.
+  assert.equal(resolveTab('caissier', 'subscription' as never), 'dashboard');
+});
+
+test('l’onglet affiché et le panneau monté partagent la même fonction', async () => {
+  const nav = await readFile('src/components/portal/StationModuleNav.tsx', 'utf8');
+  const portal = await readFile('src/components/OwnerPortal.tsx', 'utf8');
+  // La barre dérive sa liste de la matrice, elle ne la recopie pas.
+  assert.match(nav, /STATION_TABS\.filter/);
+  assert.doesNotMatch(nav, /\{ id: '/, 'aucun onglet ne doit être redéclaré dans la barre');
+  // Le portail résout l'onglet via le helper, jamais par un test local.
+  assert.match(portal, /resolveTab\(stationRole, tab\)/);
+});
+
+test('un rôle renvoyé par le serveur est validé avant usage', () => {
+  assert.equal(parseStationRole('gerant'), 'gerant');
+  assert.equal(parseStationRole('admin'), null);
+  assert.equal(parseStationRole(null), null);
+  assert.equal(parseStationRole(42), null);
 });

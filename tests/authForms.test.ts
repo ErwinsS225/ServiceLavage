@@ -197,11 +197,15 @@ test('the copy makes no promise the code cannot keep', async () => {
   // "one-time link" is a Supabase Auth setting we do not control from here.
   assert.doesNotMatch(copy, /valable une seule fois|usage unique/i);
 
-  // The offline claim is real: StationOrders queues to localStorage, which is
-  // what actually backs the sentence shown on the sign-in panel.
+  // The offline claim is real: orders are queued to localStorage and replayed
+  // through the idempotent RPC. The writing lives in `useStationOrders` since
+  // the P1 split; the assertion follows the code, not the old file layout.
   assert.match(copy, /hors ligne/i);
-  const orders = await readFile('src/components/StationOrders.tsx', 'utf8');
-  assert.match(orders, /offlineOrders/);
-  assert.match(orders, /saveQueuedOrder/);
+  const ordersHook = await readFile('src/hooks/useStationOrders.ts', 'utf8');
+  assert.match(ordersHook, /offlineOrders/);
+  assert.match(ordersHook, /saveQueuedOrder/);
+  // And the queue is replayed through the idempotent call, never a plain insert.
+  assert.match(ordersHook, /createOrderIdempotent/);
+  assert.match(await readFile('src/lib/stationApi.ts', 'utf8'), /create_station_order_idempotent/);
   assert.doesNotMatch(portal, /offlineOrders/, 'the portal page itself does not queue orders');
 });
