@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { formatXof } from '../lib/money';
 import { listQueuedOrders, saveQueuedOrder, synchronizeOrders, type QueuedOrder } from '../lib/offlineOrders';
@@ -7,7 +7,8 @@ import {
   StatusBadge, buttonStyles, formControlStyles, FormField, Modal, Alert, EmptyState, StatCard 
 } from './ui/designSystem';
 import { Plus, Car, Clock, CheckCircle2, Play, XCircle, RotateCw, Sparkles, FileText } from 'lucide-react';
-import { ReceiptModal, type OrderReceiptData } from './ReceiptModal';
+import type { OrderReceiptData } from './ReceiptModal';
+const ReceiptModal = lazy(() => import('./ReceiptModal').then(m => ({ default: m.ReceiptModal })));
 
 type Service = { id: string; name: string; price_xof: number };
 type Customer = { id: string; name: string; phone: string };
@@ -29,12 +30,15 @@ export function StationOrders({
   stationId, 
   userId, 
   role, 
-  roleFeaturesReady 
+  roleFeaturesReady,
+  stationName,
 }: { 
   stationId: string; 
   userId: string; 
   role: StationRole; 
-  roleFeaturesReady: boolean 
+  roleFeaturesReady: boolean;
+  /** Printed on the receipt; falls back to the product name only if absent. */
+  stationName?: string;
 }) {
   const [services, setServices] = useState<Service[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -55,6 +59,8 @@ export function StationOrders({
   const [cached, setCached] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [receiptOrder, setReceiptOrder] = useState<OrderReceiptData | null>(null);
+  /** Id of the order awaiting cancellation confirmation (replaces window.confirm). */
+  const [cancelTarget, setCancelTarget] = useState<string | null>(null);
   const syncing = useRef(false);
   const syncAgain = useRef(false);
   const cacheKey = `servicelavage:order-data:v1:${userId}:${stationId}`;
@@ -481,7 +487,7 @@ export function StationOrders({
                           type="button"
                           disabled={busy}
                           className={buttonStyles({ variant: 'danger', size: 'sm' })}
-                          onClick={() => { if (window.confirm('Annuler cette prestation ?')) transition(o.id, 'annule'); }}
+                          onClick={() => setCancelTarget(o.id)}
                         >
                           <XCircle className="w-3.5 h-3.5 mr-1" />
                           Annuler
@@ -627,12 +633,40 @@ export function StationOrders({
         </form>
       </Modal>
 
+      {/* Cancellation is irreversible on the server, so it is confirmed in a
+          real dialog: window.confirm is blocked in some embedded browsers and
+          cannot be read by a screen reader. */}
+      <Modal
+        isOpen={cancelTarget !== null}
+        onClose={() => setCancelTarget(null)}
+        title="Annuler cette prestation ?"
+        description="Le statut passera à « Annulé ». Cette action est définitive et le montant ne comptera plus dans le chiffre d'affaires."
+        size="sm"
+        footer={
+          <>
+            <button type="button" className={buttonStyles({ variant: 'ghost', size: 'sm' })} onClick={() => setCancelTarget(null)}>Conserver</button>
+            <button
+              type="button"
+              disabled={busy}
+              className={buttonStyles({ variant: 'danger', size: 'sm' })}
+              onClick={() => { const id = cancelTarget; setCancelTarget(null); if (id) void transition(id, 'annule'); }}
+            >
+              Annuler la prestation
+            </button>
+          </>
+        }
+      >
+        <p className="text-xs text-slate-400">Vérifiez qu'aucun lavage n'est en cours sur ce véhicule avant de continuer.</p>
+      </Modal>
+
       {receiptOrder && (
-        <ReceiptModal
-          order={receiptOrder}
-          stationName="Station ServiceLavage"
-          onClose={() => setReceiptOrder(null)}
-        />
+        <Suspense fallback={null}>
+          <ReceiptModal
+            order={receiptOrder}
+            stationName={stationName ?? 'Station ServiceLavage'}
+            onClose={() => setReceiptOrder(null)}
+          />
+        </Suspense>
       )}
     </section>
   );

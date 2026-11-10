@@ -1,15 +1,20 @@
+import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
 import { ThemeProvider } from './context/ThemeContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import './index.css';
 
+// StrictMode double-invokes effects in development only: it surfaces missing
+// cleanups (offline queue listeners, auth subscriptions) before production.
 createRoot(document.getElementById('root')!).render(
-  <ErrorBoundary>
-    <ThemeProvider>
-      <App />
-    </ThemeProvider>
-  </ErrorBoundary>,
+  <StrictMode>
+    <ErrorBoundary>
+      <ThemeProvider>
+        <App />
+      </ThemeProvider>
+    </ErrorBoundary>
+  </StrictMode>,
 );
 
 // Cache the application shell only in production and on secure origins.

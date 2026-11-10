@@ -8,6 +8,7 @@ import {
   CardDescription, 
   CardContent, 
   StatCard, 
+  Alert,
   buttonStyles 
 } from './ui/designSystem';
 import { 
@@ -30,6 +31,14 @@ interface StationReportsProps {
   stationName: string;
 }
 
+/** Shared wording for the four statuses allowed by the database check constraint. */
+const ORDER_STATUS_LABELS: Record<string, string> = {
+  en_attente: 'En attente',
+  en_cours: 'En cours',
+  termine: 'Terminé',
+  annule: 'Annulé',
+};
+
 interface OrderReportItem {
   id: string;
   total_xof: number;
@@ -43,6 +52,7 @@ export function StationReports({ stationId, stationName }: StationReportsProps) 
   const [period, setPeriod] = useState<'today' | 'week' | 'month' | 'year'>('month');
   const [orders, setOrders] = useState<OrderReportItem[]>([]);
   const [feedback, setFeedback] = useState<string>('');
+  const [error, setError] = useState<string>('');
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const reportRef = useRef<HTMLDivElement>(null);
 
@@ -52,15 +62,20 @@ export function StationReports({ stationId, stationName }: StationReportsProps) 
         return;
       }
       try {
-        const { data } = await supabase
+        // The report only needs the current year, and an unbounded select would
+        // grow with every wash. RLS still restricts the rows to this station.
+        const { data, error } = await supabase
           .from('station_orders')
           .select('id, total_xof, status, created_at, vehicle_info, plate_number')
           .eq('station_id', stationId)
+          .gte('created_at', new Date(new Date().getFullYear(), 0, 1).toISOString())
           .order('created_at', { ascending: false });
 
-        setOrders(data || []);
+        if (error) setError(`Chargement du rapport impossible : ${error.message}`);
+        else setOrders(data || []);
       } catch (err) {
         console.error('Erreur chargement données de rapport:', err);
+        setError('Chargement du rapport impossible. Vérifiez votre connexion.');
       }
     }
     fetchReportData();
@@ -68,7 +83,10 @@ export function StationReports({ stationId, stationName }: StationReportsProps) 
 
   const now = new Date();
   const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-  const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay()).getTime();
+  // ISO week: Monday first. getDay() returns 0 for Sunday, which would put a
+  // Sunday at the end of the following week instead of the current one.
+  const weekdayOffset = (now.getDay() + 6) % 7;
+  const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - weekdayOffset).getTime();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
   const startOfYear = new Date(now.getFullYear(), 0, 1).getTime();
 
@@ -94,6 +112,10 @@ export function StationReports({ stationId, stationName }: StationReportsProps) 
     return orders.filter(o => new Date(o.created_at).getTime() >= startTime);
   }, [orders, period]);
 
+  // Revenue is only recognised on completed washes; a cancelled wash must not
+  // appear as billed turnover either, hence the explicit status filter.
+  const billableOrders = useMemo(() => filteredOrders.filter(o => o.status !== 'annule'), [filteredOrders]);
+
   const paidOrders = useMemo(() => {
     return filteredOrders.filter(o => o.status === 'termine');
   }, [filteredOrders]);
@@ -103,35 +125,8 @@ export function StationReports({ stationId, stationName }: StationReportsProps) 
   }, [paidOrders]);
 
   const totalBilled = useMemo(() => {
-    return filteredOrders.reduce((sum, o) => sum + (o.total_xof || 0), 0);
-  }, [filteredOrders]);
-
-  // Operational expense estimate (water, electricity, shampoo detergents ~20%)
-  const estimatedExpenses = Math.round(totalCollected * 0.22);
-  const netProfit = totalCollected - estimatedExpenses;
-
-  // Payment Breakdown distribution (Mobile Money standard in Ivory Coast)
-  const paymentBreakdown = useMemo(() => {
-    if (totalCollected === 0) {
-      return [
-        { label: 'Wave CI (Mobile Money)', total: 0, count: 0, color: 'bg-sky-400' },
-        { label: 'Orange Money CI', total: 0, count: 0, color: 'bg-orange-400' },
-        { label: 'MTN Mobile Money', total: 0, count: 0, color: 'bg-yellow-400' },
-        { label: 'Espèces (Cash)', total: 0, count: 0, color: 'bg-emerald-400' },
-      ];
-    }
-    const wavePart = Math.round(totalCollected * 0.52);
-    const orangePart = Math.round(totalCollected * 0.26);
-    const mtnPart = Math.round(totalCollected * 0.12);
-    const cashPart = totalCollected - (wavePart + orangePart + mtnPart);
-
-    return [
-      { label: 'Wave CI (Mobile Money)', total: wavePart, count: Math.ceil(paidOrders.length * 0.52), color: 'bg-sky-400' },
-      { label: 'Orange Money CI', total: orangePart, count: Math.ceil(paidOrders.length * 0.26), color: 'bg-orange-400' },
-      { label: 'MTN Mobile Money', total: mtnPart, count: Math.ceil(paidOrders.length * 0.12), color: 'bg-yellow-400' },
-      { label: 'Espèces (Cash)', total: cashPart, count: Math.max(1, paidOrders.length - Math.ceil(paidOrders.length * 0.90)), color: 'bg-emerald-400' },
-    ];
-  }, [totalCollected, paidOrders.length]);
+    return billableOrders.reduce((sum, o) => sum + (o.total_xof || 0), 0);
+  }, [billableOrders]);
 
   const handlePrint = () => {
     window.print();
@@ -177,7 +172,7 @@ export function StationReports({ stationId, stationName }: StationReportsProps) 
         blob,
         fileName,
         `Rapport Financier - ServiceLavage (${periodLabels[period]})`,
-        `Bonjour, voici le rapport financier officiel de la station ${stationName} pour la période : ${periodLabels[period]}. Recettes totales : ${formatXof(totalCollected)}. Bénéfice net estimé : ${formatXof(netProfit)}.`
+        `Bonjour, voici le rapport financier de la station ${stationName} pour la période : ${periodLabels[period]}. Recettes encaissées : ${formatXof(totalCollected)} sur ${paidOrders.length} prestation(s) terminée(s).`
       );
 
       if (outcome === 'shared') {
@@ -195,15 +190,25 @@ export function StationReports({ stationId, stationName }: StationReportsProps) 
     }
   };
 
+  /**
+   * Quotes a value for CSV and neutralises spreadsheet formulas: a vehicle
+   * named `=HYPERLINK(...)` must stay text when the file is opened in Excel.
+   */
+  const csvCell = (value: string | number) => {
+    const text = String(value);
+    const guarded = /^[=+\-@\t\r]/.test(text) ? `'${text}` : text;
+    return `"${guarded.replace(/"/g, '""')}"`;
+  };
+
   const handleExportCsv = () => {
     const headers = ['ID', 'Date', 'Véhicule', 'Immatriculation', 'Montant XOF', 'Statut'];
     const rows = filteredOrders.map(o => [
-      o.id,
-      new Date(o.created_at).toLocaleDateString('fr-FR'),
-      `"${o.vehicle_info}"`,
-      `"${o.plate_number || 'N/A'}"`,
-      o.total_xof,
-      o.status
+      csvCell(o.id),
+      csvCell(new Date(o.created_at).toLocaleDateString('fr-FR')),
+      csvCell(o.vehicle_info),
+      csvCell(o.plate_number || 'N/A'),
+      csvCell(o.total_xof),
+      csvCell(ORDER_STATUS_LABELS[o.status] ?? o.status),
     ]);
     const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
     const encodedUri = encodeURI(csvContent);
@@ -296,6 +301,12 @@ export function StationReports({ stationId, stationName }: StationReportsProps) 
         </div>
       </div>
 
+      {error && (
+        <Alert variant="error" className="no-print">
+          {error}
+        </Alert>
+      )}
+
       {/* Feedback banner */}
       {feedback && (
         <div className="no-print p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs flex items-center gap-2">
@@ -310,32 +321,28 @@ export function StationReports({ stationId, stationName }: StationReportsProps) 
           title="Recettes Encaissées"
           value={formatXof(totalCollected)}
           subtext="Montants réglés sur la période"
-          trend={{ label: '+16% vs période préc.', positive: true }}
           icon={<DollarSign className="w-5 h-5 text-emerald-400" />}
-        />
-
-        <StatCard
-          title="Dépenses Estimées"
-          value={formatXof(estimatedExpenses)}
-          subtext="Consommables, eau & énergie"
-          trend={{ label: 'Marge préservée', positive: true }}
-          icon={<TrendingDown className="w-5 h-5 text-rose-400" />}
-        />
-
-        <StatCard
-          title="Bénéfice Net"
-          value={formatXof(netProfit)}
-          subtext="Marge opérationnelle nette"
-          trend={{ label: 'Rentabilité saine', positive: true }}
-          icon={<TrendingUp className="w-5 h-5 text-indigo-400" />}
         />
 
         <StatCard
           title="Chiffre d'Affaires"
           value={formatXof(totalBilled)}
           subtext={`${paidOrders.length} lavages facturés`}
-          trend={{ label: `${filteredOrders.length} véhicules au total`, positive: true }}
           icon={<Car className="w-5 h-5 text-amber-400" />}
+        />
+
+        <StatCard
+          title="Prestations"
+          value={filteredOrders.length}
+          subtext="Véhicules sur la période"
+          icon={<TrendingUp className="w-5 h-5 text-indigo-400" />}
+        />
+
+        <StatCard
+          title="Dépenses & Bénéfice"
+          value="Non suivis"
+          subtext="Aucune dépense enregistrée"
+          icon={<TrendingDown className="w-5 h-5 text-rose-400" />}
         />
       </div>
 
@@ -351,26 +358,11 @@ export function StationReports({ stationId, stationName }: StationReportsProps) 
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {paymentBreakdown.map(item => {
-              const pct = totalCollected > 0 ? Math.round((item.total / totalCollected) * 100) : 0;
-              return (
-                <div key={item.label} className="space-y-1.5">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-semibold text-slate-200">{item.label}</span>
-                    <span className="font-bold text-white font-mono">{formatXof(item.total)} ({item.count} tx)</span>
-                  </div>
-                  <div className="w-full bg-[#1c2230] rounded-full h-2.5 overflow-hidden border border-[#2b3343]/60">
-                    <div
-                      style={{ width: `${pct}%` }}
-                      className={`h-full ${item.color} rounded-full transition-all duration-300`}
-                    />
-                  </div>
-                  <span className="text-[10px] text-slate-500">{pct}% du total encaissé</span>
-                </div>
-              );
-            })}
-          </div>
+          <Alert variant="info" title="Moyens de paiement non enregistrés">
+            Les prestations ne conservent pas le moyen de règlement (Wave, Orange Money, espèces…).
+            Aucune ventilation fiable ne peut donc être affichée : ce tableau sera disponible
+            lorsque l'encaissement sera développé côté serveur.
+          </Alert>
         </CardContent>
       </Card>
 
@@ -414,12 +406,12 @@ export function StationReports({ stationId, stationName }: StationReportsProps) 
             <span className="text-lg font-black text-gray-900 font-mono">{formatXof(totalCollected)}</span>
           </div>
           <div className="kpi-card border border-gray-300 bg-gray-50/80 p-3.5 rounded-xl">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-gray-600 block">Dépenses Estimées</span>
-            <span className="text-lg font-black text-gray-900 font-mono">{formatXof(estimatedExpenses)}</span>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-gray-600 block">Prestations</span>
+            <span className="text-lg font-black text-gray-900 font-mono">{filteredOrders.length}</span>
           </div>
           <div className="kpi-card border border-gray-300 bg-gray-50/80 p-3.5 rounded-xl">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-gray-600 block">Bénéfice Net</span>
-            <span className="text-lg font-black text-emerald-800 font-mono">{formatXof(netProfit)}</span>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-gray-600 block">Prestations terminées</span>
+            <span className="text-lg font-black text-emerald-800 font-mono">{paidOrders.length}</span>
           </div>
           <div className="kpi-card border border-gray-300 bg-gray-50/80 p-3.5 rounded-xl">
             <span className="text-[10px] font-bold uppercase tracking-wider text-gray-600 block">Véhicules Livrés</span>
@@ -427,40 +419,53 @@ export function StationReports({ stationId, stationName }: StationReportsProps) 
           </div>
         </div>
 
-        {/* Detailed Payment Breakdown Table */}
+        {/* Order breakdown: the only figures the schema can actually prove */}
         <div className="mb-6">
           <h2 className="text-xs font-bold uppercase tracking-wider text-gray-800 mb-2.5 pb-1 border-b border-gray-300">
-            Ventilation des Recettes par Moyen de Paiement
+            Détail des Prestations de la Période
           </h2>
-          <table className="w-full text-left text-xs border-collapse">
-            <thead>
-              <tr className="border-b-2 border-gray-400 bg-gray-100">
-                <th className="py-2 px-3 font-bold text-gray-800">Moyen de Règlement</th>
-                <th className="py-2 px-3 font-bold text-gray-800 text-center">Transactions</th>
-                <th className="py-2 px-3 font-bold text-gray-800 text-right">Montant Collecté</th>
-                <th className="py-2 px-3 font-bold text-gray-800 text-right">Part (%)</th>
-              </tr>
-            </thead>
-            <tbody>
-              {paymentBreakdown.map(item => {
-                const pct = totalCollected > 0 ? Math.round((item.total / totalCollected) * 100) : 0;
-                return (
-                  <tr key={item.label} className="border-b border-gray-200">
-                    <td className="py-2.5 px-3 font-medium text-gray-900">{item.label}</td>
-                    <td className="py-2.5 px-3 text-center text-gray-700">{item.count}</td>
-                    <td className="py-2.5 px-3 text-right font-bold text-gray-900 font-mono">{formatXof(item.total)}</td>
-                    <td className="py-2.5 px-3 text-right text-gray-700 font-mono">{pct} %</td>
+          {filteredOrders.length === 0 ? (
+            <p className="text-xs text-gray-600 py-3">
+              Aucune prestation enregistrée sur cette période. Les moyens de paiement ne sont pas
+              suivis par l'application : aucune ventilation par règlement ne peut être produite.
+            </p>
+          ) : (
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="border-b-2 border-gray-400 bg-gray-100">
+                  <th className="py-2 px-3 font-bold text-gray-800">Date</th>
+                  <th className="py-2 px-3 font-bold text-gray-800">Véhicule</th>
+                  <th className="py-2 px-3 font-bold text-gray-800">Immatriculation</th>
+                  <th className="py-2 px-3 font-bold text-gray-800 text-center">Statut</th>
+                  <th className="py-2 px-3 font-bold text-gray-800 text-right">Montant</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredOrders.slice(0, 40).map(order => (
+                  <tr key={order.id} className="border-b border-gray-200">
+                    <td className="py-2 px-3 text-gray-700">{new Date(order.created_at).toLocaleDateString('fr-FR')}</td>
+                    <td className="py-2 px-3 font-medium text-gray-900">{order.vehicle_info}</td>
+                    <td className="py-2 px-3 text-gray-700 font-mono">{order.plate_number || '—'}</td>
+                    <td className="py-2 px-3 text-center text-gray-700">{ORDER_STATUS_LABELS[order.status] ?? order.status}</td>
+                    <td className="py-2 px-3 text-right font-bold text-gray-900 font-mono">{formatXof(order.total_xof)}</td>
                   </tr>
-                );
-              })}
-              <tr className="border-t-2 border-black font-black bg-gray-50 text-gray-950">
-                <td className="py-3 px-3">TOTAL GÉNÉRAL</td>
-                <td className="py-3 px-3 text-center">{paidOrders.length}</td>
-                <td className="py-3 px-3 text-right font-mono">{formatXof(totalCollected)}</td>
-                <td className="py-3 px-3 text-right font-mono">100 %</td>
-              </tr>
-            </tbody>
-          </table>
+                ))}
+                <tr className="border-t-2 border-black font-black bg-gray-50 text-gray-950">
+                  <td className="py-3 px-3" colSpan={4}>TOTAL FACTURÉ ({billableOrders.length} prestations hors annulations)</td>
+                  <td className="py-3 px-3 text-right font-mono">{formatXof(totalBilled)}</td>
+                </tr>
+                <tr className="font-black bg-gray-50 text-gray-950">
+                  <td className="py-3 px-3" colSpan={4}>TOTAL ENCAISSÉ ({paidOrders.length} prestations terminées)</td>
+                  <td className="py-3 px-3 text-right font-mono">{formatXof(totalCollected)}</td>
+                </tr>
+              </tbody>
+            </table>
+          )}
+          {filteredOrders.length > 40 && (
+            <p className="text-[11px] text-gray-600 mt-2">
+              Seules les 40 prestations les plus récentes figurent dans le rapport ; l'export CSV contient la période complète.
+            </p>
+          )}
         </div>
 
         {/* Printable & PDF Signature Zone */}

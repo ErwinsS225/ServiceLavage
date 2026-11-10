@@ -1,6 +1,10 @@
 # Rapport d'audit complet — ServiceLavage / Clean It CI
 
 **Date :** 9 novembre 2026
+
+> ⚠️ **Document historique.** Les quatre migrations alors manquantes sont
+> désormais déployées et la configuration Auth a été corrigée. Pour l'état
+> actuel, lire [l'audit général du 10 novembre 2026](audit-general-2026-11-10.md).
 **Branche auditée :** `arena/5a866d29-servicelavage` (HEAD `dc7f314`, identique à `main`)
 **Périmètre :** code source, schéma PostgreSQL/RLS, configuration Supabase déployée (projet LavAuto `avvkzliysacpyavmetsx`), build, tests, PWA, documentation.
 

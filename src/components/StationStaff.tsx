@@ -16,6 +16,8 @@ export function StationStaff({ stationId, canManageRoles }: { stationId: string;
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<Role>('laveur');
+  /** Member awaiting revocation confirmation (replaces window.confirm). */
+  const [revokeTarget, setRevokeTarget] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -67,7 +69,6 @@ export function StationStaff({ stationId, canManageRoles }: { stationId: string;
   }
 
   async function revokeMember(userId: string) {
-    if (!window.confirm('Révoquer immédiatement l’accès de ce membre à la station ?')) return;
     setBusy(true); setError(''); setMessage('');
     try {
       const { error } = await supabase!.rpc('revoke_station_membership', { p_station_id: stationId, p_user_id: userId });
@@ -188,7 +189,7 @@ export function StationStaff({ stationId, canManageRoles }: { stationId: string;
                             type="button"
                             disabled={busy}
                             className={buttonStyles({ variant: 'danger', size: 'sm' })}
-                            onClick={() => void revokeMember(member.user_id)}
+                            onClick={() => setRevokeTarget(member.user_id)}
                           >
                             <XCircle className="w-3.5 h-3.5 mr-1" />
                             Révoquer
@@ -333,6 +334,30 @@ export function StationStaff({ stationId, canManageRoles }: { stationId: string;
             </button>
           </div>
         </form>
+      </Modal>
+
+      {/* Revoking access is immediate for the member: confirm it in a dialog. */}
+      <Modal
+        isOpen={revokeTarget !== null}
+        onClose={() => setRevokeTarget(null)}
+        title="Révoquer l’accès de ce membre ?"
+        description="Le membre perdra immédiatement l’accès aux données de la station. Une nouvelle invitation sera nécessaire."
+        size="sm"
+        footer={
+          <>
+            <button type="button" className={buttonStyles({ variant: 'ghost', size: 'sm' })} onClick={() => setRevokeTarget(null)}>Conserver l’accès</button>
+            <button
+              type="button"
+              disabled={busy}
+              className={buttonStyles({ variant: 'danger', size: 'sm' })}
+              onClick={() => { const id = revokeTarget; setRevokeTarget(null); if (id) void revokeMember(id); }}
+            >
+              Révoquer l’accès
+            </button>
+          </>
+        }
+      >
+        <p className="text-xs text-slate-400">Les prestations déjà affectées à ce membre resteront dans l’historique.</p>
       </Modal>
     </section>
   );

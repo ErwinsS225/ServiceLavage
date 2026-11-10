@@ -75,9 +75,12 @@ export function StationDashboard({ stationId, userId, onNavigateTab }: StationDa
 
       // Blend in local offline queue
       const queued = listQueuedOrders(localStorage, userId, stationId);
+      // A queued order has no server price yet: the tariff is only fixed by
+      // create_station_order_idempotent. Showing a placeholder amount here
+      // would inflate the revenue forecasts, so it stays at zero until sync.
       const queuedMapped: OrderSummary[] = queued.map(q => ({
         id: q.requestId,
-        total_xof: 5000,
+        total_xof: 0,
         status: 'en_attente',
         created_at: q.createdAt,
         vehicle_info: q.vehicle,
@@ -142,12 +145,9 @@ export function StationDashboard({ stationId, userId, onNavigateTab }: StationDa
         })
         .reduce((sum, o) => sum + (o.total_xof || 0), 0);
 
-      // Baseline simulation for smooth visual rendering if newly created station
-      const simulatedBaseline = (i === 0 ? dailyRevenue : (7 - i) * 15000);
-      result.push({
-        day: dayName,
-        recettes: dayRevenue > 0 ? dayRevenue : simulatedBaseline,
-      });
+      // Real revenue only: a new station correctly shows an empty trend
+      // instead of a fake curve that would be read as actual takings.
+      result.push({ day: dayName, recettes: dayRevenue });
     }
 
     return result;
@@ -156,9 +156,9 @@ export function StationDashboard({ stationId, userId, onNavigateTab }: StationDa
   // Aggregate status distribution for Donut Chart
   const statusPieData = useMemo(() => {
     const counts = {
-      Terminés: orders.filter(o => o.status === 'termine').length || 12,
-      'En cours': orders.filter(o => o.status === 'en_cours').length || 3,
-      'En attente': orders.filter(o => o.status === 'en_attente').length || 2,
+      Terminés: orders.filter(o => o.status === 'termine').length,
+      'En cours': orders.filter(o => o.status === 'en_cours').length,
+      'En attente': orders.filter(o => o.status === 'en_attente').length,
     };
 
     return [
@@ -204,7 +204,6 @@ export function StationDashboard({ stationId, userId, onNavigateTab }: StationDa
           title="Recettes du Jour"
           value={formatXof(dailyRevenue)}
           subtext="Encaissé aujourd'hui"
-          trend={{ label: '+14% vs hier', positive: true }}
           icon={<span className="text-xs font-black text-amber-300">XOF</span>}
         />
 
@@ -212,7 +211,6 @@ export function StationDashboard({ stationId, userId, onNavigateTab }: StationDa
           title="Lavages Actifs"
           value={String(activeWashes).padStart(2, '0')}
           subtext="En cours et en attente"
-          trend={{ label: '8 véhicules en file', positive: true }}
           icon={<Car className="w-5 h-5 text-sky-400" />}
         />
 
@@ -220,7 +218,6 @@ export function StationDashboard({ stationId, userId, onNavigateTab }: StationDa
           title="Clients Enregistrés"
           value={String(customerCount).padStart(2, '0')}
           subtext="Base clients fidélisés"
-          trend={{ label: '+12% ce mois-ci', positive: true }}
           icon={<Users className="w-5 h-5 text-indigo-400" />}
         />
 
@@ -228,7 +225,6 @@ export function StationDashboard({ stationId, userId, onNavigateTab }: StationDa
           title="Lavages Terminés"
           value={String(completedToday).padStart(2, '0')}
           subtext="Véhicules livrés ce jour"
-          trend={{ label: '+5 livrés aujourd’hui', positive: true }}
           icon={<CheckCircle2 className="w-5 h-5 text-emerald-400" />}
         />
       </div>

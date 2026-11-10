@@ -48,6 +48,41 @@ const StationReports = lazy(() => import('./StationReports').then(module => ({ d
 
 type Station = { id: string; name: string; owner_id?: string };
 type StationRole = 'owner' | 'gerant' | 'caissier' | 'laveur';
+type StationTabId = 'dashboard' | 'orders' | 'services' | 'customers' | 'inventory' | 'staff' | 'reports' | 'subscription';
+
+/**
+ * One authoritative matrix for the station modules. The navigation, the panel
+ * rendering and the reset-on-station-change effect all read it, so a role can
+ * never see a tab it is not allowed to open (the server enforces the same
+ * rules independently through RLS and the SECURITY DEFINER functions).
+ */
+const STATION_TABS: ReadonlyArray<{ id: StationTabId; label: string; roles: readonly StationRole[] }> = [
+  { id: 'dashboard', label: 'Tableau de bord', roles: ['owner', 'gerant', 'caissier'] },
+  { id: 'orders', label: 'Prestations', roles: ['owner', 'gerant', 'laveur'] },
+  { id: 'services', label: 'Catalogue', roles: ['owner', 'gerant'] },
+  { id: 'customers', label: 'Clients', roles: ['owner', 'gerant', 'caissier'] },
+  { id: 'inventory', label: 'Inventaire', roles: ['owner', 'gerant'] },
+  { id: 'staff', label: 'Personnel', roles: ['owner', 'gerant'] },
+  { id: 'reports', label: 'Rapports', roles: ['owner', 'gerant'] },
+  { id: 'subscription', label: 'Abonnements', roles: ['owner'] },
+];
+
+const TAB_ICONS: Record<StationTabId, React.ReactNode> = {
+  dashboard: <TrendingUp className="w-4 h-4" />,
+  orders: <Car className="w-4 h-4" />,
+  services: <Sparkles className="w-4 h-4" />,
+  customers: <Users className="w-4 h-4" />,
+  inventory: <Boxes className="w-4 h-4" />,
+  staff: <ShieldCheck className="w-4 h-4" />,
+  reports: <FileText className="w-4 h-4" />,
+  subscription: <CreditCard className="w-4 h-4" />,
+};
+
+/** Tabs the current role may open; used by the effect that resets a stale tab. */
+function allowedTabsFor(role: StationRole | null): StationTabId[] {
+  if (!role) return [];
+  return STATION_TABS.filter(item => item.roles.includes(role)).map(item => item.id);
+}
 
 export function OwnerPortal() {
   const [session, setSession] = useState<Session | null>(null);
@@ -66,7 +101,7 @@ export function OwnerPortal() {
   const [rolesReady, setRolesReady] = useState(false);
   const [stationReload, setStationReload] = useState(0);
   const [inviteCode, setInviteCode] = useState('');
-  const [tab, setTab] = useState<'dashboard' | 'orders' | 'services' | 'customers' | 'inventory' | 'staff' | 'reports' | 'subscription'>('dashboard');
+  const [tab, setTab] = useState<StationTabId>('dashboard');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
@@ -126,6 +161,14 @@ export function OwnerPortal() {
     }).catch(() => { if (active) setError('Chargement des stations impossible.'); });
     return () => { active = false; };
   }, [session?.user.id, stationReload]);
+
+  // Switching station must not keep a tab the new role is not allowed to use:
+  // a caissier opening Prestations after an owner left it on Catalogue used to
+  // land on an empty panel. The allowed-tab list is derived once, below.
+  useEffect(() => {
+    const allowed = allowedTabsFor(stationRole);
+    if (allowed.length > 0 && !allowed.includes(tab)) setTab(allowed[0]);
+  }, [stationRole, tab]);
 
   useEffect(() => {
     if (!session || !supabase) { setStationRole(null); setRoleLoading(false); setRolesReady(false); return; }
@@ -408,6 +451,7 @@ export function OwnerPortal() {
               </Card>
             )}
 
+            {stationRole !== 'laveur' && (
             <Card>
               <CardHeader>
                 <CardTitle as="h2" className="flex items-center gap-2">
@@ -420,7 +464,7 @@ export function OwnerPortal() {
               </CardHeader>
               <CardContent>
                 <form onSubmit={acceptInvitation} className="space-y-3">
-                  <FormField label="Référence UUID d'invitation" required hint="Code à 36 caractères transmis par le gérant">
+                  <FormField label="Référence d’invitation" required hint="Identifiant à 36 caractères transmis par le gérant">
                     <input
                       className={formControlStyles.input}
                       value={inviteCode}
@@ -438,6 +482,7 @@ export function OwnerPortal() {
                 </form>
               </CardContent>
             </Card>
+            )}
           </div>
         </div>
 
@@ -453,32 +498,7 @@ export function OwnerPortal() {
         ) : (
           <>
             {(() => {
-              const tabs: Array<{ id: 'dashboard' | 'orders' | 'services' | 'customers' | 'inventory' | 'staff' | 'reports' | 'subscription'; label: string; icon: React.ReactNode }> = [
-                ...(stationRole === 'owner' || stationRole === 'gerant' || stationRole === 'caissier'
-                  ? [{ id: 'dashboard' as const, label: 'Tableau de bord', icon: <TrendingUp className="w-4 h-4" /> }]
-                  : []),
-                ...(stationRole === 'owner' || stationRole === 'gerant' || stationRole === 'laveur'
-                  ? [{ id: 'orders' as const, label: 'Prestations', icon: <Car className="w-4 h-4" /> }]
-                  : []),
-                ...(stationRole === 'owner' || stationRole === 'gerant'
-                  ? [{ id: 'services' as const, label: 'Catalogue', icon: <Sparkles className="w-4 h-4" /> }]
-                  : []),
-                ...(stationRole === 'owner' || stationRole === 'gerant' || stationRole === 'caissier'
-                  ? [{ id: 'customers' as const, label: 'Clients', icon: <Users className="w-4 h-4" /> }]
-                  : []),
-                ...(stationRole === 'owner' || stationRole === 'gerant'
-                  ? [{ id: 'inventory' as const, label: 'Inventaire', icon: <Boxes className="w-4 h-4" /> }]
-                  : []),
-                ...(stationRole === 'owner' || stationRole === 'gerant'
-                  ? [{ id: 'staff' as const, label: 'Personnel', icon: <ShieldCheck className="w-4 h-4" /> }]
-                  : []),
-                ...(stationRole === 'owner' || stationRole === 'gerant'
-                  ? [{ id: 'reports' as const, label: 'Rapports', icon: <FileText className="w-4 h-4" /> }]
-                  : []),
-                ...(stationRole === 'owner'
-                  ? [{ id: 'subscription' as const, label: 'Abonnements', icon: <CreditCard className="w-4 h-4" /> }]
-                  : []),
-              ];
+              const tabs = STATION_TABS.filter(item => stationRole && item.roles.includes(stationRole));
 
               return (
                 <div className="space-y-4">
@@ -502,7 +522,7 @@ export function OwnerPortal() {
                           }`}
                         >
                           <span className={isActive ? 'text-white' : 'text-slate-500'}>
-                            {item.icon}
+                            {TAB_ICONS[item.id]}
                           </span>
                           <span>{item.label}</span>
                         </button>
@@ -525,13 +545,14 @@ export function OwnerPortal() {
                             />
                           </Suspense>
                         )}
-                        {tab === 'orders' && (
+                        {tab === 'orders' && (stationRole === 'owner' || stationRole === 'gerant' || stationRole === 'laveur') && (
                           <StationOrders
                             key={`orders:${session.user.id}:${stationId}`}
                             stationId={stationId}
                             userId={session.user.id}
                             role={stationRole}
                             roleFeaturesReady={rolesReady}
+                            stationName={activeStation?.name}
                           />
                         )}
                         {tab === 'services' && (stationRole === 'owner' || stationRole === 'gerant') && (
