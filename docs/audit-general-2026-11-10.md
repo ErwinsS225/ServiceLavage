@@ -16,7 +16,7 @@ configuration Auth et du dernier run CI.
 | Sécurité (RLS / RPC / privilèges) | **A−** | Aucune faille détectée ; écritures exclusivement serveur, `SECURITY DEFINER`, `search_path = ''`. |
 | Modèle de données | **A−** | Contraintes fortes, index corrects, idempotence transactionnelle, prix figés. |
 | Qualité du code actif | **B** | Typé, défensif, mais quatre écrans affichaient des chiffres inventés. |
-| Fiabilité / tests | **B+** | 75 tests verts (dont 6 nouveaux) ; 1 test d'intégration toujours ignoré ; aucun test de bout en bout. |
+| Fiabilité / tests | **A−** | 107 tests verts (dont 32 ajoutés en deuxième passe) ; 1 test d'intégration toujours ignoré ; aucun test de bout en bout. |
 | Performance | **C+** | `jsPDF + html2canvas` (600 kB) étaient chargés pour tous ; correctif appliqué → −68 % sur le bundle initial. |
 | Produit livré vs promis | **C** | Quotas, rôles et invitations sont réellement appliqués ; caisse, paiements, dépenses et exports Excel manquent. |
 | Documentation | **B+** | Riche et honnête, mais plusieurs affirmations étaient périmées (corrigées). |
@@ -49,13 +49,50 @@ prend des décisions commerciales sur ces chiffres.
 ```
 npm ci                    → 166 paquets, lockfile cohérent
 npm run lint (tsc)        → 0 erreur
-npm run check:reachability→ 40 fichiers atteignables, 0 inutilisé
-npm test                  → 76 tests : 75 passés, 0 échec, 1 ignoré (opt-in Supabase local)
+npm run check:reachability→ 43 fichiers atteignables, 0 inutilisé
+npm test                  → 108 tests : 107 passés, 0 échec, 1 ignoré (opt-in Supabase local)
 npm run build             → OK ; chunk initial 531 kB (149 kB gzip) au lieu de 1 142 kB (330 kB)
 node --check dist/sw.js   → OK
 npm audit                 → 0 vulnérabilité
 Vite dev                  → / :200, /docs/… et /tests/… :404, images et manifeste :200
 ```
+
+### Deuxième passe de revue (même jour)
+
+Trois écrans restaient au-dessus de leurs moyens. La correction ne consiste pas à
+« mieux simuler » mais à **retirer ce qui ne peut pas être prouvé** et à le dire à
+l'écran.
+
+| Écran | Ce qui était affiché | Ce qui est affiché maintenant |
+| --- | --- | --- |
+| Tableau de bord | Courbe de référence simulée, tendances fixes, `|| 12` de remplissage, file locale valorisée **5 000 FCFA** de façon constante | Tous les chiffres viennent de `src/lib/stationMetrics.ts` : montant facturé = **prestations terminées** du jour, file locale **comptée** avec un montant de 0, états vides explicites (« Aucune prestation terminée sur 7 jours — aucune valeur de démonstration n'est affichée ») |
+| Rapports | Ventilation Wave/Orange/MTN/espèces par pourcentages prédéfinis, dépenses estimées à **22 %** des recettes, « bénéfice », « bilan financier » | **Rapport d'activité** : prestations créées / terminées / annulées, montant facturé des seules prestations terminées, panier moyen ; une carte « Encaissements et dépenses » explique ce que l'application ne mesure pas ; export désactivé quand la période est vide ; mention « Document interne, sans valeur fiscale » |
+| Reçu | Pictogramme QR décoratif + « Scannez pour valider le ticket », « Reçu officiel », « Système de Gestion Agréé », « RÉGLÉ - MERCI » dès que `status = 'termine'`, moyen de paiement par défaut « Espèces » | **Vrai code QR** (57 × 57 modules) encodant la référence, le véhicule, l'immatriculation, le montant, le statut et la date, dessiné à l'écran **et dans le PDF** ; « Reçu de prestation (document interne) » ; état du lavage via `receiptPaymentLabel()` ; aucune mention de moyen de paiement |
+
+Vocabulaire désormais contractuel, encodé dans `stationMetrics.ts` :
+
+* **prestation terminée** : `status = 'termine'`, le lavage est fait ;
+* **montant facturé** : prix figé d'une prestation **terminée** — le service est dû ;
+* **recette encaissée** : argent réellement reçu — **jamais affiché**, aucun paiement n'étant stocké.
+
+Corollaires appliqués : une prestation *en attente* ou *en cours* n'est pas facturée
+(son prix est une cotation), une prestation annulée ne l'est jamais, et le mois, la
+semaine et l'année ne totalisent que les prestations terminées.
+
+**Nouveaux tests (32)**
+
+| Fichier | Ce qui est verrouillé |
+| --- | --- |
+| `tests/stationMetrics.test.ts` (12) | Égalité exacte avec une fixture de 9 prestations : montant du jour, série 7 jours (dates et montants), répartition par statut, mois / semaine / année, annulations exclues, prestations non terminées non facturées, station **vide → zéros** (jamais de courbe de référence) |
+| `tests/dashboardFigures.test.tsx` (6) | Rendu réel des deux écrans : chaque valeur affichée est celle de la fixture, les états vides s'affichent, aucun montant annulé n'est agrégé, aucun `encaissé` / `RÉGLÉ` / `bénéfice` / `marge` / opérateur de paiement à l'écran, exports désactivés sans données |
+| `tests/receiptModal.test.tsx` (5) | Le QR dessiné contient `ref:`, `vehicle:`, `amount:`, `currency`, `status` ; un lavage terminé s'affiche « LAVAGE TERMINÉ » et jamais « RÉGLÉ » ; aucune mention « officiel » / « agréé » |
+| `tests/receiptQr.test.ts` (6) | Le bitmap figé est un QR structurellement valide (repères, timing) et **identique module par module** à ce que produit l'encodeur pour le payload : toute dérive casse la CI |
+| `tests/noInventedFigures.test.ts` (+4) | Garde-fous de source : aucun montant / pourcentage en dur, aucune répartition par opérateur, « officiel »/« agréé » interdits, pas d'icône QR décorative |
+
+Le QR est un **bitmap figé** (`src/lib/receiptQrBitmap.ts`, 608 caractères base64)
+plutôt qu'une dépendance : `qrcode-generator` reste une `devDependency` utilisée par
+`scripts/generateReceiptQr.mjs` et par les tests, le bundle navigateur ne bouge pas
+(chunk `ReceiptModal` : 12,85 kB).
 
 ---
 
@@ -262,7 +299,7 @@ quotas, test d'accessibilité automatisé, test du rendu mobile.
 npm ci                                             # lockfile cohérent (corrigé)
 npm run lint                                       # tsc --noEmit
 npm run check:reachability                         # 40 fichiers, 0 inutilisé
-npm test                                           # 76 tests
+npm test                                           # 108 tests
 VITE_SUPABASE_URL=https://example.supabase.co \
 VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_example \
 npm run build && node --check dist/sw.js
@@ -303,6 +340,15 @@ src/components/OwnerPortal.tsx     matrice d'onglets unique, reset au changement
 src/components/StationDashboard.tsx chiffres inventés supprimés
 src/components/StationReports.tsx  marges/ventilation inventées supprimées, semaine ISO, annulations exclues,
                                    requête bornée, erreurs affichées, CSV sécurisé, reçu lazy
+src/lib/stationMetrics.ts          (2e passe) source unique de tous les chiffres affichés
+src/lib/receiptPayload.ts          (2e passe) contenu du QR d'un reçu
+src/lib/receiptQrBitmap.ts         (2e passe) bitmap QR figé + lecteur de matrice
+scripts/generateReceiptQr.mjs      (2e passe) régénération du bitmap, vérifiée par les tests
+src/components/ReceiptModal.tsx    (2e passe) vrai QR (écran + PDF), « officiel/agréé » retirés, statut du lavage
+tests/stationMetrics.test.ts       (2e passe) 12 tests sur fixtures exactes
+tests/dashboardFigures.test.tsx    (2e passe) 6 tests de rendu sur fixtures
+tests/receiptModal.test.tsx        (2e passe) 5 tests sur le reçu rendu
+tests/receiptQr.test.ts            (2e passe) 6 tests sur le bitmap QR
 src/components/StationOrders.tsx   reçu chargé à la demande, dialogue d'annulation, nom de station réel
 src/components/StationStaff.tsx    dialogue de révocation accessible
 tests/tabPermissions.test.ts       nouveau (5 tests)

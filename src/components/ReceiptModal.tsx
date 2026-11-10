@@ -1,8 +1,42 @@
 import { useState, useRef } from 'react';
 import { jsPDF } from 'jspdf';
-import { X, Printer, Share2, Download, CheckCircle2, QrCode } from 'lucide-react';
+import { X, Printer, Share2, Download, CheckCircle2 } from 'lucide-react';
 import { formatXof } from '../lib/money';
 import { generatePdfFromElement, downloadPdfBlob, sharePdfToMessaging } from '../lib/pdfExport';
+import { buildReceiptPayload, receiptReference } from '../lib/receiptPayload';
+import { receiptQrMatrix, RECEIPT_QR_MODULE_COUNT } from '../lib/receiptQrBitmap';
+import { receiptPaymentLabel } from '../lib/stationMetrics';
+
+/**
+ * Real QR code, drawn module by module from the frozen bitmap in
+ * `receiptQrBitmap.ts`. It encodes the payload built below: scanning it with
+ * any phone returns the order reference, the vehicle, the amount, the status
+ * and the date printed on the ticket.
+ */
+function ReceiptQrCode({ payload, size = 108, className = '' }: { payload: string; size?: number; className?: string }) {
+  const matrix = receiptQrMatrix();
+  const modules = RECEIPT_QR_MODULE_COUNT;
+  const path: string[] = [];
+  for (let row = 0; row < modules; row += 1) {
+    for (let column = 0; column < modules; column += 1) {
+      if (matrix[row][column]) path.push(`M${column} ${row}h1v1h-1z`);
+    }
+  }
+  return (
+    <svg
+      viewBox={`0 0 ${modules} ${modules}`}
+      width={size}
+      height={size}
+      role="img"
+      aria-label={`Code QR du ticket, contenu : ${payload.replace(/\n/g, ' · ')}`}
+      className={className}
+      shapeRendering="crispEdges"
+    >
+      <rect width={modules} height={modules} fill="#ffffff" />
+      <path d={path.join('')} fill="#111827" />
+    </svg>
+  );
+}
 
 export interface ReceiptItem {
   name: string;
@@ -35,7 +69,18 @@ export function ReceiptModal({ order, stationName, onClose }: ReceiptModalProps)
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const ticketRef = useRef<HTMLDivElement>(null);
 
-  const ticketCode = order.ticketNumber || `SL-${order.id.slice(0, 8).toUpperCase()}`;
+  // Reference derived from the order uuid. It is not a sequential fiscal
+  // number: the database does not provide one, so nothing claims it does.
+  const ticketCode = order.ticketNumber || `SL-${receiptReference(order.id)}`;
+  const qrPayload = buildReceiptPayload({
+    orderId: order.id,
+    stationName: stationName || 'Station de lavage',
+    vehicleInfo: order.vehicleInfo,
+    plateNumber: order.plateNumber,
+    totalXof: order.totalXof,
+    status: order.status,
+    createdAt: order.createdAt,
+  });
   const dateFormatted = new Date(order.createdAt).toLocaleDateString('fr-FR', {
     day: '2-digit',
     month: '2-digit',
@@ -49,7 +94,7 @@ export function ReceiptModal({ order, stationName, onClose }: ReceiptModalProps)
     const doc = new jsPDF({
       orientation: 'portrait',
       unit: 'mm',
-      format: [80, 165],
+      format: [80, 190],
     });
 
     doc.setFont('helvetica', 'bold');
@@ -61,7 +106,7 @@ export function ReceiptModal({ order, stationName, onClose }: ReceiptModalProps)
     doc.setFontSize(8);
     doc.setTextColor(71, 85, 105);
     doc.text(stationName || 'Station de Lavage Auto', 40, 17, { align: 'center' });
-    doc.text('Abidjan, Côte d’Ivoire • Reçu officiel', 40, 21, { align: 'center' });
+    doc.text('Reçu de prestation (document interne)', 40, 21, { align: 'center' });
 
     doc.setDrawColor(203, 213, 225);
     doc.setLineDashPattern([1, 1], 0);
@@ -130,16 +175,22 @@ export function ReceiptModal({ order, stationName, onClose }: ReceiptModalProps)
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(10);
     doc.setTextColor(15, 23, 42);
-    doc.text('TOTAL NET :', 6, currentY + 9);
+    doc.text('TOTAL FACTURÉ :', 6, currentY + 9);
     doc.text(`${order.totalXof.toLocaleString('fr-FR')} FCFA`, 74, currentY + 9, { align: 'right' });
 
     doc.setFontSize(7.5);
     doc.setFont('helvetica', 'normal');
-    doc.text(`RÈGLEMENT : ${(order.paymentMethod || 'Espèces').toUpperCase()}`, 6, currentY + 15);
+    // No payment is recorded in the database: the receipt shows what is known
+    // (the wash status) and never asserts that the customer has paid.
+    doc.setTextColor(100, 116, 139);
+    doc.text('ÉTAT :', 6, currentY + 15);
     doc.setFont('helvetica', 'bold');
-    const isPaid = order.status === 'termine' || order.status === 'paye';
-    doc.setTextColor(isPaid ? 22 : 180, isPaid ? 101 : 83, 52);
-    doc.text(isPaid ? 'RÉGLÉ - MERCI' : 'EN ATTENTE', 74, currentY + 15, { align: 'right' });
+    doc.setTextColor(15, 23, 42);
+    doc.text(receiptPaymentLabel(order.status), 74, currentY + 15, { align: 'right' });
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.5);
+    doc.setTextColor(100, 116, 139);
+    doc.text('Montant facturé. Paiement non suivi par l’application.', 40, currentY + 19, { align: 'center' });
 
     doc.setLineDashPattern([1, 1], 0);
     doc.setDrawColor(203, 213, 225);
@@ -149,8 +200,29 @@ export function ReceiptModal({ order, stationName, onClose }: ReceiptModalProps)
     doc.setFontSize(6.5);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(100, 116, 139);
-    doc.text('ServiceLavage CI • Plateforme Multitenant', 40, currentY + 28, { align: 'center' });
-    doc.text('Conservez ce reçu pour tout retrait de véhicule.', 40, currentY + 32, { align: 'center' });
+    doc.text('ServiceLavage CI • Plateforme de gestion de stations', 40, currentY + 27, { align: 'center' });
+
+    // Same QR as the on-screen ticket: the payload is identical, so a scan of
+    // the printed document returns the same fields. Drawn module by module in
+    // vector, which stays sharp at any print size and needs no extra library.
+    const matrix = receiptQrMatrix();
+    const qrSize = 26; // mm
+    const module = qrSize / RECEIPT_QR_MODULE_COUNT;
+    const qrLeft = (80 - qrSize) / 2;
+    const qrTop = currentY + 31;
+    doc.setFillColor(255, 255, 255);
+    doc.rect(qrLeft - 1.5, qrTop - 1.5, qrSize + 3, qrSize + 3, 'F');
+    doc.setFillColor(17, 24, 39);
+    for (let row = 0; row < RECEIPT_QR_MODULE_COUNT; row += 1) {
+      for (let column = 0; column < RECEIPT_QR_MODULE_COUNT; column += 1) {
+        if (!matrix[row][column]) continue;
+        doc.rect(qrLeft + column * module, qrTop + row * module, module, module, 'F');
+      }
+    }
+    doc.setFontSize(6);
+    doc.setTextColor(100, 116, 139);
+    doc.text('Scanner ce code affiche la référence, le véhicule,', 40, qrTop + qrSize + 4, { align: 'center' });
+    doc.text('le montant et la date de ce ticket.', 40, qrTop + qrSize + 7, { align: 'center' });
 
     return doc;
   };
@@ -206,7 +278,9 @@ export function ReceiptModal({ order, stationName, onClose }: ReceiptModalProps)
         pdfBlob,
         fileName,
         `Reçu ${ticketCode} - ServiceLavage`,
-        `Bonjour, voici votre reçu officiel ServiceLavage au format PDF pour votre véhicule ${order.vehicleInfo} (${order.plateNumber || 'N/A'}). Montant total : ${formatXof(order.totalXof)}.`,
+        `Bonjour, voici le reçu ServiceLavage pour votre véhicule ${order.vehicleInfo} (${order.plateNumber || 'N/A'}). ` +
+        `Montant facturé : ${formatXof(order.totalXof)}. Référence ${ticketCode}. ` +
+        `L’application n’enregistre pas les paiements : ce reçu atteste de la prestation, pas du règlement.`,
         order.customerPhone
       );
 
@@ -308,36 +382,36 @@ export function ReceiptModal({ order, stationName, onClose }: ReceiptModalProps)
             )}
           </div>
 
-          {/* Total & Payment details */}
+          {/* Amount and wash status. No payment column exists server-side, so
+              nothing here may say "réglé" or display a payment method. */}
           <div className="py-3 border-b-2 border-dashed border-gray-400 space-y-1.5 text-[11px]">
             <div className="flex justify-between text-sm font-black text-gray-900">
-              <span>TOTAL NET :</span>
+              <span>MONTANT FACTURÉ :</span>
               <span>{formatXof(order.totalXof)}</span>
             </div>
-            <div className="flex justify-between text-[10px] text-gray-700">
-              <span>MODE DE PAIEMENT :</span>
-              <span className="font-bold uppercase">{order.paymentMethod || 'Espèces'}</span>
-            </div>
             <div className="flex justify-between text-[10px]">
-              <span className="text-gray-600">ÉTAT DU RÈGLEMENT :</span>
+              <span className="text-gray-600">ÉTAT DU LAVAGE :</span>
               <span className={`font-bold ${order.status === 'termine' ? 'text-emerald-700' : 'text-amber-700'}`}>
-                {order.status === 'termine' ? 'RÉGLÉ - MERCI' : 'EN ATTENTE'}
+                {receiptPaymentLabel(order.status)}
               </span>
             </div>
+            <p className="text-[9px] text-gray-500 leading-snug">
+              Paiement non enregistré par l’application : ce document atteste de la prestation, pas du règlement.
+            </p>
           </div>
 
-          {/* QR code and validation stamp */}
+          {/* Real QR code: it encodes the same fields as the paper. */}
           <div className="pt-3 text-center space-y-1.5">
             <div className="flex justify-center">
-              <div className="p-1.5 border border-gray-300 rounded bg-gray-50">
-                <QrCode className="w-12 h-12 text-gray-800" />
+              <div className="p-1.5 border border-gray-300 rounded bg-white">
+                <ReceiptQrCode payload={qrPayload} />
               </div>
             </div>
             <p className="text-[9px] text-gray-500">
-              Scannez pour valider le ticket ou suivre le lavage
+              Scanner ce code affiche la référence, le véhicule, le montant et la date du ticket.
             </p>
-            <p className="text-[9px] font-bold text-gray-700">
-              ServiceLavage CI • Système de Gestion Agréé
+            <p className="text-[9px] text-gray-500">
+              ServiceLavage CI • Reçu de prestation, document interne
             </p>
           </div>
         </div>
@@ -350,7 +424,7 @@ export function ReceiptModal({ order, stationName, onClose }: ReceiptModalProps)
               disabled={isProcessing}
               onClick={handleWhatsAppPdf}
               className="flex-1 py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors shadow-sm cursor-pointer"
-              title="Envoyer le fichier PDF officiel par WhatsApp"
+              title="Envoyer le reçu en PDF par WhatsApp"
             >
               <Share2 className="w-3.5 h-3.5" />
               <span>WhatsApp (PDF)</span>

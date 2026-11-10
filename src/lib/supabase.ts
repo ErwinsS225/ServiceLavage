@@ -1,7 +1,10 @@
 import { createClient } from '@supabase/supabase-js';
 
-const url = import.meta.env.VITE_SUPABASE_URL;
-const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+// `import.meta.env` is undefined outside Vite (the test runner imports this
+// module too), so the access is guarded instead of crashing at import time.
+const env = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env ?? {};
+const url = env.VITE_SUPABASE_URL;
+const key = env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
 /**
  * Captured synchronously, before the Supabase client consumes and clears the

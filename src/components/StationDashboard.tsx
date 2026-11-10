@@ -1,25 +1,40 @@
-import { useEffect, useState, useMemo } from 'react';
-import { supabase } from '../lib/supabase';
+import { useEffect, useState, useMemo, useCallback } from 'react';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { supabase as defaultClient } from '../lib/supabase';
 import { formatXof } from '../lib/money';
 import { listQueuedOrders } from '../lib/offlineOrders';
-import { 
-  Card, 
-  CardHeader, 
-  CardTitle, 
-  CardDescription, 
-  CardContent, 
-  StatCard, 
-  StatusBadge, 
-  buttonStyles 
+import {
+  dailyBilledSeries,
+  dashboardMetrics,
+  isSeriesEmpty,
+  orderBilledXof,
+  safeXof,
+  statusDistribution,
+  RECEIPTS_NOT_TRACKED_COPY,
+  type StationOrderRow,
+} from '../lib/stationMetrics';
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+  StatCard,
+  StatusBadge,
+  Alert,
+  EmptyState,
+  buttonStyles
 } from './ui/designSystem';
-import { 
-  Car, 
-  TrendingUp, 
-  Users, 
-  CheckCircle2, 
-  BarChart3, 
+import type { StatusVariant } from './ui/designSystem';
+import {
+  Car,
+  TrendingUp,
+  Users,
+  CheckCircle2,
+  BarChart3,
   ArrowRight,
-  RefreshCw
+  RefreshCw,
+  Clock
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -38,300 +53,312 @@ interface StationDashboardProps {
   stationId: string;
   userId: string;
   onNavigateTab?: (tab: 'orders' | 'customers' | 'services' | 'inventory' | 'reports') => void;
+  /** Injected in tests; the application always uses the shared client. */
+  client?: SupabaseClient | null;
 }
 
-interface OrderSummary {
-  id: string;
-  total_xof: number;
-  status: string;
-  created_at: string;
-  vehicle_info: string;
-  plate_number: string | null;
-}
+type QueuedSummary = {
+  requestId: string;
+  vehicle: string;
+  plate: string | null;
+  createdAt: string;
+};
 
-export function StationDashboard({ stationId, userId, onNavigateTab }: StationDashboardProps) {
-  const [orders, setOrders] = useState<OrderSummary[]>([]);
+/**
+ * Everything displayed here comes from `stationMetrics` over the rows returned
+ * by the database, plus the local offline queue (which has no server price and
+ * is therefore shown as a count, never as money). When a dataset is empty the
+ * screen says so instead of drawing a curve or a KPI that would look measured.
+ */
+export function StationDashboard({ stationId, userId, onNavigateTab, client = defaultClient }: StationDashboardProps) {
+  const [orders, setOrders] = useState<StationOrderRow[]>([]);
+  const [queued, setQueued] = useState<QueuedSummary[]>([]);
   const [customerCount, setCustomerCount] = useState<number>(0);
+  const [loaded, setLoaded] = useState<boolean>(false);
   const [refreshing, setRefreshing] = useState<boolean>(false);
+  const [error, setError] = useState<string>('');
 
-  async function loadData() {
-    if (!supabase || !stationId) {
-      return;
-    }
-
+  const loadData = useCallback(async () => {
+    if (!client || !stationId) return;
+    setError('');
     try {
-      // 1. Fetch station orders
-      const { data: ordersData } = await supabase
+      // (1) Orders of the station. RLS already restricts them to this tenant.
+      const { data: ordersData, error: ordersError } = await client
         .from('station_orders')
         .select('id, total_xof, status, created_at, vehicle_info, plate_number')
         .eq('station_id', stationId)
         .order('created_at', { ascending: false });
 
-      // 2. Fetch customer count
-      const { count: custCount } = await supabase
+      if (ordersError) {
+        setError(`Chargement des prestations impossible : ${ordersError.message}`);
+      } else {
+        setOrders((ordersData ?? []) as StationOrderRow[]);
+      }
+
+      // (2) Customer count: a count query, not a download of the table.
+      const { count: custCount, error: countError } = await client
         .from('station_customers')
         .select('id', { count: 'exact', head: true })
         .eq('station_id', stationId);
 
-      // Blend in local offline queue
-      const queued = listQueuedOrders(localStorage, userId, stationId);
-      // A queued order has no server price yet: the tariff is only fixed by
-      // create_station_order_idempotent. Showing a placeholder amount here
-      // would inflate the revenue forecasts, so it stays at zero until sync.
-      const queuedMapped: OrderSummary[] = queued.map(q => ({
-        id: q.requestId,
-        total_xof: 0,
-        status: 'en_attente',
-        created_at: q.createdAt,
-        vehicle_info: q.vehicle,
-        plate_number: q.plate,
-      }));
+      if (countError) setError(previous => previous || `Comptage des clients impossible : ${countError.message}`);
+      else setCustomerCount(custCount ?? 0);
 
-      const combined = [...queuedMapped, ...(ordersData || [])];
-      setOrders(combined);
-      setCustomerCount(custCount || 0);
-    } catch (err) {
-      console.error('Erreur chargement métriques dashboard:', err);
+      // (3) Local queue: counted, never priced (see stationMetrics).
+      try {
+        setQueued(listQueuedOrders(localStorage, userId, stationId).map(item => ({
+          requestId: item.requestId,
+          vehicle: item.vehicle,
+          plate: item.plate,
+          createdAt: item.createdAt,
+        })));
+      } catch {
+        setError('La file locale est illisible ; elle a été conservée sur cet appareil.');
+      }
+    } catch {
+      setError('Chargement des indicateurs impossible. Vérifiez votre connexion.');
     } finally {
+      setLoaded(true);
       setRefreshing(false);
     }
-  }
+  }, [client, stationId, userId]);
 
   useEffect(() => {
-    loadData();
-  }, [stationId, userId]);
+    setLoaded(false);
+    void loadData();
+  }, [loadData]);
 
-  // Calculations for KPIs
-  const todayStart = useMemo(() => {
-    const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    return d.getTime();
-  }, []);
+  // One reference instant for the whole render, so every panel describes the
+  // same day even if the render straddles midnight.
+  const reference = useMemo(() => new Date(), [orders, customerCount, queued]);
 
-  const todayOrders = useMemo(() => {
-    return orders.filter(o => new Date(o.created_at).getTime() >= todayStart);
-  }, [orders, todayStart]);
+  const metrics = useMemo(
+    () => dashboardMetrics(orders, reference, { customersCount: customerCount, queuedCount: queued.length }),
+    [orders, reference, customerCount, queued.length],
+  );
 
-  const dailyRevenue = useMemo(() => {
-    return todayOrders
-      .filter(o => o.status === 'termine')
-      .reduce((acc, curr) => acc + (curr.total_xof || 0), 0);
-  }, [todayOrders]);
+  const series = useMemo(() => dailyBilledSeries(orders, reference), [orders, reference]);
+  const seriesEmpty = isSeriesEmpty(series);
 
-  const activeWashes = useMemo(() => {
-    return orders.filter(o => o.status === 'en_cours' || o.status === 'en_attente').length;
-  }, [orders]);
+  const distribution = useMemo(() => statusDistribution(orders), [orders]);
+  const distributionEmpty = distribution.every(slice => slice.value === 0);
 
-  const completedToday = useMemo(() => {
-    return todayOrders.filter(o => o.status === 'termine').length;
-  }, [todayOrders]);
-
-  // Aggregate weekly revenue for Recharts AreaChart
-  const weeklyTrendData = useMemo(() => {
-    const days = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
-    const result = [];
-    const now = new Date();
-
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
-      const dayStart = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-      const dayEnd = dayStart + 24 * 60 * 60 * 1000;
-      const dayName = days[d.getDay()];
-
-      const dayRevenue = orders
-        .filter(o => {
-          const t = new Date(o.created_at).getTime();
-          return t >= dayStart && t < dayEnd && o.status === 'termine';
-        })
-        .reduce((sum, o) => sum + (o.total_xof || 0), 0);
-
-      // Real revenue only: a new station correctly shows an empty trend
-      // instead of a fake curve that would be read as actual takings.
-      result.push({ day: dayName, recettes: dayRevenue });
-    }
-
-    return result;
-  }, [orders, dailyRevenue]);
-
-  // Aggregate status distribution for Donut Chart
-  const statusPieData = useMemo(() => {
-    const counts = {
-      Terminés: orders.filter(o => o.status === 'termine').length,
-      'En cours': orders.filter(o => o.status === 'en_cours').length,
-      'En attente': orders.filter(o => o.status === 'en_attente').length,
-    };
-
-    return [
-      { name: 'Terminés', value: counts['Terminés'], color: '#10b981' },
-      { name: 'En cours', value: counts['En cours'], color: '#38bdf8' },
-      { name: 'En attente', value: counts['En attente'], color: '#f59e0b' },
-    ];
-  }, [orders]);
+  const recentOrders = orders.slice(0, 5);
 
   return (
     <div className="space-y-6">
-      {/* Top Banner and Quick Refresh */}
+      {/* Title & refresh */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-lg font-bold text-white flex items-center gap-2">
             <TrendingUp className="w-5 h-5 text-indigo-400" />
-            <span>Tableau de Bord Opérationnel · ServiceLavage</span>
+            <span>Tableau de bord opérationnel · ServiceLavage</span>
           </h2>
           <p className="text-xs text-slate-400">
-            Vue synthétique des flux de lavage, recettes journalières et performance de la station
+            Flux de lavage et montants facturés, calculés uniquement à partir des prestations enregistrées
           </p>
         </div>
 
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={() => {
-              setRefreshing(true);
-              loadData();
-            }}
+            onClick={() => { setRefreshing(true); void loadData(); }}
             disabled={refreshing}
             className={buttonStyles({ variant: 'outline', size: 'sm' })}
           >
             <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${refreshing ? 'animate-spin text-indigo-400' : ''}`} />
-            <span>{refreshing ? 'Actualisation...' : 'Actualiser'}</span>
+            <span>{refreshing ? 'Actualisation…' : 'Actualiser'}</span>
           </button>
         </div>
       </div>
 
-      {/* 1. TOP SUMMARY KPI CARDS */}
+      {error && <Alert variant="error" action={
+        <button type="button" className="underline text-xs font-semibold text-rose-300" onClick={() => void loadData()}>
+          Réessayer
+        </button>
+      }>{error}</Alert>}
+
+      {/* Payments are not recorded: say it before showing amounts. */}
+      <Alert variant="info" title="Montants facturés, pas recettes encaissées">{RECEIPTS_NOT_TRACKED_COPY}</Alert>
+
+      {queued.length > 0 && (
+        <Alert variant="warning" title={`${queued.length} prestation(s) en attente de synchronisation`}>
+          <p className="text-xs">
+            Enregistrées sur cet appareil uniquement : elles n’ont pas encore de montant serveur et ne sont
+            comptées que dans le nombre total, jamais dans les montants.
+          </p>
+          <ul className="mt-1 space-y-0.5 font-mono text-xs">
+            {queued.map(item => (
+              <li key={item.requestId}>{item.vehicle} · {item.plate || 'Sans immatriculation'}</li>
+            ))}
+          </ul>
+        </Alert>
+      )}
+
+      {/* KPI cards: every value is a count or a sum of real rows */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
-          title="Recettes du Jour"
-          value={formatXof(dailyRevenue)}
-          subtext="Encaissé aujourd'hui"
+          title="Facturé aujourd’hui"
+          value={formatXof(metrics.billedTodayXof)}
+          subtext={`${metrics.completedTodayCount} prestation(s) terminée(s) ce jour`}
           icon={<span className="text-xs font-black text-amber-300">XOF</span>}
         />
 
         <StatCard
-          title="Lavages Actifs"
-          value={String(activeWashes).padStart(2, '0')}
-          subtext="En cours et en attente"
+          title="Lavages en cours"
+          value={metrics.activeCount}
+          subtext="En attente ou en cours"
           icon={<Car className="w-5 h-5 text-sky-400" />}
         />
 
         <StatCard
-          title="Clients Enregistrés"
-          value={String(customerCount).padStart(2, '0')}
-          subtext="Base clients fidélisés"
+          title="Clients enregistrés"
+          value={metrics.customersCount}
+          subtext="Fiches clients de la station"
           icon={<Users className="w-5 h-5 text-indigo-400" />}
         />
 
         <StatCard
-          title="Lavages Terminés"
-          value={String(completedToday).padStart(2, '0')}
-          subtext="Véhicules livrés ce jour"
+          title="Prestations créées aujourd’hui"
+          value={metrics.createdTodayCount}
+          subtext={metrics.queuedCount > 0 ? `Dont ${metrics.queuedCount} hors ligne` : 'Hors annulations'}
           icon={<CheckCircle2 className="w-5 h-5 text-emerald-400" />}
         />
       </div>
 
-      {/* 2. RECHARTS DATA VISUALIZATION SECTION */}
+      {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Weekly Revenue Trend Chart */}
         <Card className="lg:col-span-8">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <TrendingUp className="w-4 h-4 text-indigo-400" />
-              Évolution des Recettes Hebdomadaires (FCFA)
+              Montants facturés sur 7 jours (FCFA)
             </CardTitle>
             <CardDescription>
-              Historique des encaissements sur les 7 derniers jours d'exploitation
+              Somme des prestations terminées, jour par jour
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-64 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={weeklyTrendData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="dashboardAreaGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#6366f1" stopOpacity={0.4} />
-                      <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#252b3b" vertical={false} />
-                  <XAxis dataKey="day" stroke="#64748b" fontSize={11} tickLine={false} />
-                  <YAxis
-                    stroke="#64748b"
-                    fontSize={11}
-                    tickLine={false}
-                    tickFormatter={(val: number) => `${Math.round(val / 1000)}k`}
-                  />
-                  <Tooltip
-                    contentStyle={{ backgroundColor: '#141822', borderColor: '#2d3748', borderRadius: '0.75rem', color: '#fff', fontSize: '12px' }}
-                    formatter={(val) => [
-                      `${Number(val ?? 0).toLocaleString('fr-FR')} FCFA`,
-                      'Recettes'
-                    ]}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="recettes"
-                    stroke="#6366f1"
-                    strokeWidth={2.5}
-                    fillOpacity={1}
-                    fill="url(#dashboardAreaGrad)"
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
+            {!loaded ? (
+              <p role="status" className="h-64 flex items-center justify-center text-sm text-slate-400">Chargement…</p>
+            ) : seriesEmpty ? (
+              <div className="h-64 flex items-center justify-center">
+                <EmptyState
+                  icon={<TrendingUp className="w-6 h-6 text-slate-400" />}
+                  title="Aucune prestation terminée sur 7 jours"
+                  description="Le graphique apparaîtra dès qu’une prestation aura été enregistrée puis marquée comme terminée. Aucune valeur de démonstration n’est affichée."
+                  action={onNavigateTab && (
+                    <button type="button" className={buttonStyles({ variant: 'primary', size: 'sm' })} onClick={() => onNavigateTab('orders')}>
+                      Voir les prestations
+                    </button>
+                  )}
+                />
+              </div>
+            ) : (
+              <div className="h-64 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={series} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="dashboardAreaGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#6366f1" stopOpacity={0.4} />
+                        <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#252b3b" vertical={false} />
+                    <XAxis dataKey="label" stroke="#64748b" fontSize={11} tickLine={false} />
+                    <YAxis
+                      stroke="#64748b"
+                      fontSize={11}
+                      tickLine={false}
+                      width={52}
+                      tickFormatter={(value: number) => value.toLocaleString('fr-FR')}
+                    />
+                    <Tooltip
+                      contentStyle={{ backgroundColor: '#141822', borderColor: '#2d3748', borderRadius: '0.75rem', color: '#fff', fontSize: '12px' }}
+                      formatter={(value, _name, item) => [
+                        `${formatXof(Number(value ?? 0))} · ${item?.payload?.count ?? 0} prestation(s)`,
+                        'Facturé',
+                      ]}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="billedXof"
+                      stroke="#6366f1"
+                      strokeWidth={2.5}
+                      fillOpacity={1}
+                      fill="url(#dashboardAreaGrad)"
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            )}
           </CardContent>
         </Card>
 
-        {/* Order Status Distribution Donut Chart */}
         <Card className="lg:col-span-4">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <BarChart3 className="w-4 h-4 text-emerald-400" />
-              Répartition des Véhicules
+              Statuts des prestations
             </CardTitle>
             <CardDescription>
-              État actuel des flux sur la station
+              Toutes les prestations de la station, par statut
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col items-center justify-between">
-            <div className="h-44 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={statusPieData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={45}
-                    outerRadius={65}
-                    paddingAngle={4}
-                    dataKey="value"
-                  >
-                    {statusPieData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={{ backgroundColor: '#141822', borderColor: '#2d3748', borderRadius: '0.75rem', color: '#fff', fontSize: '12px' }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-
-            <div className="w-full space-y-2 pt-2 border-t border-[var(--border-subtle)]">
-              {statusPieData.map(item => (
-                <div key={item.name} className="flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: item.color }} />
-                    <span className="text-slate-300">{item.name}</span>
-                  </div>
-                  <span className="font-bold text-white">{item.value}</span>
+            {!loaded ? (
+              <p role="status" className="h-44 flex items-center justify-center text-sm text-slate-400">Chargement…</p>
+            ) : distributionEmpty ? (
+              <div className="h-44 flex items-center justify-center">
+                <EmptyState
+                  icon={<Clock className="w-6 h-6 text-slate-400" />}
+                  title="Aucune prestation"
+                  description="La répartition s’affichera au premier lavage enregistré."
+                />
+              </div>
+            ) : (
+              <>
+                <div className="h-44 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={distribution.filter(slice => slice.value > 0)}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={45}
+                        outerRadius={65}
+                        paddingAngle={4}
+                        dataKey="value"
+                        nameKey="name"
+                      >
+                        {distribution.filter(slice => slice.value > 0).map(slice => (
+                          <Cell key={slice.status} fill={slice.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        contentStyle={{ backgroundColor: '#141822', borderColor: '#2d3748', borderRadius: '0.75rem', color: '#fff', fontSize: '12px' }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
                 </div>
-              ))}
-            </div>
+                <div className="w-full space-y-2 pt-2 border-t border-[var(--border-subtle)]">
+                  {distribution.map(slice => (
+                    <div key={slice.status} className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: slice.color }} />
+                        <span className="text-slate-300">{slice.name}</span>
+                      </div>
+                      <span className="font-bold text-white font-mono tabular-nums">{slice.value}</span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>
 
-      {/* 3. RECENT ORDERS & QUICK ACTIONS */}
+      {/* Recent orders */}
       <Card>
         <CardHeader
           action={
@@ -349,47 +376,60 @@ export function StationDashboard({ stationId, userId, onNavigateTab }: StationDa
         >
           <CardTitle className="flex items-center gap-2">
             <Car className="w-4 h-4 text-sky-400" />
-            Dernières Prestations Traitées
+            Dernières prestations enregistrées
           </CardTitle>
           <CardDescription>
-            Aperçu des 5 dernières prises en charge sur la station
+            Les 5 plus récentes, telles qu’enregistrées sur le serveur
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {orders.length > 0 ? (
+          {!loaded ? (
+            <p role="status" className="text-xs text-slate-400 text-center py-4">Chargement…</p>
+          ) : recentOrders.length === 0 ? (
+            <EmptyState
+              icon={<Car className="w-6 h-6 text-slate-400" />}
+              title="Aucune prestation enregistrée"
+              description="Créez la première prestation depuis l’onglet Prestations : elle apparaîtra ici avec son montant serveur."
+              action={onNavigateTab && (
+                <button type="button" className={buttonStyles({ variant: 'primary', size: 'sm' })} onClick={() => onNavigateTab('orders')}>
+                  Créer une prestation
+                </button>
+              )}
+            />
+          ) : (
             <div className="divide-y divide-[var(--border-subtle)]">
-              {orders.slice(0, 5).map(order => (
-                <div key={order.id} className="py-3 flex items-center justify-between text-xs">
-                  <div className="space-y-0.5">
+              {recentOrders.map(order => (
+                <div key={order.id} className="py-3 flex items-center justify-between gap-3 text-xs">
+                  <div className="space-y-0.5 min-w-0">
                     <div className="font-bold text-white flex items-center gap-2">
-                      <span>{order.vehicle_info}</span>
+                      <span className="truncate">{order.vehicle_info}</span>
                       {order.plate_number && (
-                        <span className="px-1.5 py-0.5 rounded bg-[#202532] text-slate-300 font-mono text-[10px]">
+                        <span className="px-1.5 py-0.5 rounded bg-[#202532] text-slate-300 font-mono text-[10px] shrink-0">
                           {order.plate_number}
                         </span>
                       )}
                     </div>
                     <span className="text-[11px] text-slate-500">
-                      {new Date(order.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                      {new Date(order.created_at).toLocaleString('fr-FR', {
+                        day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
+                      })}
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-3">
-                    <span className="font-bold text-white font-mono">
-                      {formatXof(order.total_xof)}
+                  <div className="flex items-center gap-3 shrink-0">
+                    <span className={`font-bold font-mono tabular-nums ${order.status === 'annule' ? 'text-slate-500 line-through' : 'text-white'}`}>
+                      {formatXof(safeXof(order.total_xof))}
                     </span>
-                    <StatusBadge
-                      status={order.status === 'termine' ? 'success' : order.status === 'en_cours' ? 'info' : 'warning'}
-                      label={order.status === 'termine' ? 'Terminé' : order.status === 'en_cours' ? 'En cours' : 'En attente'}
-                      size="sm"
-                    />
+                    <StatusBadge status={order.status as StatusVariant} size="sm" />
                   </div>
                 </div>
               ))}
             </div>
-          ) : (
-            <p className="text-xs text-slate-500 text-center py-4">
-              Aucune prestation enregistrée pour le moment.
+          )}
+          {recentOrders.length > 0 && (
+            <p className="pt-3 text-[11px] text-slate-500">
+              Montant facturé = prix figé au moment de la création, compté seulement si la prestation est terminée.
+              Total facturé sur ces 5 lignes : {formatXof(recentOrders.reduce((sum, order) => sum + orderBilledXof(order), 0))}.
             </p>
           )}
         </CardContent>

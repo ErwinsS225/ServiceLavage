@@ -28,6 +28,14 @@ const globals: Record<string, unknown> = {
   KeyboardEvent: dom.window.KeyboardEvent,
   MouseEvent: dom.window.MouseEvent,
   getComputedStyle: dom.window.getComputedStyle.bind(dom.window),
+  // Recharts needs an observer to size its container; jsdom has none, and the
+  // dashboard shows an explicit empty state instead of a chart when no data
+  // exists, so a no-op observer is enough for the assertions.
+  ResizeObserver: class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  },
   // React 19 reads this to decide whether act() warnings apply.
   IS_REACT_ACT_ENVIRONMENT: true,
 };

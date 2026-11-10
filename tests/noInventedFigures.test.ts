@@ -12,6 +12,17 @@ import { readFile } from 'node:fs/promises';
 const dashboard = await readFile('src/components/StationDashboard.tsx', 'utf8');
 const reports = await readFile('src/components/StationReports.tsx', 'utf8');
 const orders = await readFile('src/components/StationOrders.tsx', 'utf8');
+const receipt = await readFile('src/components/ReceiptModal.tsx', 'utf8');
+const metrics = await readFile('src/lib/stationMetrics.ts', 'utf8');
+const receiptPayload = await readFile('src/lib/receiptPayload.ts', 'utf8');
+
+/** Source of every screen that displays a figure. */
+const SCREENS: Array<[string, string]> = [
+  ['StationDashboard', dashboard],
+  ['StationReports', reports],
+  ['StationOrders', orders],
+  ['ReceiptModal', receipt],
+];
 
 test('the dashboard never fabricates a revenue curve or a status split', () => {
   assert.doesNotMatch(dashboard, /simulatedBaseline|Baseline simulation/);
@@ -20,7 +31,13 @@ test('the dashboard never fabricates a revenue curve or a status split', () => {
 
 test('a queued offline order carries no invented amount', () => {
   assert.doesNotMatch(dashboard, /total_xof: 5000/);
-  assert.match(dashboard, /A queued order has no server price yet/);
+  assert.match(metrics, /A queued offline order has no price at all/i);
+  // No monetary literal is hard-coded in any screen: a figure must come from
+  // the data or from `stationMetrics`, never from the source.
+  for (const [name, source] of SCREENS) {
+    assert.doesNotMatch(source, /total_?[xX]of\s*[:=]\s*\d/, `${name} code un montant en dur`);
+    assert.doesNotMatch(source, /\b\d{1,3}(?:[ .]\d{3})+\s*(?:FCFA|XOF)/i, `${name} code un montant formaté`);
+  }
 });
 
 test('KPI cards show no hard-coded growth claim', () => {
@@ -33,8 +50,46 @@ test('KPI cards show no hard-coded growth claim', () => {
 });
 
 test('no expense ratio or payment split is invented', () => {
-  assert.doesNotMatch(reports, /0\.22|0\.52|0\.26|0\.12/);
-  assert.match(reports, /Moyens de paiement non enregistrés/);
+  for (const [name, source] of SCREENS) {
+    assert.doesNotMatch(source, /0\.22|0\.52|0\.26|0\.12/, `${name} contient un ratio en dur`);
+    assert.doesNotMatch(source, /22\s*%|52\s*%|26\s*%|12\s*%/, `${name} affiche un pourcentage non mesuré`);
+  }
+  assert.doesNotMatch(reports, /Wave\s*(CI|Money)|Orange\s*Money|MTN\s*Mobile/i, 'aucune répartition par opérateur');
+  assert.match(reports, /Moyens de paiement non enregistrés|aucun moyen de paiement n’est stocké/);
+});
+
+test('a completed wash is never presented as a paid wash', () => {
+  // The receipt used to print "RÉGLÉ - MERCI" as soon as status === 'termine'.
+  assert.doesNotMatch(receipt, /RÉGLÉ|REGL[EÉ]\s*-\s*MERCI/);
+  assert.doesNotMatch(receipt, /paymentMethod\s*\|\|\s*['"]Esp/);
+  assert.match(receipt, /receiptPaymentLabel/);
+  // The wording contract lives in stationMetrics: a terminated wash only says so.
+  assert.match(metrics, /'LAVAGE TERMINÉ'/);
+  assert.match(metrics, /terminée : the wash is done \(`status = 'termine'`\)/);
+});
+
+test('no claim of an official or approved document', () => {
+  for (const [name, source] of SCREENS) {
+    assert.doesNotMatch(source, /officiel/i, `${name} présente le document comme officiel`);
+    assert.doesNotMatch(source, /agr[ée][ée]/i, `${name} présente le système comme agréé`);
+    // "sans valeur fiscale" is a disclaimer, any other claim is not.
+    const fiscalClaims = source
+      .split('\n')
+      .filter(line => /valeur fiscale/i.test(line) && !/sans valeur fiscale/i.test(line));
+    assert.deepEqual(fiscalClaims, [], `${name} revendique une valeur fiscale`);
+  }
+});
+
+test('the receipt QR code carries real data instead of a decorative icon', () => {
+  // The old screen drew a lucide <QrCode> icon plus "Scannez pour valider".
+  assert.doesNotMatch(receipt, /from 'lucide-react'/m.source ? /\bQrCode\b/ : /$^/, 'aucune icône QR décorative');
+  assert.doesNotMatch(receipt, /Scannez pour valider/);
+  assert.match(receipt, /buildReceiptPayload\(/);
+  assert.match(receipt, /receiptQrMatrix\(/);
+  // The payload is built from the order fields, never from a constant string.
+  for (const field of ['orderId', 'vehicleInfo', 'totalXof', 'status', 'createdAt']) {
+    assert.ok(receiptPayload.includes(field), `${field} doit faire partie du contenu du QR`);
+  }
 });
 
 test('the receipt PDF library is not loaded with the portal', () => {
