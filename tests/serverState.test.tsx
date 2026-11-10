@@ -3,6 +3,7 @@ import test, { afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { render, waitFor, cleanup, screen } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ToastProvider } from '../src/context/ToastContext';
 import { StationCustomers } from '../src/components/StationCustomers';
 import { createQueryClient, queryKeys } from '../src/lib/queryClient';
 import type { StationClient } from '../src/lib/stationApi';
@@ -67,8 +68,15 @@ function countingClient(customers: Array<Record<string, unknown>>) {
 }
 
 function wrapper(client: QueryClient) {
+  // `StationCustomers` émet des toasts de succès : sans provider, le hook lève
+  // et le rendu échoue. Le provider fait partie de l'application réelle, il
+  // doit donc faire partie de l'environnement de test.
   return function Wrapper({ children }: { children: React.ReactNode }) {
-    return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+    return (
+      <ToastProvider>
+        <QueryClientProvider client={client}>{children}</QueryClientProvider>
+      </ToastProvider>
+    );
   };
 }
 
