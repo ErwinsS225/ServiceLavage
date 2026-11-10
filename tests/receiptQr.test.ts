@@ -48,10 +48,12 @@ test('the payload carries every field printed on the ticket', () => {
 });
 
 test('a multi-line vehicle name cannot forge extra payload lines', () => {
-  const fields = parseReceiptPayload(buildReceiptPayload({
-    ...SAMPLE,
-    vehicleInfo: 'Toyota\namount:0\r\nstatus:annule',
-  }));
+  const fields = parseReceiptPayload(
+    buildReceiptPayload({
+      ...SAMPLE,
+      vehicleInfo: 'Toyota\namount:0\r\nstatus:annule',
+    }),
+  );
   assert.ok(fields);
   // The injected newlines are folded into one value; amount and status keep
   // the real ones (and the folded text appears inside the vehicle value).
@@ -82,8 +84,11 @@ test('the frozen bitmap is a structurally valid QR code', () => {
       for (let column = 0; column < 7; column += 1) {
         const border = row === 0 || row === 6 || column === 0 || column === 6;
         const core = row >= 2 && row <= 4 && column >= 2 && column <= 4;
-        assert.equal(matrix[top + row][left + column], border || core,
-          `motif de repérage incorrect en ${top + row},${left + column}`);
+        assert.equal(
+          matrix[top + row][left + column],
+          border || core,
+          `motif de repérage incorrect en ${top + row},${left + column}`,
+        );
       }
     }
   };
@@ -108,13 +113,13 @@ test('the bitmap is exactly the encoding of the payload built from the order', a
   assert.equal(RECEIPT_QR_MODULE_COUNT, 57, 'version QR 10, capacité suffisante pour ce payload');
 
   const bytes = Buffer.from(RECEIPT_QR_BASE64, 'base64');
-  assert.equal(bytes.length, Math.ceil((RECEIPT_QR_MODULE_COUNT ** 2) / 8));
+  assert.equal(bytes.length, Math.ceil(RECEIPT_QR_MODULE_COUNT ** 2 / 8));
 
   // Cross-check against the encoder if it is installed (CI installs it as a
   // devDependency so the fixture can never silently drift).
   const { createRequire } = await import('node:module');
   const require = createRequire(import.meta.url);
-  let encoder: ((version: number, level: string) => any) | null = null;
+  let encoder: ((version: number, level: string) => any) | null;
   try {
     encoder = require('qrcode-generator');
   } catch {
@@ -133,8 +138,11 @@ test('the bitmap is exactly the encoding of the payload built from the order', a
   const matrix = receiptQrMatrix();
   for (let row = 0; row < RECEIPT_QR_MODULE_COUNT; row += 1) {
     for (let column = 0; column < RECEIPT_QR_MODULE_COUNT; column += 1) {
-      assert.equal(matrix[row][column], qr.isDark(row, column),
-        `bitmap différent de l’encodeur en ${row},${column} : régénérer avec node scripts/generateReceiptQr.mjs`);
+      assert.equal(
+        matrix[row][column],
+        qr.isDark(row, column),
+        `bitmap différent de l’encodeur en ${row},${column} : régénérer avec node scripts/generateReceiptQr.mjs`,
+      );
     }
   }
 });

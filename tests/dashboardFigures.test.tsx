@@ -27,12 +27,54 @@ function at(dayOffset: number, hour = 10): string {
 }
 
 const ORDERS = [
-  { id: 'o1', status: 'termine', total_xof: 5000, created_at: at(0, 8), vehicle_info: 'Toyota RAV4 Blanc', plate_number: '1234 AB 01' },
-  { id: 'o2', status: 'termine', total_xof: 3500, created_at: at(0, 12), vehicle_info: 'Peugeot 308 Grise', plate_number: null },
-  { id: 'o3', status: 'en_cours', total_xof: 7000, created_at: at(0, 14), vehicle_info: 'Hyundai Tucson', plate_number: '5678 CD 01' },
-  { id: 'o4', status: 'en_attente', total_xof: 2000, created_at: at(0, 15), vehicle_info: 'Kia Picanto', plate_number: null },
-  { id: 'o5', status: 'annule', total_xof: 9000, created_at: at(0, 9), vehicle_info: 'Renault Duster', plate_number: '9999 ZZ 01' },
-  { id: 'o6', status: 'termine', total_xof: 12000, created_at: at(-1, 11), vehicle_info: 'Nissan Qashqai', plate_number: null },
+  {
+    id: 'o1',
+    status: 'termine',
+    total_xof: 5000,
+    created_at: at(0, 8),
+    vehicle_info: 'Toyota RAV4 Blanc',
+    plate_number: '1234 AB 01',
+  },
+  {
+    id: 'o2',
+    status: 'termine',
+    total_xof: 3500,
+    created_at: at(0, 12),
+    vehicle_info: 'Peugeot 308 Grise',
+    plate_number: null,
+  },
+  {
+    id: 'o3',
+    status: 'en_cours',
+    total_xof: 7000,
+    created_at: at(0, 14),
+    vehicle_info: 'Hyundai Tucson',
+    plate_number: '5678 CD 01',
+  },
+  {
+    id: 'o4',
+    status: 'en_attente',
+    total_xof: 2000,
+    created_at: at(0, 15),
+    vehicle_info: 'Kia Picanto',
+    plate_number: null,
+  },
+  {
+    id: 'o5',
+    status: 'annule',
+    total_xof: 9000,
+    created_at: at(0, 9),
+    vehicle_info: 'Renault Duster',
+    plate_number: '9999 ZZ 01',
+  },
+  {
+    id: 'o6',
+    status: 'termine',
+    total_xof: 12000,
+    created_at: at(-1, 11),
+    vehicle_info: 'Nissan Qashqai',
+    plate_number: null,
+  },
 ];
 
 /**
@@ -54,9 +96,10 @@ function fakeClient(orders: unknown[], customers = 3) {
         limit: () => builder,
         order: () => builder,
         then: (resolve: (value: unknown) => void, reject: (reason: unknown) => void) => {
-          const payload = table === 'station_customers'
-            ? { data: null, count: customers, error: null }
-            : { data: orders, error: null };
+          const payload =
+            table === 'station_customers'
+              ? { data: null, count: customers, error: null }
+              : { data: orders, error: null };
           return Promise.resolve(payload).then(resolve, reject);
         },
       };
@@ -111,7 +154,9 @@ afterEach(() => {
 
 async function renderReports(orders: unknown[], customers = 3) {
   const { client } = fakeClient(orders, customers);
-  const view = render(withQueryClient(<StationReports stationId="station-1" stationName="Station Test" client={client} />));
+  const view = render(
+    withQueryClient(<StationReports stationId="station-1" stationName="Station Test" client={client} />),
+  );
   await waitFor(() => assert.match(view.container.textContent ?? '', /Rapport d’activité/));
   // La requête passe maintenant par un cache : attendre la fin du chargement,
   // sinon l'assertion lit l'écran « Chargement du rapport… ».
@@ -191,8 +236,18 @@ test('the report never invents a profit, a margin or a payment split', async () 
   // Only the disclaimer may contain these words, and only to deny them.
   const claims = text
     .split(/(?<=[.!:])\s+/)
-    .filter(sentence => !/ne peut|n’enregistre|non enregistr|pas de|aucun|ni marge|sans valeur/i.test(sentence));
-  for (const forbidden of [/b[ée]n[ée]fice/i, /marge/i, /bilan financier/i, /Wave CI/i, /Orange Money/i, /MTN Mobile/i, /22\s*%/]) {
+    .filter(
+      sentence => !/ne peut|n’enregistre|non enregistr|pas de|aucun|ni marge|sans valeur/i.test(sentence),
+    );
+  for (const forbidden of [
+    /b[ée]n[ée]fice/i,
+    /marge/i,
+    /bilan financier/i,
+    /Wave CI/i,
+    /Orange Money/i,
+    /MTN Mobile/i,
+    /22\s*%/,
+  ]) {
     for (const sentence of claims) assert.doesNotMatch(sentence, forbidden);
   }
   assert.match(text, /Rapport d’activité, pas de bilan financier/);

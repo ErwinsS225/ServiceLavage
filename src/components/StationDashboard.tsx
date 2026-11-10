@@ -29,10 +29,24 @@ interface StationDashboardProps {
  * les montants affichés sont des montants *facturés* — l'application
  * n'enregistre aucun paiement.
  */
-export function StationDashboard({ stationId, userId, onNavigateTab, client = defaultClient }: StationDashboardProps) {
+export function StationDashboard({
+  stationId,
+  userId,
+  onNavigateTab,
+  client = defaultClient,
+}: StationDashboardProps) {
   const {
-    queued, loaded, refreshing, error, metrics, series, seriesEmpty,
-    distribution, distributionEmpty, recentOrders, refresh,
+    queued,
+    loaded,
+    refreshing,
+    error,
+    metrics,
+    series,
+    seriesEmpty,
+    distribution,
+    distributionEmpty,
+    recentOrders,
+    refresh,
   } = useDashboardMetrics(client, stationId, userId);
 
   return (
@@ -55,7 +69,9 @@ export function StationDashboard({ stationId, userId, onNavigateTab, client = de
             disabled={refreshing}
             className={buttonStyles({ variant: 'outline', size: 'sm' })}
           >
-            <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${refreshing ? 'animate-spin motion-safe-keep text-indigo-400' : ''}`} />
+            <RefreshCw
+              className={`w-3.5 h-3.5 mr-1.5 ${refreshing ? 'animate-spin motion-safe-keep text-indigo-400' : ''}`}
+            />
             <span>{refreshing ? 'Actualisation…' : 'Actualiser'}</span>
           </button>
         </div>
@@ -75,7 +91,9 @@ export function StationDashboard({ stationId, userId, onNavigateTab, client = de
       )}
 
       {/* Aucun paiement n'est enregistré : le dire avant d'afficher des montants. */}
-      <Alert variant="info" title="Montants facturés, pas recettes encaissées">{RECEIPTS_NOT_TRACKED_COPY}</Alert>
+      <Alert variant="info" title="Montants facturés, pas recettes encaissées">
+        {RECEIPTS_NOT_TRACKED_COPY}
+      </Alert>
 
       {queued.length > 0 && (
         <Alert variant="warning" title={`${queued.length} prestation(s) en attente de synchronisation`}>
@@ -85,7 +103,9 @@ export function StationDashboard({ stationId, userId, onNavigateTab, client = de
           </p>
           <ul className="mt-1 space-y-0.5 font-mono text-xs">
             {queued.map(item => (
-              <li key={item.requestId}>{item.vehicle} · {item.plate || 'Sans immatriculation'}</li>
+              <li key={item.requestId}>
+                {item.vehicle} · {item.plate || 'Sans immatriculation'}
+              </li>
             ))}
           </ul>
         </Alert>

@@ -21,8 +21,12 @@ function Harness() {
   const toast = useToastActions();
   return (
     <div>
-      <button type="button" onClick={() => toast.success('Article enregistré.')}>succès</button>
-      <button type="button" onClick={() => toast.error('Station non autorisée', 'code 42501')}>erreur</button>
+      <button type="button" onClick={() => toast.success('Article enregistré.')}>
+        succès
+      </button>
+      <button type="button" onClick={() => toast.error('Station non autorisée', 'code 42501')}>
+        erreur
+      </button>
       <button
         type="button"
         onClick={() => toast.push({ variant: 'success', message: 'éphémère', duration: 50 })}
@@ -48,7 +52,11 @@ function Harness() {
 
 test('un succès est annoncé dans la région polie', async () => {
   const user = userEvent.setup();
-  render(<ToastProvider><Harness /></ToastProvider>);
+  render(
+    <ToastProvider>
+      <Harness />
+    </ToastProvider>,
+  );
 
   await user.click(screen.getByRole('button', { name: 'succès' }));
 
@@ -61,7 +69,11 @@ test('un succès est annoncé dans la région polie', async () => {
 
 test('une erreur est annoncée dans la région assertive, avec son détail', async () => {
   const user = userEvent.setup();
-  render(<ToastProvider><Harness /></ToastProvider>);
+  render(
+    <ToastProvider>
+      <Harness />
+    </ToastProvider>,
+  );
 
   await user.click(screen.getByRole('button', { name: 'erreur' }));
 
@@ -73,7 +85,11 @@ test('une erreur est annoncée dans la région assertive, avec son détail', asy
 
 test('le toast se ferme au bouton, qui porte un nom accessible', async () => {
   const user = userEvent.setup();
-  render(<ToastProvider><Harness /></ToastProvider>);
+  render(
+    <ToastProvider>
+      <Harness />
+    </ToastProvider>,
+  );
 
   await user.click(screen.getByRole('button', { name: 'succès' }));
   await screen.findByText('Article enregistré.');
@@ -86,7 +102,11 @@ test('le toast se ferme au bouton, qui porte un nom accessible', async () => {
 
 test('trois toasts au maximum restent à l’écran', async () => {
   const user = userEvent.setup();
-  render(<ToastProvider><Harness /></ToastProvider>);
+  render(
+    <ToastProvider>
+      <Harness />
+    </ToastProvider>,
+  );
 
   await user.click(screen.getByRole('button', { name: 'quatre' }));
 
@@ -99,7 +119,11 @@ test('trois toasts au maximum restent à l’écran', async () => {
 
 test('un toast peut être poussé avec une durée courte et fermé à la main', async () => {
   const user = userEvent.setup();
-  render(<ToastProvider><Harness /></ToastProvider>);
+  render(
+    <ToastProvider>
+      <Harness />
+    </ToastProvider>,
+  );
 
   await user.click(screen.getByRole('button', { name: 'court' }));
   await screen.findByText('éphémère');

@@ -1,6 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { orderCounts, selectedServicesTotal, ticketNumberFor, toReceiptData } from '../src/lib/orderPresentation';
+import {
+  orderCounts,
+  selectedServicesTotal,
+  ticketNumberFor,
+  toReceiptData,
+} from '../src/lib/orderPresentation';
 import type { OrderRow } from '../src/lib/stationApi';
 
 /**
@@ -36,7 +41,10 @@ test('the receipt keeps the frozen amount instead of recomputing it', () => {
   assert.equal(receipt.totalXof, 8500);
   // The displayed total is the stored one, even though the items sum to it:
   // a later catalogue change must not alter a delivered ticket.
-  assert.equal(receipt.items?.reduce((sum, item) => sum + item.price, 0), 8500);
+  assert.equal(
+    receipt.items?.reduce((sum, item) => sum + item.price, 0),
+    8500,
+  );
   assert.equal(receipt.status, 'termine');
   assert.equal(receipt.plateNumber, '1234 AB 01');
 });

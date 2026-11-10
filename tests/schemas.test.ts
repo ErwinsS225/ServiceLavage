@@ -24,9 +24,13 @@ import {
  * doivent changer en même temps.
  */
 
-const ok = <T,>(schema: Parameters<typeof parseForm>[0], value: unknown) => {
+const ok = <T>(schema: Parameters<typeof parseForm>[0], value: unknown) => {
   const result = parseForm(schema, value);
-  assert.equal(result.ok, true, `valeur refusée à tort : ${JSON.stringify(value)} → ${JSON.stringify(!result.ok && result.errors)}`);
+  assert.equal(
+    result.ok,
+    true,
+    `valeur refusée à tort : ${JSON.stringify(value)} → ${JSON.stringify(!result.ok && result.errors)}`,
+  );
   return result as { ok: true; data: T };
 };
 
@@ -68,11 +72,21 @@ test('un entier très long est refusé, pas arrondi', () => {
   // `999999999999999999999` dépasse `Number.MAX_SAFE_INTEGER` : `Number()`
   // l'arrondirait sans le test de sûreté, et la base recevrait une valeur
   // différente de celle tapée.
-  ko(serviceSchema, { name: 'Lavage', is_active: true, price_xof: '999999999999999999999', duration_minutes: '30' });
+  ko(serviceSchema, {
+    name: 'Lavage',
+    is_active: true,
+    price_xof: '999999999999999999999',
+    duration_minutes: '30',
+  });
   ko(serviceSchema, { name: 'Lavage', is_active: true, price_xof: '1e3', duration_minutes: '30' });
   // Les espaces autour d'un entier restent acceptés : le trim est explicitement
   // fait par le schéma, et 1500 est bien la valeur transmise.
-  const padded = ok<{ price_xof: number }>(serviceSchema, { name: 'Lavage', is_active: true, price_xof: ' 1500 ', duration_minutes: '30' });
+  const padded = ok<{ price_xof: number }>(serviceSchema, {
+    name: 'Lavage',
+    is_active: true,
+    price_xof: ' 1500 ',
+    duration_minutes: '30',
+  });
   assert.equal(padded.data.price_xof, 1500);
 });
 
@@ -123,11 +137,14 @@ test('ajustement de stock : entier signé non nul, borné', () => {
   ko(inventoryAdjustmentSchema, '1000000001');
   ko(inventoryAdjustmentSchema, '1.5');
   ko(inventoryAdjustmentSchema, '');
-  ko(inventoryAdjustmentSchema, '+'); 
+  ko(inventoryAdjustmentSchema, '+');
 });
 
 test('invitation : email normalisé en minuscules, rôle parmi les trois du serveur', () => {
-  const result = ok<{ email: string; role: string }>(invitationSchema, { email: '  Awa@Example.COM ', role: 'caissier' });
+  const result = ok<{ email: string; role: string }>(invitationSchema, {
+    email: '  Awa@Example.COM ',
+    role: 'caissier',
+  });
   // La contrainte `email = lower(btrim(email))` refuse tout autre forme.
   assert.equal(result.data.email, 'awa@example.com');
   ok(invitationSchema, { email: 'a@b', role: 'gerant' });
@@ -175,7 +192,12 @@ test('nouveau mot de passe : la confirmation est vérifiée côté client', () =
 });
 
 test('parseForm ne renvoie qu’une erreur par champ', () => {
-  const result = parseForm(serviceSchema, { name: '', price_xof: '', duration_minutes: '0', is_active: true });
+  const result = parseForm(serviceSchema, {
+    name: '',
+    price_xof: '',
+    duration_minutes: '0',
+    is_active: true,
+  });
   assert.equal(result.ok, false);
   if (result.ok) return;
   assert.deepEqual(Object.keys(result.errors).sort(), ['duration_minutes', 'name', 'price_xof']);

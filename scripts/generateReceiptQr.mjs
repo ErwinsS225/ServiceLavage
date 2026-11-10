@@ -58,7 +58,9 @@ for (let index = 0; index < bits.length; index += 8) {
 }
 const base64 = Buffer.from(bytes).toString('base64');
 
-writeFileSync('src/lib/receiptQrBitmap.ts', `/**
+writeFileSync(
+  'src/lib/receiptQrBitmap.ts',
+  `/**
  * Frozen 2D bitmap of the receipt QR code, generated once with
  * \`qrcode-generator\` (MIT) so the browser bundle carries no QR library.
  *
@@ -91,6 +93,7 @@ export function receiptQrMatrix(): boolean[][] {
   }
   return matrix;
 }
-`);
+`,
+);
 
 console.log(`receipt QR regenerated: ${size} modules, payload ${payload.length} chars`);

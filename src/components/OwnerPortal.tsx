@@ -39,11 +39,29 @@ import { resolveTab, type StationTabId } from '../lib/portalNavigation';
  */
 export function OwnerPortal({ client }: { client?: SupabaseClient | null }) {
   const supabase = resolvePortalClient(client);
-  const { session, loading: sessionLoading, error: sessionError, recovery, leaveRecovery } = usePortalSession(supabase);
+  const {
+    session,
+    loading: sessionLoading,
+    error: sessionError,
+    recovery,
+    leaveRecovery,
+  } = usePortalSession(supabase);
   const online = useOnlineStatus();
   const userId = session?.user.id ?? null;
-  const { stations, stationId, selectStation, refresh: refreshStations, create: createStation, error: stationsError, clearError: clearStationsError } = useStations(supabase, userId);
-  const { role: stationRole, roleLoading, roleFromServer } = useStationRole(supabase, userId, stationId, stations, online);
+  const {
+    stations,
+    stationId,
+    selectStation,
+    refresh: refreshStations,
+    create: createStation,
+    error: stationsError,
+    clearError: clearStationsError,
+  } = useStations(supabase, userId);
+  const {
+    role: stationRole,
+    roleLoading,
+    roleFromServer,
+  } = useStationRole(supabase, userId, stationId, stations, online);
 
   const [screen, setScreen] = useState<AuthScreen>('signin');
   const [message, setMessage] = useState('');
@@ -80,9 +98,18 @@ export function OwnerPortal({ client }: { client?: SupabaseClient | null }) {
       <AuthGate
         client={supabase}
         screen={recovery ? 'reset' : screen}
-        onScreenChange={next => { setScreen(next); if (next !== 'reset') leaveRecovery(); }}
-        onMessage={value => { setMessage(value); setActionError(''); }}
-        onRecoveryLeft={() => { leaveRecovery(); setScreen('signin'); }}
+        onScreenChange={next => {
+          setScreen(next);
+          if (next !== 'reset') leaveRecovery();
+        }}
+        onMessage={value => {
+          setMessage(value);
+          setActionError('');
+        }}
+        onRecoveryLeft={() => {
+          leaveRecovery();
+          setScreen('signin');
+        }}
         banner={
           <>
             {sessionError && <Alert variant="error">{sessionError}</Alert>}
@@ -175,8 +202,8 @@ export function OwnerPortal({ client }: { client?: SupabaseClient | null }) {
 
         {!online && (
           <Alert variant="warning" title="Hors ligne">
-            Les prestations déjà enregistrées sur cet appareil seront envoyées au retour du réseau.
-            Les autres modules nécessitent une connexion.
+            Les prestations déjà enregistrées sur cet appareil seront envoyées au retour du réseau. Les autres
+            modules nécessitent une connexion.
           </Alert>
         )}
 
@@ -184,7 +211,14 @@ export function OwnerPortal({ client }: { client?: SupabaseClient | null }) {
           <Alert
             variant="error"
             action={
-              <button type="button" className="underline text-xs font-semibold text-rose-300" onClick={() => { setActionError(''); clearStationsError(); }}>
+              <button
+                type="button"
+                className="underline text-xs font-semibold text-rose-300"
+                onClick={() => {
+                  setActionError('');
+                  clearStationsError();
+                }}
+              >
                 Masquer
               </button>
             }
@@ -196,56 +230,64 @@ export function OwnerPortal({ client }: { client?: SupabaseClient | null }) {
         {message && <Alert variant="success">{message}</Alert>}
 
         <div id="contenu-principal" tabIndex={-1}>
-        <StationPicker
-          stations={stations}
-          stationId={stationId}
-          stationRole={stationRole}
-          userId={session.user.id}
-          online={online}
-          busy={busy}
-          newStationName={newStationName}
-          invitationCode={invitationCode}
-          onSelectStation={id => { selectStation(id); setTab('dashboard'); setActionError(''); }}
-          onCreateStation={event => void handleCreateStation(event)}
-          onChangeNewStationName={setNewStationName}
-          onChangeInvitationCode={setInvitationCode}
-          onAcceptInvitation={event => void handleAcceptInvitation(event)}
-        />
+          <StationPicker
+            stations={stations}
+            stationId={stationId}
+            stationRole={stationRole}
+            userId={session.user.id}
+            online={online}
+            busy={busy}
+            newStationName={newStationName}
+            invitationCode={invitationCode}
+            onSelectStation={id => {
+              selectStation(id);
+              setTab('dashboard');
+              setActionError('');
+            }}
+            onCreateStation={event => void handleCreateStation(event)}
+            onChangeNewStationName={setNewStationName}
+            onChangeInvitationCode={setInvitationCode}
+            onAcceptInvitation={event => void handleAcceptInvitation(event)}
+          />
 
-        {stationId && activeStation && (
-          <>
-            {roleLoading ? (
-              <p className="text-sm text-[var(--text-secondary)]">Vérification de votre rôle sur {activeStation.name}…</p>
-            ) : stationRole && visibleTab ? (
-              <>
-                <StationModuleNav role={stationRole} tab={visibleTab} onSelect={setTab} />
-                <StationModulePanel
-                  tab={visibleTab}
-                  role={stationRole}
-                  roleFromServer={roleFromServer}
-                  stationId={stationId}
-                  stationName={activeStation.name}
-                  userId={session.user.id}
-                />
-              </>
-            ) : (
-              <Alert variant="warning" title="Accès non accordé">
-                Votre compte n’a pas de rôle actif sur {activeStation.name}. Demandez une invitation au propriétaire.
-              </Alert>
-            )}
-          </>
-        )}
+          {stationId && activeStation && (
+            <>
+              {roleLoading ? (
+                <p className="text-sm text-[var(--text-secondary)]">
+                  Vérification de votre rôle sur {activeStation.name}…
+                </p>
+              ) : stationRole && visibleTab ? (
+                <>
+                  <StationModuleNav role={stationRole} tab={visibleTab} onSelect={setTab} />
+                  <StationModulePanel
+                    tab={visibleTab}
+                    role={stationRole}
+                    roleFromServer={roleFromServer}
+                    stationId={stationId}
+                    stationName={activeStation.name}
+                    userId={session.user.id}
+                  />
+                </>
+              ) : (
+                <Alert variant="warning" title="Accès non accordé">
+                  Votre compte n’a pas de rôle actif sur {activeStation.name}. Demandez une invitation au
+                  propriétaire.
+                </Alert>
+              )}
+            </>
+          )}
 
-        {!stationId && stations.length === 0 && canManageStation && (
-          <p className="text-xs text-[var(--text-secondary)]">
-            Créez votre première station ci-dessus pour accéder au tableau de bord, aux prestations et au catalogue.
-          </p>
-        )}
-
+          {!stationId && stations.length === 0 && canManageStation && (
+            <p className="text-xs text-[var(--text-secondary)]">
+              Créez votre première station ci-dessus pour accéder au tableau de bord, aux prestations et au
+              catalogue.
+            </p>
+          )}
         </div>
 
         <footer className="pt-2 text-center text-[11px] text-[var(--text-muted)]">
-          ServiceLavage · Les compteurs affichés proviennent des prestations enregistrées sur le serveur, jamais d’une estimation.
+          ServiceLavage · Les compteurs affichés proviennent des prestations enregistrées sur le serveur,
+          jamais d’une estimation.
         </footer>
       </div>
     </div>

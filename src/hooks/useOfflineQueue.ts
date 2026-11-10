@@ -49,7 +49,12 @@ export interface OfflineQueue<T> {
 }
 
 export function useOfflineQueue<T>({
-  list, deliver, synchronize, canSync, onDelivered, fallback,
+  list,
+  deliver,
+  synchronize,
+  canSync,
+  onDelivered,
+  fallback,
 }: OfflineQueueOptions<T>): OfflineQueue<T> {
   const [pending, setPending] = useState<T[]>([]);
   const [error, setError] = useState('');
@@ -71,31 +76,53 @@ export function useOfflineQueue<T>({
   const sync = useCallback(async (): Promise<void> => {
     const current = options.current;
     if (!current.canSync()) return;
-    if (syncing.current) { syncAgain.current = true; return; }
+    if (syncing.current) {
+      syncAgain.current = true;
+      return;
+    }
     syncing.current = true;
     setError('');
     try {
       const result = await current.synchronize(current.deliver);
-      try { refresh(); } catch { /* the original error is more useful */ }
+      try {
+        refresh();
+      } catch {
+        /* the original error is more useful */
+      }
       if (result.completed > 0) {
         setMessage(`${result.completed} élément(s) confirmé(s) par le serveur.`);
         current.onDelivered?.(result.completed);
       }
       if (result.error) throw result.error;
     } catch (cause) {
-      try { refresh(); } catch { /* keep the original error */ }
+      try {
+        refresh();
+      } catch {
+        /* keep the original error */
+      }
       setError(describeError(cause, current.fallback));
     } finally {
       syncing.current = false;
-      if (syncAgain.current) { syncAgain.current = false; void sync(); }
+      if (syncAgain.current) {
+        syncAgain.current = false;
+        void sync();
+      }
     }
   }, [refresh]);
 
   // A queue read at mount keeps the banner correct before the first attempt,
   // and the two window events cover the cases React cannot see.
   useEffect(() => {
-    const onOnline = () => { void sync(); };
-    const onStorage = () => { try { refresh(); } catch { setError('File locale illisible ; elle a été conservée.'); } };
+    const onOnline = () => {
+      void sync();
+    };
+    const onStorage = () => {
+      try {
+        refresh();
+      } catch {
+        setError('File locale illisible ; elle a été conservée.');
+      }
+    };
     window.addEventListener('online', onOnline);
     window.addEventListener('storage', onStorage);
     return () => {

@@ -23,7 +23,8 @@ export type AuthScreen = 'signin' | 'signup' | 'forgot' | 'reset';
 export const AUTH_COPY: Record<AuthScreen, AuthCopy> = {
   signin: {
     headline: 'Votre station, sous contrôle',
-    intro: 'Toutes vos prestations, votre équipe et votre stock au même endroit — même quand le réseau tombe.',
+    intro:
+      'Toutes vos prestations, votre équipe et votre stock au même endroit — même quand le réseau tombe.',
     points: [
       'Chaque prestation envoyée une seule fois, jamais facturée deux fois',
       'Prestations enregistrées hors ligne, envoyées au retour du réseau',
@@ -32,7 +33,8 @@ export const AUTH_COPY: Record<AuthScreen, AuthCopy> = {
   },
   signup: {
     headline: 'Ouvrez votre station en dix minutes',
-    intro: 'Pas d’installation, pas de registre papier : créez votre compte, nommez votre station, invitez votre équipe.',
+    intro:
+      'Pas d’installation, pas de registre papier : créez votre compte, nommez votre station, invitez votre équipe.',
     points: [
       'Votre catalogue, vos prix, vos clients — prêts dès la première prestation',
       'Vos employés se connectent avec leurs propres accès',
@@ -41,7 +43,8 @@ export const AUTH_COPY: Record<AuthScreen, AuthCopy> = {
   },
   forgot: {
     headline: 'Un mot de passe s’oublie, pas vos données',
-    intro: 'Rien n’est perdu : vos prestations, votre stock et votre historique restent en place pendant que vous récupérez l’accès.',
+    intro:
+      'Rien n’est perdu : vos prestations, votre stock et votre historique restent en place pendant que vous récupérez l’accès.',
     points: [
       'Station et données inchangées pendant la récupération',
       'Aucune adresse révélée : le message est identique qu’un compte existe ou non',
@@ -49,7 +52,8 @@ export const AUTH_COPY: Record<AuthScreen, AuthCopy> = {
   },
   reset: {
     headline: 'Nouveau mot de passe, même station',
-    intro: 'Choisissez un mot de passe solide : tout le reste — équipe, catalogue, prestations — vous attend intact.',
+    intro:
+      'Choisissez un mot de passe solide : tout le reste — équipe, catalogue, prestations — vous attend intact.',
     points: [
       'Vérifié avant l’envoi : aucune faute de frappe ne passe',
       'Confirmation demandée : vous ne pouvez pas vous tromper',

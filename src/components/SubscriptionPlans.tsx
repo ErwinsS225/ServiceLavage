@@ -1,4 +1,10 @@
-import { featureDeliveryLabels, planFeatures, SERVER_LIMITS, UNCONTROLLED_LIMITS, type FeatureDelivery } from '../data/planFeatures';
+import {
+  featureDeliveryLabels,
+  planFeatures,
+  SERVER_LIMITS,
+  UNCONTROLLED_LIMITS,
+  type FeatureDelivery,
+} from '../data/planFeatures';
 import { useSubscription } from '../hooks/useSubscription';
 import { quotaUsage } from '../lib/stationApi';
 import { formatXof } from '../lib/money';
@@ -33,8 +39,12 @@ export function SubscriptionPlans() {
     <section className="space-y-5 border-t border-[var(--border-subtle)] pt-6" aria-label="Abonnements">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-bold text-[var(--text-primary)] tracking-tight">Formules et abonnements</h2>
-          <p className="text-xs text-[var(--text-secondary)] mt-0.5">Offres SaaS et plafonds réellement appliqués par le serveur</p>
+          <h2 className="text-lg font-bold text-[var(--text-primary)] tracking-tight">
+            Formules et abonnements
+          </h2>
+          <p className="text-xs text-[var(--text-secondary)] mt-0.5">
+            Offres SaaS et plafonds réellement appliqués par le serveur
+          </p>
         </div>
         {subscription && (
           <span className="shrink-0 text-xs px-3 py-1 font-mono uppercase tracking-wider rounded-lg bg-indigo-500/10 text-indigo-300 border border-indigo-500/25">
@@ -59,11 +69,16 @@ export function SubscriptionPlans() {
           {error}
         </Alert>
       ) : subscription ? (
-        <div role="status" className="space-y-4 p-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)]">
+        <div
+          role="status"
+          className="space-y-4 p-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)]"
+        >
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="space-y-1">
               <p className="text-xs text-[var(--text-secondary)]">Formule actuelle</p>
-              <p className="text-lg font-bold uppercase text-[var(--text-primary)] font-mono">{subscription.plan}</p>
+              <p className="text-lg font-bold uppercase text-[var(--text-primary)] font-mono">
+                {subscription.plan}
+              </p>
             </div>
             <QuotaGauge
               label="Stations autorisées"
@@ -79,15 +94,16 @@ export function SubscriptionPlans() {
             />
           </div>
           <p className="text-[11px] text-[var(--text-muted)] border-t border-[var(--border-subtle)] pt-3">
-            Compteurs calculés par la fonction <code className="font-mono">my_subscription()</code> : stations rattachées à votre compte
-            (toutes formules) et prestations créées depuis le 1<sup>er</sup> du mois en cours (UTC). Aucune valeur n’est estimée.
+            Compteurs calculés par la fonction <code className="font-mono">my_subscription()</code> : stations
+            rattachées à votre compte (toutes formules) et prestations créées depuis le 1<sup>er</sup> du mois
+            en cours (UTC). Aucune valeur n’est estimée.
           </p>
         </div>
       ) : null}
 
       <Alert variant="info" title="Ce que l’application ne fait pas">
-        Aucun paiement, aucun changement de formule et aucune facturation depuis cette page. Les tarifs ci-dessous sont indicatifs :
-        un administrateur attribue la formule, l’application ne prélève rien.
+        Aucun paiement, aucun changement de formule et aucune facturation depuis cette page. Les tarifs
+        ci-dessous sont indicatifs : un administrateur attribue la formule, l’application ne prélève rien.
       </Alert>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -115,7 +131,9 @@ export function SubscriptionPlans() {
                   <span className="text-2xl font-bold font-mono tabular-nums text-[var(--text-primary)]">
                     {formatXof(plan.monthlyPriceXof)}
                   </span>
-                  <span className="text-xs text-[var(--text-secondary)] ml-1.5 font-sans">/ mois, indicatif</span>
+                  <span className="text-xs text-[var(--text-secondary)] ml-1.5 font-sans">
+                    / mois, indicatif
+                  </span>
                 </div>
 
                 {/* Only the limits the database actually enforces are stated
@@ -123,16 +141,20 @@ export function SubscriptionPlans() {
                 <ul className="space-y-1 text-xs text-slate-300 border-t border-[#1f2430] pt-3">
                   <li className="flex justify-between gap-2">
                     <span>{SERVER_LIMITS.stations.label}</span>
-                    <span className="font-mono tabular-nums text-[var(--text-primary)]">{plan.stationLimit}</span>
+                    <span className="font-mono tabular-nums text-[var(--text-primary)]">
+                      {plan.stationLimit}
+                    </span>
                   </li>
                   <li className="flex justify-between gap-2">
                     <span>{SERVER_LIMITS.monthlyOrders.label}</span>
-                    <span className="font-mono tabular-nums text-[var(--text-primary)]">{plan.monthlyOrderLimit.toLocaleString('fr-FR')}</span>
+                    <span className="font-mono tabular-nums text-[var(--text-primary)]">
+                      {plan.monthlyOrderLimit.toLocaleString('fr-FR')}
+                    </span>
                   </li>
                 </ul>
                 <p className="text-[11px] text-[var(--text-muted)]">
-                  Cible non contrôlée par le serveur : {plan.userTarget} utilisateurs · {plan.galleryTarget} photos.
-                  Ces deux chiffres sont un objectif commercial, pas un plafond appliqué.
+                  Cible non contrôlée par le serveur : {plan.userTarget} utilisateurs · {plan.galleryTarget}{' '}
+                  photos. Ces deux chiffres sont un objectif commercial, pas un plafond appliqué.
                 </p>
 
                 <ul className="space-y-1.5 border-t border-[#1f2430] pt-3 text-xs">
@@ -140,11 +162,15 @@ export function SubscriptionPlans() {
                     <li key={feature.id} className="space-y-0.5">
                       <div className="flex justify-between items-start gap-2">
                         <span className="text-slate-300">{feature.label}</span>
-                        <span className={`shrink-0 text-right font-medium text-[11px] ${deliveryColors[feature.delivery]}`}>
+                        <span
+                          className={`shrink-0 text-right font-medium text-[11px] ${deliveryColors[feature.delivery]}`}
+                        >
                           {featureDeliveryLabels[feature.delivery]}
                         </span>
                       </div>
-                      {feature.detail && <p className="text-[10px] text-[var(--text-muted)]">{feature.detail}</p>}
+                      {feature.detail && (
+                        <p className="text-[10px] text-[var(--text-muted)]">{feature.detail}</p>
+                      )}
                     </li>
                   ))}
                 </ul>
@@ -156,16 +182,15 @@ export function SubscriptionPlans() {
 
       <div className="text-xs text-amber-300/90 leading-relaxed border-t border-[var(--border-subtle)] pt-4 space-y-1.5">
         <p>
-          Plafonds appliqués aujourd’hui par la base de données : {SERVER_LIMITS.stations.label.toLowerCase()},
-          {' '}{SERVER_LIMITS.monthlyOrders.label.toLowerCase()} et {SERVER_LIMITS.inventory.label.toLowerCase()}
-          {' '}({SERVER_LIMITS.inventory.mechanism}).
+          Plafonds appliqués aujourd’hui par la base de données : {SERVER_LIMITS.stations.label.toLowerCase()}
+          , {SERVER_LIMITS.monthlyOrders.label.toLowerCase()} et {SERVER_LIMITS.inventory.label.toLowerCase()}{' '}
+          ({SERVER_LIMITS.inventory.mechanism}).
         </p>
+        <p>Aucun contrôle serveur pour : {UNCONTROLLED_LIMITS.join(', ').toLowerCase()}.</p>
         <p>
-          Aucun contrôle serveur pour : {UNCONTROLLED_LIMITS.join(', ').toLowerCase()}.
-        </p>
-        <p>
-          Cette matrice décrit la cible des offres et l’état de livraison, pas un contrôle d’accès complet. Les plafonds cités sont
-          ceux du schéma déployé sur la base connectée ; l’écran n’en vérifie pas la version à l’exécution.
+          Cette matrice décrit la cible des offres et l’état de livraison, pas un contrôle d’accès complet.
+          Les plafonds cités sont ceux du schéma déployé sur la base connectée ; l’écran n’en vérifie pas la
+          version à l’exécution.
         </p>
       </div>
     </section>
@@ -205,7 +230,9 @@ function QuotaGauge({
           />
         </div>
       )}
-      <p className="text-[10px] text-[var(--text-muted)]">{saturated ? 'Plafond atteint : toute création sera refusée par le serveur.' : mechanism}</p>
+      <p className="text-[10px] text-[var(--text-muted)]">
+        {saturated ? 'Plafond atteint : toute création sera refusée par le serveur.' : mechanism}
+      </p>
     </div>
   );
 }

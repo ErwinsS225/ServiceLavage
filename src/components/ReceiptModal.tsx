@@ -68,7 +68,9 @@ export function ReceiptModal({
       // Boucle de tabulation : le reçu n'a pas de contenu en arrière-plan
       // atteignable, donc le focus doit tourner entre ses propres boutons.
       const focusable = Array.from(
-        dialogRef.current.querySelectorAll<HTMLElement>('button:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])'),
+        dialogRef.current.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])',
+        ),
       ).filter(element => element.offsetParent !== null || element.style.position === 'fixed');
       if (focusable.length === 0) {
         event.preventDefault();
@@ -166,8 +168,14 @@ export function ReceiptModal({
       >
         <div className="p-3.5 border-b border-[var(--border-subtle)] flex items-center justify-between bg-[var(--surface-elevated)]">
           <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse motion-safe-keep" aria-hidden="true" />
-            <h2 id={titleId} className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider">
+            <span
+              className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse motion-safe-keep"
+              aria-hidden="true"
+            />
+            <h2
+              id={titleId}
+              className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider"
+            >
               Reçu de prestation · ServiceLavage
             </h2>
           </div>
@@ -182,7 +190,10 @@ export function ReceiptModal({
         </div>
 
         {feedback && (
-          <div role="status" className="px-4 py-2 bg-emerald-500/10 border-b border-emerald-500/20 text-emerald-400 text-xs flex items-center gap-2">
+          <div
+            role="status"
+            className="px-4 py-2 bg-emerald-500/10 border-b border-emerald-500/20 text-emerald-400 text-xs flex items-center gap-2"
+          >
             <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
             <span>{feedback}</span>
           </div>

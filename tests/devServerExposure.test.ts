@@ -15,10 +15,22 @@ test('the dev server blocks internal directories', () => {
   const match = config.match(/const blocked = (\/.*\/);/);
   assert.ok(match, 'the allow-list guard must define a blocked pattern');
   const blocked = new RegExp(match[1].slice(1, -1));
-  for (const path of ['/docs/audit.md', '/docs', '/tests/money.test.ts', '/supabase/migrations/x.sql', '/.aistudio/artifacts/brain/x.jpg']) {
+  for (const path of [
+    '/docs/audit.md',
+    '/docs',
+    '/tests/money.test.ts',
+    '/supabase/migrations/x.sql',
+    '/.aistudio/artifacts/brain/x.jpg',
+  ]) {
     assert.ok(blocked.test(path), `${path} must be blocked`);
   }
-  for (const path of ['/', '/src/main.tsx', '/icons/icon-192.png', '/manifest.webmanifest', '/assets/index-abc.js']) {
+  for (const path of [
+    '/',
+    '/src/main.tsx',
+    '/icons/icon-192.png',
+    '/manifest.webmanifest',
+    '/assets/index-abc.js',
+  ]) {
     assert.ok(!blocked.test(path), `${path} must stay reachable`);
   }
 });
@@ -33,9 +45,7 @@ test('the guard is only applied to the dev server, never to the build', () => {
 
 test('public/ contains only files meant to be public', async () => {
   const { readdir } = await import('node:fs/promises');
-  const files = (await readdir('public', { recursive: true }))
-    .filter(entry => /\.\w+$/.test(entry))
-    .sort();
+  const files = (await readdir('public', { recursive: true })).filter(entry => /\.\w+$/.test(entry)).sort();
   assert.deepEqual(files, [
     'assets/auth-forgot-1.jpg',
     'assets/auth-forgot-2.jpg',

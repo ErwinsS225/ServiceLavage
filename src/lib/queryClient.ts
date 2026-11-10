@@ -33,10 +33,7 @@ export function createQueryClient(handlers: QueryErrorHandlers = {}): QueryClien
     // textes différents pour un seul échec.
     queryCache: new QueryCache({
       onError: error => {
-        handlers.onQueryError?.(
-          'Chargement impossible.',
-          error instanceof Error ? error.message : undefined,
-        );
+        handlers.onQueryError?.('Chargement impossible.', error instanceof Error ? error.message : undefined);
       },
     }),
     defaultOptions: {
@@ -61,7 +58,8 @@ export const queryKeys = {
   customers: (stationId: string) => ['station', stationId, 'customers'] as const,
   orders: (stationId: string) => ['station', stationId, 'orders'] as const,
   inventory: (stationId: string) => ['station', stationId, 'inventory'] as const,
-  staff: (stationId: string, canManageRoles: boolean) => ['station', stationId, 'staff', canManageRoles] as const,
+  staff: (stationId: string, canManageRoles: boolean) =>
+    ['station', stationId, 'staff', canManageRoles] as const,
   subscription: () => ['subscription'] as const,
   reports: (stationId: string) => ['station', stationId, 'reports'] as const,
 } as const;

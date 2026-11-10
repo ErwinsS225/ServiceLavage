@@ -11,11 +11,7 @@ import { readdir, readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 
 const ROOT = 'src';
-const ENTRY_POINTS = [
-  'src/main.tsx',
-  'src/components/OwnerPortal.tsx',
-  'src/components/ErrorBoundary.tsx',
-];
+const ENTRY_POINTS = ['src/main.tsx', 'src/components/OwnerPortal.tsx', 'src/components/ErrorBoundary.tsx'];
 
 /** True only for regular files: stat succeeds on directories too. */
 async function isFile(candidate) {
@@ -59,7 +55,7 @@ while (queue.length) {
   const file = queue.pop();
   if (reachable.has(file)) continue;
   reachable.add(file);
-  queue.push(...await importedFiles(file));
+  queue.push(...(await importedFiles(file)));
 }
 
 const files = await allSourceFiles(ROOT);
@@ -68,7 +64,7 @@ const unreachable = files.filter(file => !reachable.has(file));
 if (unreachable.length) {
   console.error(`${unreachable.length} fichier(s) inaccessible(s) depuis les points d'entrée :`);
   for (const file of unreachable) console.error(`  ${file}`);
-  console.error('\nArchiver le fichier dans archive/ s\'il est mort, ou l\'importer depuis OwnerPortal.');
+  console.error("\nArchiver le fichier dans archive/ s'il est mort, ou l'importer depuis OwnerPortal.");
   process.exit(1);
 }
 

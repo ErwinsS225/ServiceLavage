@@ -31,14 +31,7 @@ export interface ServerError {
 }
 
 export type ErrorKind =
-  | 'permission'
-  | 'validation'
-  | 'limit'
-  | 'conflict'
-  | 'foreign_key'
-  | 'network'
-  | 'auth'
-  | 'unknown';
+  'permission' | 'validation' | 'limit' | 'conflict' | 'foreign_key' | 'network' | 'auth' | 'unknown';
 
 export interface UserFacingError {
   kind: ErrorKind;
@@ -99,7 +92,8 @@ const SERVER_MESSAGES: Record<string, Pick<UserFacingError, 'kind' | 'title' | '
   'La modification du stock nécessite le plan Pro ou Business': {
     kind: 'permission',
     title: 'Inventaire non inclus dans votre plan',
-    action: 'L’inventaire fait partie des plans Pro et Business. Il n’est pas accessible avec le plan actuel.',
+    action:
+      'L’inventaire fait partie des plans Pro et Business. Il n’est pas accessible avec le plan actuel.',
     retryable: false,
   },
   'Limite mensuelle de prestations atteinte pour votre abonnement': {
@@ -123,7 +117,8 @@ const SERVER_MESSAGES: Record<string, Pick<UserFacingError, 'kind' | 'title' | '
   'Transition de statut invalide': {
     kind: 'validation',
     title: 'Changement de statut refusé',
-    action: 'Ce passage n’est pas permis depuis l’état actuel de la prestation. Actualisez la liste : quelqu’un l’a peut-être déjà modifiée.',
+    action:
+      'Ce passage n’est pas permis depuis l’état actuel de la prestation. Actualisez la liste : quelqu’un l’a peut-être déjà modifiée.',
     retryable: false,
   },
   'Transition non autorisée pour le laveur': {
@@ -271,7 +266,7 @@ const BY_CODE: Record<string, Pick<UserFacingError, 'kind' | 'title' | 'action' 
     action: 'Une valeur ne respecte pas les règles du serveur. Vérifiez la saisie.',
     retryable: false,
   },
-  'P0001': {
+  P0001: {
     kind: 'limit',
     title: 'Limite atteinte',
     action: 'Votre abonnement ne couvre pas cette opération.',
@@ -295,7 +290,7 @@ const BY_CODE: Record<string, Pick<UserFacingError, 'kind' | 'title' | 'action' 
     action: 'Une valeur sort des bornes autorisées. Corrigez la saisie.',
     retryable: false,
   },
-  'PGRST116': {
+  PGRST116: {
     kind: 'permission',
     title: 'Élément introuvable',
     action: 'Il a peut-être été supprimé, ou il n’est pas accessible avec votre rôle.',
@@ -346,8 +341,18 @@ function describeAuthMessage(message: string): UserFacingError | null {
       retryable: false,
     };
   }
-  if (lower.includes('jwt expired') || lower.includes('token has expired') || lower.includes('invalid claim')) {
-    return { kind: 'auth', title: 'Session expirée', message: 'Votre session n’est plus valide.', action: 'Reconnectez-vous.', retryable: false };
+  if (
+    lower.includes('jwt expired') ||
+    lower.includes('token has expired') ||
+    lower.includes('invalid claim')
+  ) {
+    return {
+      kind: 'auth',
+      title: 'Session expirée',
+      message: 'Votre session n’est plus valide.',
+      action: 'Reconnectez-vous.',
+      retryable: false,
+    };
   }
   if (lower.includes('rate limit') || lower.includes('too many requests')) {
     return {
@@ -446,7 +451,10 @@ export function describeError(error: unknown): UserFacingError {
  * d'une contrainte PostgreSQL (`new row for relation "…" violates check…`).
  */
 function isFrenchSentence(message: string): boolean {
-  return /[àâçéèêëîïôûùüÿœ]/.test(message) || /^(Le |La |Les |Un |Une |Aucun|Seul|Identifiant|Station|Prestation|Stock)/.test(message);
+  return (
+    /[àâçéèêëîïôûùüÿœ]/.test(message) ||
+    /^(Le |La |Les |Un |Une |Aucun|Seul|Identifiant|Station|Prestation|Stock)/.test(message)
+  );
 }
 
 /** Raccourci pour un toast ou une alerte : le texte à afficher, concaténé. */

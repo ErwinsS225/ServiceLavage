@@ -1,9 +1,7 @@
 /** Minimum password length enforced here and by the Supabase project setting. */
 export const MIN_PASSWORD_LENGTH = 8;
 
-export type PasswordValidation =
-  | { ok: true }
-  | { ok: false; reason: 'too_short' | 'mismatch' | 'empty' };
+export type PasswordValidation = { ok: true } | { ok: false; reason: 'too_short' | 'mismatch' | 'empty' };
 
 /**
  * Validates a new password without ever logging or returning its value.

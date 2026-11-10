@@ -37,13 +37,20 @@ test('the runbook states the verified state instead of the historical one', asyn
     ['20261109150000_station_role_permissions.sql', '20261109182534'],
     ['20261109160000_revoke_legacy_order_rpc.sql', '20261109184205'],
   ]) {
-    assert.ok(runbook.includes(pair[0]) && runbook.includes(pair[1]), `correspondance manquante : ${pair[0]}`);
+    assert.ok(
+      runbook.includes(pair[0]) && runbook.includes(pair[1]),
+      `correspondance manquante : ${pair[0]}`,
+    );
   }
   // Depuis l'étape 3, le runbook ne prescrit plus `migration repair` : il
   // l'exclut explicitement. Le test qui figeait la commande de réparation est
   // devenu un test de l'inverse — sinon la documentation continuerait de
   // recommander une écriture d'historique devenue inutile et risquée.
-  assert.doesNotMatch(runbook, /supabase migration repair --status/, 'aucune commande `migration repair` ne doit rester');
+  assert.doesNotMatch(
+    runbook,
+    /supabase migration repair --status/,
+    'aucune commande `migration repair` ne doit rester',
+  );
   assert.match(runbook, /n'est pas dans ce chemin/);
   // La correspondance ancien → nouveau reste documentée : c'est la trace de
   // ce qui a été fait, et elle explique pourquoi les versions ont changé.
@@ -89,10 +96,9 @@ test('the applied migrations were not modified to match the remote versions', as
   ]);
   // Aucun fichier ne doit conserver un préfixe qui n'existe pas en base : ce
   // serait une migration fantôme, que `db push` rejouerait.
-  const history = JSON.parse(await readFile(
-    'docs/sauvegardes/prod-migration-historique-2026-11-10.json',
-    'utf8',
-  )) as { migrations: Array<{ version: string }> };
+  const history = JSON.parse(
+    await readFile('docs/sauvegardes/prod-migration-historique-2026-11-10.json', 'utf8'),
+  ) as { migrations: Array<{ version: string }> };
   const applied = new Set(history.migrations.map(item => item.version));
   for (const file of files) assert.ok(applied.has(file.slice(0, 14)), `${file} : version non appliquée`);
 });

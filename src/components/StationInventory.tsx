@@ -1,9 +1,5 @@
 import { useEffect, useState } from 'react';
-import {
-  applyInventoryAdjustment,
-  resolveClient,
-  type InventoryRow,
-} from '../lib/stationApi';
+import { applyInventoryAdjustment, resolveClient, type InventoryRow } from '../lib/stationApi';
 import {
   listQueuedInventoryAdjustments,
   saveQueuedInventoryAdjustment,
@@ -19,8 +15,19 @@ import { inventoryAdjustmentSchema, inventoryItemSchema, parseForm } from '../li
 import { errorText } from '../lib/errorMessages';
 import { useToastActions } from '../context/ToastContext';
 import {
-  Table, TableHeader, TableBody, TableHead, TableRow, TableCell,
-  StatusBadge, buttonStyles, formControlStyles, FormField, Modal, Alert, EmptyState
+  Table,
+  TableHeader,
+  TableBody,
+  TableHead,
+  TableRow,
+  TableCell,
+  StatusBadge,
+  buttonStyles,
+  formControlStyles,
+  FormField,
+  Modal,
+  Alert,
+  EmptyState,
 } from './ui/designSystem';
 import { Plus, Boxes, ArrowUpDown, RotateCw } from 'lucide-react';
 
@@ -29,8 +36,13 @@ const maxStock = 1_000_000_000;
 function isItem(value: unknown): value is InventoryRow {
   if (!value || typeof value !== 'object') return false;
   const item = value as Partial<InventoryRow>;
-  return typeof item.id === 'string' && typeof item.name === 'string' && typeof item.unit === 'string' &&
-    Number.isSafeInteger(item.quantity) && Number.isSafeInteger(item.min_threshold);
+  return (
+    typeof item.id === 'string' &&
+    typeof item.name === 'string' &&
+    typeof item.unit === 'string' &&
+    Number.isSafeInteger(item.quantity) &&
+    Number.isSafeInteger(item.min_threshold)
+  );
 }
 
 /**
@@ -66,8 +78,12 @@ export function StationInventory({ stationId, userId }: { stationId: string; use
   const items = {
     data: itemsData,
     loading: !online ? false : inventoryQuery.isPending,
-    error: inventoryQuery.error ? describeError(inventoryQuery.error, 'Impossible de charger l’inventaire.') : '',
-    reload: () => { void inventoryQuery.refetch(); },
+    error: inventoryQuery.error
+      ? describeError(inventoryQuery.error, 'Impossible de charger l’inventaire.')
+      : '',
+    reload: () => {
+      void inventoryQuery.refetch();
+    },
   };
 
   // Le cache local ne sert qu'à afficher pendant une coupure : dès que la
@@ -75,7 +91,11 @@ export function StationInventory({ stationId, userId }: { stationId: string; use
   const latest = inventoryQuery.data;
   useEffect(() => {
     if (!online || !latest) return;
-    try { cache.write(latest); } catch { /* quota plein : ne pas masquer les données fraîches */ }
+    try {
+      cache.write(latest);
+    } catch {
+      /* quota plein : ne pas masquer les données fraîches */
+    }
   }, [online, latest, cache]);
 
   const queue = useOfflineQueue<QueuedInventoryAdjustment>({
@@ -105,7 +125,9 @@ export function StationInventory({ stationId, userId }: { stationId: string; use
   async function createItem(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!navigator.onLine) {
-      setFormError('La création d’article nécessite une connexion ; seuls les ajustements d’articles existants peuvent être mis en file.');
+      setFormError(
+        'La création d’article nécessite une connexion ; seuls les ajustements d’articles existants peuvent être mis en file.',
+      );
       return;
     }
     // Les bornes viennent du schéma, lui-même aligné sur les `check` de la
@@ -185,7 +207,9 @@ export function StationInventory({ stationId, userId }: { stationId: string; use
         await queue.sync();
         toast.success(`Stock de « ${item.name} » ajusté.`);
       } else {
-        setMessage('Ajustement mis en attente sur cet appareil. Le stock serveur sera vérifié à la synchronisation.');
+        setMessage(
+          'Ajustement mis en attente sur cet appareil. Le stock serveur sera vérifié à la synchronisation.',
+        );
       }
     } catch (cause) {
       setFormError(describeError(cause, 'Mise en file impossible.'));
@@ -197,26 +221,43 @@ export function StationInventory({ stationId, userId }: { stationId: string; use
   const error = formError || items.error || queue.error;
 
   return (
-    <section className="space-y-5 border-t border-[var(--border-subtle)] pt-6" aria-label="Inventaire de la station">
+    <section
+      className="space-y-5 border-t border-[var(--border-subtle)] pt-6"
+      aria-label="Inventaire de la station"
+    >
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-bold text-[var(--text-primary)] tracking-tight">Gestion des Stocks & Produits</h2>
-          <p className="text-xs text-[var(--text-secondary)] mt-0.5">Suivi des consommables (shampoing, cire, microfibres) avec file hors ligne sécurisée</p>
+          <h2 className="text-lg font-bold text-[var(--text-primary)] tracking-tight">
+            Gestion des Stocks & Produits
+          </h2>
+          <p className="text-xs text-[var(--text-secondary)] mt-0.5">
+            Suivi des consommables (shampoing, cire, microfibres) avec file hors ligne sécurisée
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <button
             type="button"
             className={buttonStyles({ variant: 'outline', size: 'sm' })}
-            onClick={() => { setFormError(''); items.reload(); }}
+            onClick={() => {
+              setFormError('');
+              items.reload();
+            }}
             disabled={items.loading || busy}
           >
-            <RotateCw className={`w-3.5 h-3.5 mr-1.5 ${items.loading ? 'animate-spin motion-safe-keep' : ''}`} />
+            <RotateCw
+              className={`w-3.5 h-3.5 mr-1.5 ${items.loading ? 'animate-spin motion-safe-keep' : ''}`}
+            />
             Actualiser
           </button>
           <button
             type="button"
             className={buttonStyles({ variant: 'primary', size: 'sm' })}
-            onClick={() => { setModalOpen(true); setFormError(''); setFieldErrors({}); setMessage(''); }}
+            onClick={() => {
+              setModalOpen(true);
+              setFormError('');
+              setFieldErrors({});
+              setMessage('');
+            }}
             disabled={items.loading || busy || !online}
           >
             <Plus className="w-4 h-4 mr-1.5" />
@@ -227,14 +268,13 @@ export function StationInventory({ stationId, userId }: { stationId: string; use
 
       {!online && (
         <Alert variant="warning">
-          Mode hors ligne actif. Le stock affiché provient du dernier cache local. Les ajustements sont placés en file d’attente locale.
+          Mode hors ligne actif. Le stock affiché provient du dernier cache local. Les ajustements sont placés
+          en file d’attente locale.
         </Alert>
       )}
 
       {cached && online && (
-        <p className="text-xs text-amber-300">
-          Affichage du dernier cache local ; il peut être périmé.
-        </p>
+        <p className="text-xs text-amber-300">Affichage du dernier cache local ; il peut être périmé.</p>
       )}
 
       {queue.pending.length > 0 && (
@@ -257,7 +297,9 @@ export function StationInventory({ stationId, userId }: { stationId: string; use
           <ul className="text-xs mt-1 space-y-0.5 font-mono">
             {queue.pending.map(operation => (
               <li key={operation.requestId}>
-                {operation.delta > 0 ? '+' : ''}{operation.delta} · article {operation.itemId.slice(0, 8)} · {new Date(operation.createdAt).toLocaleTimeString('fr-FR')}
+                {operation.delta > 0 ? '+' : ''}
+                {operation.delta} · article {operation.itemId.slice(0, 8)} ·{' '}
+                {new Date(operation.createdAt).toLocaleTimeString('fr-FR')}
               </li>
             ))}
           </ul>
@@ -265,24 +307,27 @@ export function StationInventory({ stationId, userId }: { stationId: string; use
       )}
 
       {error && (
-        <Alert variant="error" action={
-          <button
-            type="button"
-            className="underline text-xs font-semibold text-rose-300"
-            onClick={() => { setFormError(''); items.reload(); void queue.sync(); }}
-          >
-            Recharger
-          </button>
-        }>
+        <Alert
+          variant="error"
+          action={
+            <button
+              type="button"
+              className="underline text-xs font-semibold text-rose-300"
+              onClick={() => {
+                setFormError('');
+                items.reload();
+                void queue.sync();
+              }}
+            >
+              Recharger
+            </button>
+          }
+        >
           {error}
         </Alert>
       )}
 
-      {message && (
-        <Alert variant="success">
-          {message}
-        </Alert>
-      )}
+      {message && <Alert variant="success">{message}</Alert>}
 
       {items.loading ? (
         <div className="p-8 text-center text-sm text-[var(--text-secondary)] rounded-xl bg-[var(--surface-card)] border border-[var(--border-subtle)]">
@@ -301,7 +346,9 @@ export function StationInventory({ stationId, userId }: { stationId: string; use
           </TableHeader>
           <TableBody>
             {items.data.map(item => {
-              const queuedDelta = queue.pending.filter(entry => entry.itemId === item.id).reduce((sum, entry) => sum + entry.delta, 0);
+              const queuedDelta = queue.pending
+                .filter(entry => entry.itemId === item.id)
+                .reduce((sum, entry) => sum + entry.delta, 0);
               const estimate = item.quantity + queuedDelta;
               const isLow = estimate <= item.min_threshold;
               const isDepleted = estimate === 0;
@@ -315,7 +362,9 @@ export function StationInventory({ stationId, userId }: { stationId: string; use
                       </div>
                       <div>
                         <span className="font-semibold text-[var(--text-primary)] block">{item.name}</span>
-                        <span className="text-[11px] text-[var(--text-secondary)] font-mono">Unité: {item.unit}</span>
+                        <span className="text-[11px] text-[var(--text-secondary)] font-mono">
+                          Unité: {item.unit}
+                        </span>
                       </div>
                     </div>
                   </TableCell>
@@ -326,7 +375,8 @@ export function StationInventory({ stationId, userId }: { stationId: string; use
                     <span className="text-xs text-[var(--text-secondary)] ml-1 font-sans">{item.unit}</span>
                     {queuedDelta !== 0 && (
                       <span className="text-[11px] text-amber-300 block font-mono">
-                        ({queuedDelta > 0 ? '+' : ''}{queuedDelta} en attente)
+                        ({queuedDelta > 0 ? '+' : ''}
+                        {queuedDelta} en attente)
                       </span>
                     )}
                   </TableCell>
@@ -344,7 +394,9 @@ export function StationInventory({ stationId, userId }: { stationId: string; use
                   </TableCell>
                   <TableCell align="right">
                     <div className="flex items-center justify-end gap-2">
-                      <label className="sr-only" htmlFor={`adjust-${item.id}`}>Ajustement de stock pour {item.name}</label>
+                      <label className="sr-only" htmlFor={`adjust-${item.id}`}>
+                        Ajustement de stock pour {item.name}
+                      </label>
                       <input
                         id={`adjust-${item.id}`}
                         className="w-24 rounded-lg bg-[var(--surface-elevated)] border border-[var(--border-strong)] px-2.5 py-1.5 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none focus:border-indigo-500 font-mono text-center"
@@ -355,7 +407,9 @@ export function StationInventory({ stationId, userId }: { stationId: string; use
                         max={maxStock}
                         step="1"
                         value={adjustments[item.id] ?? ''}
-                        onChange={event => setAdjustments(previous => ({ ...previous, [item.id]: event.target.value }))}
+                        onChange={event =>
+                          setAdjustments(previous => ({ ...previous, [item.id]: event.target.value }))
+                        }
                         placeholder="+ / −"
                       />
                       <button
@@ -369,7 +423,11 @@ export function StationInventory({ stationId, userId }: { stationId: string; use
                       </button>
                     </div>
                     {fieldErrors[item.id] && (
-                      <p id={`adjust-error-${item.id}`} role="alert" className="mt-1 text-[11px] text-rose-400 text-right">
+                      <p
+                        id={`adjust-error-${item.id}`}
+                        role="alert"
+                        className="mt-1 text-[11px] text-rose-400 text-right"
+                      >
                         {fieldErrors[item.id]}
                       </p>
                     )}
@@ -388,7 +446,12 @@ export function StationInventory({ stationId, userId }: { stationId: string; use
             <button
               type="button"
               className={buttonStyles({ variant: 'primary', size: 'sm' })}
-              onClick={() => { setModalOpen(true); setFormError(''); setFieldErrors({}); setMessage(''); }}
+              onClick={() => {
+                setModalOpen(true);
+                setFormError('');
+                setFieldErrors({});
+                setMessage('');
+              }}
               disabled={!online}
             >
               <Plus className="w-4 h-4 mr-1.5" />
@@ -495,7 +558,10 @@ export function StationInventory({ stationId, userId }: { stationId: string; use
               type="button"
               disabled={busy}
               className={buttonStyles({ variant: 'ghost', size: 'md' })}
-              onClick={() => { setModalOpen(false); setFieldErrors({}); }}
+              onClick={() => {
+                setModalOpen(false);
+                setFieldErrors({});
+              }}
             >
               Annuler
             </button>

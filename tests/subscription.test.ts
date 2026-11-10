@@ -2,7 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { fetchSubscription, quotaUsage } from '../src/lib/stationApi';
-import { SERVER_LIMITS, UNCONTROLLED_LIMITS, featureDeliveryLabels, planFeatures } from '../src/data/planFeatures';
+import {
+  SERVER_LIMITS,
+  UNCONTROLLED_LIMITS,
+  featureDeliveryLabels,
+  planFeatures,
+} from '../src/data/planFeatures';
 
 /**
  * L'écran d'abonnement affichait « Code prêt, migration non déployée » alors que
@@ -19,8 +24,13 @@ function fakeClient(response: { data: unknown; error: { message: string } | null
   return {
     calls,
     client: {
-      rpc: (name: string) => { calls.push(name); return Promise.resolve(response); },
-      from: () => { throw new Error('aucune lecture de table ne doit être faite ici'); },
+      rpc: (name: string) => {
+        calls.push(name);
+        return Promise.resolve(response);
+      },
+      from: () => {
+        throw new Error('aucune lecture de table ne doit être faite ici');
+      },
     } as unknown as Parameters<typeof fetchSubscription>[0],
   };
 }
@@ -47,7 +57,9 @@ test('une réponse vide est une erreur, jamais un plan par défaut', async () =>
   // PostgreSQL renvoie des bigint pour les compteurs : ils doivent être convertis,
   // sinon l'affichage concatène « 12 » + « / 500 » ou pire, des BigInt bruts.
   const { client: textClient } = fakeClient({
-    data: [{ plan: 'starter', max_stations: 1, max_monthly_orders: 500, station_count: '1', monthly_orders: '0' }],
+    data: [
+      { plan: 'starter', max_stations: 1, max_monthly_orders: 500, station_count: '1', monthly_orders: '0' },
+    ],
     error: null,
   });
   const parsed = await fetchSubscription(textClient);
@@ -56,7 +68,10 @@ test('une réponse vide est une erreur, jamais un plan par défaut', async () =>
 });
 
 test('une erreur de la RPC remonte son message, sans formule inventée', async () => {
-  const { client } = fakeClient({ data: null, error: { message: 'permission denied for function my_subscription' } });
+  const { client } = fakeClient({
+    data: null,
+    error: { message: 'permission denied for function my_subscription' },
+  });
   await assert.rejects(() => fetchSubscription(client), /permission denied for function my_subscription/);
 });
 
@@ -78,11 +93,18 @@ test('seuls les plafonds réellement appliqués sont présentés comme tels', as
   assert.match(SERVER_LIMITS.inventory.mechanism, /Pro ou Business/);
   // Utilisateurs et photos ne sont contrôlés par aucun trigger : ils restent
   // annoncés comme objectif, séparément.
-  assert.deepEqual([...UNCONTROLLED_LIMITS], ['Nombre d’utilisateurs par station', 'Nombre de photos de vitrine']);
+  assert.deepEqual(
+    [...UNCONTROLLED_LIMITS],
+    ['Nombre d’utilisateurs par station', 'Nombre de photos de vitrine'],
+  );
 
   const screen = await readFile('src/components/SubscriptionPlans.tsx', 'utf8');
   assert.match(screen, /Cible non contrôlée par le serveur/);
-  assert.doesNotMatch(screen, /migration non déployée/i, 'les migrations sont appliquées : ne plus l’annoncer');
+  assert.doesNotMatch(
+    screen,
+    /migration non déployée/i,
+    'les migrations sont appliquées : ne plus l’annoncer',
+  );
   assert.match(screen, /Aucun contrôle serveur pour/);
 });
 
@@ -95,7 +117,10 @@ test('aucun tarif n’est codé dans le composant', async () => {
   assert.match(screen, /plan\.monthlyPriceXof/);
   for (const plan of planFeatures) {
     assert.equal(typeof plan.monthlyPriceXof, 'number');
-    assert.ok(data.includes(`monthlyPriceXof: ${plan.monthlyPriceXof}`), `${plan.id} doit exposer son tarif en données`);
+    assert.ok(
+      data.includes(`monthlyPriceXof: ${plan.monthlyPriceXof}`),
+      `${plan.id} doit exposer son tarif en données`,
+    );
   }
   // Le libellé « migration non déployée » ne doit subsister nulle part.
   assert.equal(featureDeliveryLabels.prepared, 'Préparé, non actif');

@@ -93,11 +93,7 @@ export const customerSchema = z.object({
  */
 export const orderSchema = z.object({
   vehicle: trimmedText('Véhicule', 120),
-  plate: z
-    .string()
-    .trim()
-    .max(40, 'Immatriculation : 40 caractères maximum.')
-    .nullable(),
+  plate: z.string().trim().max(40, 'Immatriculation : 40 caractères maximum.').nullable(),
   customerId: z.string().nullable(),
   serviceIds: z
     .array(z.string().min(1))
@@ -172,10 +168,9 @@ export const invitationSchema = z.object({
 export const invitationReferenceSchema = z
   .string()
   .trim()
-  .refine(
-    value => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value),
-    { message: 'Référence d’invitation invalide : 36 caractères au format UUID attendus.' },
-  );
+  .refine(value => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value), {
+    message: 'Référence d’invitation invalide : 36 caractères au format UUID attendus.',
+  });
 
 /* ------------------------------------------------------------------ */
 /* Authentification                                                    */

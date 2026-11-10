@@ -37,14 +37,15 @@ export function ThemeProvider({
     const root = document.documentElement;
 
     function applyTheme() {
-      let resolved: 'light' | 'dark' = 'dark';
-
-      if (theme === 'system') {
-        const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        resolved = systemPrefersDark ? 'dark' : 'light';
-      } else {
-        resolved = theme;
-      }
+      // `theme` vaut 'light' | 'dark' | 'system' ; seule la branche « system »
+      // demande une résolution. L'ancienne version initialisait `resolved` à
+      // 'dark' avant de l'écraser dans tous les cas.
+      const resolved: 'light' | 'dark' =
+        theme === 'system'
+          ? window.matchMedia('(prefers-color-scheme: dark)').matches
+            ? 'dark'
+            : 'light'
+          : theme;
 
       setResolvedTheme(resolved);
 

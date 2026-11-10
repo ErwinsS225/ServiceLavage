@@ -36,16 +36,35 @@ function fakeClient(responses: Record<string, { data: unknown; error: { message:
   const builder = (table: string) => {
     const response = responses[table] ?? { data: [], error: null };
     const chain = {
-      select: () => { calls.push({ table, method: 'select' }); return chain; },
-      insert: (values: unknown) => { calls.push({ table, method: 'insert', args: values }); return chain; },
-      update: (values: unknown) => { calls.push({ table, method: 'update', args: values }); return chain; },
-      eq: (column: string, value: unknown) => { calls.push({ table, method: 'select', column, value }); return chain; },
-      is: (column: string, value: unknown) => { calls.push({ table, method: 'select', column, value }); return chain; },
+      select: () => {
+        calls.push({ table, method: 'select' });
+        return chain;
+      },
+      insert: (values: unknown) => {
+        calls.push({ table, method: 'insert', args: values });
+        return chain;
+      },
+      update: (values: unknown) => {
+        calls.push({ table, method: 'update', args: values });
+        return chain;
+      },
+      eq: (column: string, value: unknown) => {
+        calls.push({ table, method: 'select', column, value });
+        return chain;
+      },
+      is: (column: string, value: unknown) => {
+        calls.push({ table, method: 'select', column, value });
+        return chain;
+      },
       order: () => chain,
-      limit: (value: number) => { calls.push({ table, method: 'select', column: 'limit', value }); return chain; },
+      limit: (value: number) => {
+        calls.push({ table, method: 'select', column: 'limit', value });
+        return chain;
+      },
       single: () => Promise.resolve(response),
       maybeSingle: () => Promise.resolve(response),
-      then: (resolve: (value: unknown) => void, reject: (reason: unknown) => void) => Promise.resolve(response).then(resolve, reject),
+      then: (resolve: (value: unknown) => void, reject: (reason: unknown) => void) =>
+        Promise.resolve(response).then(resolve, reject),
     };
     return chain;
   };
@@ -62,7 +81,13 @@ function fakeClient(responses: Record<string, { data: unknown; error: { message:
   };
 }
 
-const SERVICE = { id: 'svc-1', name: 'Lavage simple', price_xof: 3000, duration_minutes: 20, is_active: true };
+const SERVICE = {
+  id: 'svc-1',
+  name: 'Lavage simple',
+  price_xof: 3000,
+  duration_minutes: 20,
+  is_active: true,
+};
 
 test('fetchServices filters by the requested station and no other', async () => {
   const { client, calls } = fakeClient({ station_services: { data: [SERVICE], error: null } });
@@ -73,7 +98,9 @@ test('fetchServices filters by the requested station and no other', async () => 
 });
 
 test('a PostgREST error becomes a French sentence, never an empty table', async () => {
-  const { client } = fakeClient({ station_customers: { data: null, error: { message: 'permission denied for table station_customers' } } });
+  const { client } = fakeClient({
+    station_customers: { data: null, error: { message: 'permission denied for table station_customers' } },
+  });
   await assert.rejects(
     () => fetchCustomers(client, 'station-1'),
     /Impossible de charger les clients : permission denied for table station_customers/,
@@ -90,18 +117,31 @@ test('the orders query is bounded instead of loading the whole history', async (
 
 test('creating or updating a service passes the station id, not only the row id', async () => {
   const created = fakeClient({ station_services: { data: SERVICE, error: null } });
-  await createService(created.client, 'station-1', { name: SERVICE.name, price_xof: 3000, duration_minutes: 20, is_active: true });
+  await createService(created.client, 'station-1', {
+    name: SERVICE.name,
+    price_xof: 3000,
+    duration_minutes: 20,
+    is_active: true,
+  });
   const insert = created.calls.find(call => call.method === 'insert');
   assert.equal((insert?.args as { station_id?: string }).station_id, 'station-1');
 
   const updated = fakeClient({ station_services: { data: SERVICE, error: null } });
-  await updateService(updated.client, 'station-1', 'svc-1', { name: SERVICE.name, price_xof: 3000, duration_minutes: 20, is_active: false });
+  await updateService(updated.client, 'station-1', 'svc-1', {
+    name: SERVICE.name,
+    price_xof: 3000,
+    duration_minutes: 20,
+    is_active: false,
+  });
   const filters = updated.calls.filter(call => call.method === 'select' && call.column);
   assert.ok(filters.some(call => call.column === 'station_id' && call.value === 'station-1'));
 });
 
 test('active services and inventory are read-only projections of the server', async () => {
-  const { client, calls } = fakeClient({ station_services: { data: [SERVICE], error: null }, station_inventory: { data: [], error: null } });
+  const { client, calls } = fakeClient({
+    station_services: { data: [SERVICE], error: null },
+    station_inventory: { data: [], error: null },
+  });
   const services = await fetchActiveServices(client, 'station-1');
   assert.equal(services.length, 1);
   assert.ok(calls.some(call => call.column === 'is_active' && call.value === true));
@@ -111,16 +151,29 @@ test('active services and inventory are read-only projections of the server', as
 test('permissions are delegated to SECURITY DEFINER RPCs, not decided in the client', async () => {
   const assignment = fakeClient({});
   await assignOrder(assignment.client, 'order-1', 'washer-1');
-  assert.deepEqual(assignment.calls[0].args, { name: 'assign_station_order', p_order_id: 'order-1', p_user_id: 'washer-1' });
+  assert.deepEqual(assignment.calls[0].args, {
+    name: 'assign_station_order',
+    p_order_id: 'order-1',
+    p_user_id: 'washer-1',
+  });
 
   const transition = fakeClient({});
   await transitionOrder(transition.client, 'order-1', 'termine');
-  assert.deepEqual(transition.calls[0].args, { name: 'transition_station_order', p_order_id: 'order-1', p_status: 'termine' });
+  assert.deepEqual(transition.calls[0].args, {
+    name: 'transition_station_order',
+    p_order_id: 'order-1',
+    p_status: 'termine',
+  });
 });
 
 test('an RPC refusal surfaces the server message and never a fake success', async () => {
-  const { client } = fakeClient({ 'rpc:transition_station_order': { data: null, error: { message: 'not allowed' } } });
-  await assert.rejects(() => transitionOrder(client, 'order-1', 'annule'), /Mise à jour impossible : not allowed/);
+  const { client } = fakeClient({
+    'rpc:transition_station_order': { data: null, error: { message: 'not allowed' } },
+  });
+  await assert.rejects(
+    () => transitionOrder(client, 'order-1', 'annule'),
+    /Mise à jour impossible : not allowed/,
+  );
 });
 
 test('a missing configuration fails with an actionable message', () => {
@@ -134,7 +187,10 @@ test('unwrap treats a null payload as a failure and unwrapNullable does not', ()
 });
 
 test('network failures are translated, server failures are kept as-is', () => {
-  assert.match(describeError(new TypeError('Failed to fetch'), 'Chargement impossible.'), /Vérifiez votre connexion/);
+  assert.match(
+    describeError(new TypeError('Failed to fetch'), 'Chargement impossible.'),
+    /Vérifiez votre connexion/,
+  );
   assert.equal(describeError(new Error('permission denied'), 'Chargement impossible.'), 'permission denied');
   assert.equal(describeError('boom', 'Chargement impossible.'), 'Chargement impossible.');
 });

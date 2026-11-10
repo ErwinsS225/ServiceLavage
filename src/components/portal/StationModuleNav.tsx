@@ -1,6 +1,4 @@
-import {
-  Car, Users, Sparkles, Boxes, CreditCard, ShieldCheck, TrendingUp, FileText,
-} from 'lucide-react';
+import { Car, Users, Sparkles, Boxes, CreditCard, ShieldCheck, TrendingUp, FileText } from 'lucide-react';
 import { STATION_TABS, canOpenTab, type StationRole, type StationTabId } from '../../lib/portalNavigation';
 
 /**
@@ -56,9 +54,7 @@ export function StationModuleNav({
                 : 'text-[var(--text-secondary)] hover:text-slate-200 hover:bg-white/[0.04]'
             }`}
           >
-            <span className={isActive ? 'text-white' : 'text-[var(--text-muted)]'}>
-              {TAB_ICONS[item.id]}
-            </span>
+            <span className={isActive ? 'text-white' : 'text-[var(--text-muted)]'}>{TAB_ICONS[item.id]}</span>
             <span>{item.label}</span>
           </button>
         );

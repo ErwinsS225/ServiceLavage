@@ -29,10 +29,13 @@ export const LEGACY_STATIONS_CACHE_KEY = (userId: string) => `servicelavage:stat
 /** Normalise une valeur lue dans le cache : seule une liste de stations passe. */
 export function sanitizeStations(value: unknown): StationRow[] {
   if (!Array.isArray(value)) return [];
-  return value.filter((item): item is StationRow =>
-    !!item && typeof item === 'object' &&
-    typeof (item as StationRow).id === 'string' &&
-    typeof (item as StationRow).name === 'string');
+  return value.filter(
+    (item): item is StationRow =>
+      !!item &&
+      typeof item === 'object' &&
+      typeof (item as StationRow).id === 'string' &&
+      typeof (item as StationRow).name === 'string',
+  );
 }
 
 /**
@@ -45,7 +48,10 @@ export function readStationsCache(userId: string): { stations: StationRow[]; mig
   if (current !== null) return { stations: sanitizeStations(JSON.parse(current)), migrated: false };
   const legacy = localStorage.getItem(LEGACY_STATIONS_CACHE_KEY(userId));
   if (legacy === null) return { stations: [], migrated: false };
-  const migratedStations = sanitizeStations(JSON.parse(legacy)).map(station => ({ ...station, owner_id: userId }));
+  const migratedStations = sanitizeStations(JSON.parse(legacy)).map(station => ({
+    ...station,
+    owner_id: userId,
+  }));
   return { stations: migratedStations, migrated: true };
 }
 
@@ -55,17 +61,27 @@ export function writeStationsCache(userId: string, stations: StationRow[]): void
 
 export async function fetchStations(client: SupabaseClient): Promise<StationRow[]> {
   const result = await client.from('stations').select('id,name,owner_id').order('created_at');
-  return unwrap(result as { data: StationRow[] | null; error: { message: string } | null }, 'Chargement des stations impossible');
+  return unwrap(
+    result as { data: StationRow[] | null; error: { message: string } | null },
+    'Chargement des stations impossible',
+  );
 }
 
 /** Un propriétaire peut toujours créer une station ; la limite est côté serveur. */
-export async function createStation(client: SupabaseClient, ownerId: string, name: string): Promise<StationRow> {
+export async function createStation(
+  client: SupabaseClient,
+  ownerId: string,
+  name: string,
+): Promise<StationRow> {
   const result = await client
     .from('stations')
     .insert({ name: name.trim(), owner_id: ownerId })
     .select('id,name,owner_id')
     .single();
-  return unwrap(result as { data: StationRow | null; error: { message: string } | null }, 'Création de la station impossible');
+  return unwrap(
+    result as { data: StationRow | null; error: { message: string } | null },
+    'Création de la station impossible',
+  );
 }
 
 /**
@@ -73,14 +89,21 @@ export async function createStation(client: SupabaseClient, ownerId: string, nam
  * (hors ligne ou migration absente) : l'appelant décide du repli, jamais ce
  * module.
  */
-export async function fetchStationRole(client: SupabaseClient, stationId: string): Promise<{ role: string | null; failed: boolean }> {
+export async function fetchStationRole(
+  client: SupabaseClient,
+  stationId: string,
+): Promise<{ role: string | null; failed: boolean }> {
   const { data, error } = await client.rpc('current_station_role', { p_station_id: stationId });
   if (error) return { role: null, failed: true };
   return { role: typeof data === 'string' ? data : null, failed: false };
 }
 
 /** Repli local : propriétaire si `owner_id` correspond, sinon aucun rôle. */
-export async function fetchOwnerFallback(client: SupabaseClient, stationId: string, userId: string): Promise<'owner' | null> {
+export async function fetchOwnerFallback(
+  client: SupabaseClient,
+  stationId: string,
+  userId: string,
+): Promise<'owner' | null> {
   const result = await client.from('stations').select('owner_id').eq('id', stationId).maybeSingle();
   const row = result.data as { owner_id?: string } | null;
   return row?.owner_id === userId ? 'owner' : null;

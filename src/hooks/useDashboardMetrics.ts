@@ -29,11 +29,7 @@ export type QueuedSummary = {
   createdAt: string;
 };
 
-export function useDashboardMetrics(
-  client: SupabaseClient | null,
-  stationId: string,
-  userId: string,
-) {
+export function useDashboardMetrics(client: SupabaseClient | null, stationId: string, userId: string) {
   const [orders, setOrders] = useState<StationOrderRow[]>([]);
   const [queued, setQueued] = useState<QueuedSummary[]>([]);
   const [customerCount, setCustomerCount] = useState(0);
@@ -63,12 +59,14 @@ export function useDashboardMetrics(
 
       // (3) File locale : comptée, jamais valorisée (voir stationMetrics).
       try {
-        setQueued(listQueuedOrders(localStorage, userId, stationId).map(item => ({
-          requestId: item.requestId,
-          vehicle: item.vehicle,
-          plate: item.plate,
-          createdAt: item.createdAt,
-        })));
+        setQueued(
+          listQueuedOrders(localStorage, userId, stationId).map(item => ({
+            requestId: item.requestId,
+            vehicle: item.vehicle,
+            plate: item.plate,
+            createdAt: item.createdAt,
+          })),
+        );
       } catch {
         setError('La file locale est illisible ; elle a été conservée sur cet appareil.');
       }
@@ -85,6 +83,9 @@ export function useDashboardMetrics(
 
   // One reference instant for the whole render, so every panel describes the
   // same day even if the render straddles midnight.
+  // Instant de référence figé pendant le rendu, recalculé quand les données
+  // changent (voir `StationReports`, même motif).
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- volontaire : l'instant suit les données
   const reference = useMemo(() => new Date(), [orders, customerCount, queued]);
 
   const metrics = useMemo(

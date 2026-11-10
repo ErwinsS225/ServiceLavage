@@ -62,7 +62,9 @@ export function useCreateService(stationId: string, client?: StationClient | nul
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: ServiceInput) => createService(api(client), stationId, input),
-    onSuccess: () => { void queryClient.invalidateQueries({ queryKey: queryKeys.services(stationId) }); },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.services(stationId) });
+    },
   });
 }
 
@@ -71,7 +73,9 @@ export function useUpdateService(stationId: string, client?: StationClient | nul
   return useMutation({
     mutationFn: (input: { serviceId: string; changes: ServiceInput }) =>
       updateService(api(client), stationId, input.serviceId, input.changes),
-    onSuccess: () => { void queryClient.invalidateQueries({ queryKey: queryKeys.services(stationId) }); },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.services(stationId) });
+    },
   });
 }
 
@@ -86,7 +90,10 @@ export function useUpdateService(stationId: string, client?: StationClient | nul
  * cette file dans un cache de lecture la rejouerait ou la viderait au premier
  * `refetch`. Seule la lecture profite donc du cache.
  */
-export function useInventory(stationId: string, options: { enabled?: boolean; client?: StationClient | null } = {}) {
+export function useInventory(
+  stationId: string,
+  options: { enabled?: boolean; client?: StationClient | null } = {},
+) {
   const { enabled = true, client } = options;
   return useQuery({
     queryKey: queryKeys.inventory(stationId),
@@ -101,7 +108,9 @@ export function useCreateInventoryItem(stationId: string, client?: StationClient
   return useMutation({
     mutationFn: (input: Omit<InventoryItemInput, 'stationId'>) =>
       createInventoryItem(api(client), { ...input, stationId }),
-    onSuccess: () => { void queryClient.invalidateQueries({ queryKey: queryKeys.inventory(stationId) }); },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.inventory(stationId) });
+    },
   });
 }
 
@@ -119,7 +128,9 @@ export function useCreateCustomer(stationId: string, client?: StationClient | nu
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: { name: string; phone: string }) => createCustomer(api(client), stationId, input),
-    onSuccess: () => { void queryClient.invalidateQueries({ queryKey: queryKeys.customers(stationId) }); },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.customers(stationId) });
+    },
   });
 }
 
@@ -128,7 +139,9 @@ export function useUpdateCustomer(stationId: string, client?: StationClient | nu
   return useMutation({
     mutationFn: (input: { customerId: string; changes: { name: string; phone: string } }) =>
       updateCustomer(api(client), stationId, input.customerId, input.changes),
-    onSuccess: () => { void queryClient.invalidateQueries({ queryKey: queryKeys.customers(stationId) }); },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.customers(stationId) });
+    },
   });
 }
 
@@ -140,7 +153,12 @@ export function useUpdateCustomer(stationId: string, client?: StationClient | nu
  * produirait « permission denied » pour un gérant, ce qui ressemble à une
  * panne alors que c'est une règle.
  */
-export function useStaff(stationId: string, canManageRoles: boolean, enabled: boolean, client?: StationClient | null) {
+export function useStaff(
+  stationId: string,
+  canManageRoles: boolean,
+  enabled: boolean,
+  client?: StationClient | null,
+) {
   return useQuery({
     queryKey: queryKeys.staff(stationId, canManageRoles),
     queryFn: () => fetchStaff(api(client), stationId, canManageRoles),
@@ -150,11 +168,16 @@ export function useStaff(stationId: string, canManageRoles: boolean, enabled: bo
 
 export function useInvitationMutations(stationId: string, client?: StationClient | null) {
   const queryClient = useQueryClient();
-  const invalidate = () => { void queryClient.invalidateQueries({ queryKey: ['station', stationId, 'staff'] }); };
-  const invalidateAll = useCallback(() => { void queryClient.invalidateQueries({ queryKey: ['station', stationId, 'staff'] }); }, [queryClient, stationId]);
+  const invalidate = () => {
+    void queryClient.invalidateQueries({ queryKey: ['station', stationId, 'staff'] });
+  };
+  const invalidateAll = useCallback(() => {
+    void queryClient.invalidateQueries({ queryKey: ['station', stationId, 'staff'] });
+  }, [queryClient, stationId]);
 
   const invite = useMutation({
-    mutationFn: (input: { email: string; role: StaffRole }) => createInvitation(api(client), stationId, input.email, input.role),
+    mutationFn: (input: { email: string; role: StaffRole }) =>
+      createInvitation(api(client), stationId, input.email, input.role),
     onSuccess: invalidate,
   });
   const cancel = useMutation({

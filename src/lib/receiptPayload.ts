@@ -33,7 +33,11 @@ export function receiptReference(orderId: string): string {
  * length-capped so a malicious vehicle name cannot forge extra lines.
  */
 export function buildReceiptPayload(input: ReceiptPayloadInput): string {
-  const clean = (value: string, max: number) => value.replace(/[\r\n]+/g, ' ').trim().slice(0, max);
+  const clean = (value: string, max: number) =>
+    value
+      .replace(/[\r\n]+/g, ' ')
+      .trim()
+      .slice(0, max);
   const iso = new Date(input.createdAt);
   const stamp = Number.isFinite(iso.getTime()) ? iso.toISOString() : '';
   return [

@@ -1,16 +1,44 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { listQueuedOrders, orderQueueKey, removeQueuedOrder, saveQueuedOrder, type QueuedOrder } from '../src/lib/offlineOrders';
+import {
+  listQueuedOrders,
+  orderQueueKey,
+  removeQueuedOrder,
+  saveQueuedOrder,
+  type QueuedOrder,
+} from '../src/lib/offlineOrders';
 class MemoryStorage implements Storage {
   private data = new Map<string, string>();
-  get length() { return this.data.size; }
-  clear() { this.data.clear(); }
-  getItem(key: string) { return this.data.get(key) ?? null; }
-  key(index: number) { return [...this.data.keys()][index] ?? null; }
-  removeItem(key: string) { this.data.delete(key); }
-  setItem(key: string, value: string) { this.data.set(key, value); }
+  get length() {
+    return this.data.size;
+  }
+  clear() {
+    this.data.clear();
+  }
+  getItem(key: string) {
+    return this.data.get(key) ?? null;
+  }
+  key(index: number) {
+    return [...this.data.keys()][index] ?? null;
+  }
+  removeItem(key: string) {
+    this.data.delete(key);
+  }
+  setItem(key: string, value: string) {
+    this.data.set(key, value);
+  }
 }
-const order: QueuedOrder = { version: 1, userId: 'user1', stationId: 'station1', requestId: 'req1', customerId: null, vehicle: 'Auto', plate: null, serviceIds: ['srv1'], createdAt: '2026-11-09T12:00:00Z' };
+const order: QueuedOrder = {
+  version: 1,
+  userId: 'user1',
+  stationId: 'station1',
+  requestId: 'req1',
+  customerId: null,
+  vehicle: 'Auto',
+  plate: null,
+  serviceIds: ['srv1'],
+  createdAt: '2026-11-09T12:00:00Z',
+};
 test('queue is persistent, isolated by user and station and preserves independent requests', () => {
   const storage = new MemoryStorage();
   saveQueuedOrder(storage, order);
@@ -66,7 +94,10 @@ test('synchronization stops at failure and preserves failed and subsequent reque
   assert.deepEqual(sent, ['req1', 'req2']);
   assert.equal(result.completed, 1);
   assert.ok(result.error);
-  assert.deepEqual(listQueuedOrders(storage, 'user1', 'station1').map(item => item.requestId), ['req2', 'req3']);
+  assert.deepEqual(
+    listQueuedOrders(storage, 'user1', 'station1').map(item => item.requestId),
+    ['req2', 'req3'],
+  );
 });
 
 test('invalid but valid JSON queue records are retained', () => {

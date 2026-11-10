@@ -1,6 +1,12 @@
 import { forwardRef } from 'react';
 import { formatXof } from '../../lib/money';
-import { periodLabel, safeXof, STATUS_LABELS, type ReportPeriod, type StationOrderRow } from '../../lib/stationMetrics';
+import {
+  periodLabel,
+  safeXof,
+  STATUS_LABELS,
+  type ReportPeriod,
+  type StationOrderRow,
+} from '../../lib/stationMetrics';
 import { Building2 } from 'lucide-react';
 
 /** Lignes conservées sur le document imprimé ; l'export CSV garde la période entière. */
@@ -25,12 +31,15 @@ export interface ReportMetrics {
  * l'application n'enregistre ni paiement ni dépense. Il ne doit jamais
  * afficher de recette encaissée, de bénéfice ou de marge.
  */
-export const ReportDocument = forwardRef<HTMLDivElement, {
-  stationName: string;
-  period: ReportPeriod;
-  metrics: ReportMetrics;
-  orders: readonly StationOrderRow[];
-}>(function ReportDocument({ stationName, period, metrics, orders }, ref) {
+export const ReportDocument = forwardRef<
+  HTMLDivElement,
+  {
+    stationName: string;
+    period: ReportPeriod;
+    metrics: ReportMetrics;
+    orders: readonly StationOrderRow[];
+  }
+>(function ReportDocument({ stationName, period, metrics, orders }, ref) {
   return (
     <div
       ref={ref}
@@ -49,8 +58,13 @@ export const ReportDocument = forwardRef<HTMLDivElement, {
             </p>
           </div>
           <div className="text-left sm:text-right text-xs text-gray-600 font-mono">
-            <p>Période : <strong className="text-gray-900">{periodLabel(period)}</strong></p>
-            <p>Édition : {new Date().toLocaleDateString('fr-FR')} à {new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</p>
+            <p>
+              Période : <strong className="text-gray-900">{periodLabel(period)}</strong>
+            </p>
+            <p>
+              Édition : {new Date().toLocaleDateString('fr-FR')} à{' '}
+              {new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+            </p>
             <p>Devise : Franc CFA (XOF)</p>
           </div>
         </div>
@@ -80,24 +94,33 @@ export const ReportDocument = forwardRef<HTMLDivElement, {
           <tbody>
             {orders.slice(0, PRINTED_ROWS).map(order => (
               <tr key={order.id} className="border-b border-gray-200">
-                <td className="py-2 px-3 text-gray-700">{new Date(order.created_at).toLocaleDateString('fr-FR')}</td>
+                <td className="py-2 px-3 text-gray-700">
+                  {new Date(order.created_at).toLocaleDateString('fr-FR')}
+                </td>
                 <td className="py-2 px-3 font-medium text-gray-900">{order.vehicle_info}</td>
                 <td className="py-2 px-3 text-gray-700 font-mono">{order.plate_number || '—'}</td>
-                <td className="py-2 px-3 text-center text-gray-700">{STATUS_LABELS[order.status] ?? order.status}</td>
-                <td className={`py-2 px-3 text-right font-bold font-mono ${order.status === 'annule' ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
+                <td className="py-2 px-3 text-center text-gray-700">
+                  {STATUS_LABELS[order.status] ?? order.status}
+                </td>
+                <td
+                  className={`py-2 px-3 text-right font-bold font-mono ${order.status === 'annule' ? 'text-gray-400 line-through' : 'text-gray-900'}`}
+                >
                   {formatXof(safeXof(order.total_xof))}
                 </td>
               </tr>
             ))}
             <tr className="border-t-2 border-black font-black bg-gray-50 text-gray-950">
-              <td className="py-3 px-3" colSpan={4}>TOTAL FACTURÉ ({metrics.completedCount} prestations terminées)</td>
+              <td className="py-3 px-3" colSpan={4}>
+                TOTAL FACTURÉ ({metrics.completedCount} prestations terminées)
+              </td>
               <td className="py-3 px-3 text-right font-mono">{formatXof(metrics.billedXof)}</td>
             </tr>
           </tbody>
         </table>
         {orders.length > PRINTED_ROWS && (
           <p className="text-[11px] text-gray-600 mt-2">
-            Seules les {PRINTED_ROWS} prestations les plus récentes figurent sur ce document ; l’export CSV contient la période complète.
+            Seules les {PRINTED_ROWS} prestations les plus récentes figurent sur ce document ; l’export CSV
+            contient la période complète.
           </p>
         )}
       </div>

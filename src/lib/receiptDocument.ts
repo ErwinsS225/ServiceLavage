@@ -66,9 +66,11 @@ export function receiptFileName(code: string): string {
  * facturé » se lit comme une quittance.
  */
 export function receiptShareMessage(order: OrderReceiptData, code: string, totalLabel: string): string {
-  return `Bonjour, voici le reçu ServiceLavage pour votre véhicule ${order.vehicleInfo} (${order.plateNumber || 'N/A'}). `
-    + `Montant facturé : ${totalLabel}. Référence ${code}. `
-    + `L’application n’enregistre pas les paiements : ce reçu atteste de la prestation, pas du règlement.`;
+  return (
+    `Bonjour, voici le reçu ServiceLavage pour votre véhicule ${order.vehicleInfo} (${order.plateNumber || 'N/A'}). ` +
+    `Montant facturé : ${totalLabel}. Référence ${code}. ` +
+    `L’application n’enregistre pas les paiements : ce reçu atteste de la prestation, pas du règlement.`
+  );
 }
 
 /**

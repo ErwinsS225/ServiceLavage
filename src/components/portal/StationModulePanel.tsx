@@ -6,10 +6,16 @@ import { StationOrders } from '../StationOrders';
 import { SubscriptionPlans } from '../SubscriptionPlans';
 import { canManageRoles, canOpenTab, type StationRole, type StationTabId } from '../../lib/portalNavigation';
 
-const StationInventory = lazy(() => import('../StationInventory').then(module => ({ default: module.StationInventory })));
+const StationInventory = lazy(() =>
+  import('../StationInventory').then(module => ({ default: module.StationInventory })),
+);
 const StationStaff = lazy(() => import('../StationStaff').then(module => ({ default: module.StationStaff })));
-const StationDashboard = lazy(() => import('../StationDashboard').then(module => ({ default: module.StationDashboard })));
-const StationReports = lazy(() => import('../StationReports').then(module => ({ default: module.StationReports })));
+const StationDashboard = lazy(() =>
+  import('../StationDashboard').then(module => ({ default: module.StationDashboard })),
+);
+const StationReports = lazy(() =>
+  import('../StationReports').then(module => ({ default: module.StationReports })),
+);
 
 /**
  * Panneau du module actif.
@@ -38,11 +44,7 @@ export function StationModulePanel({
   userId: string;
 }) {
   if (!canOpenTab(role, tab)) {
-    return (
-      <Alert variant="warning">
-        Ce module n’est pas ouvert à votre rôle sur cette station.
-      </Alert>
-    );
+    return <Alert variant="warning">Ce module n’est pas ouvert à votre rôle sur cette station.</Alert>;
   }
 
   const scopeKey = `${userId}:${stationId}`;
@@ -91,7 +93,8 @@ export function StationModulePanel({
     if (!roleFromServer) {
       return (
         <Alert variant="warning">
-          Le module Personnel nécessite une réponse du serveur pour confirmer votre rôle. Reconnectez-vous ou réessayez.
+          Le module Personnel nécessite une réponse du serveur pour confirmer votre rôle. Reconnectez-vous ou
+          réessayez.
         </Alert>
       );
     }

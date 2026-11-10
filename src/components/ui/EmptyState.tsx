@@ -7,12 +7,7 @@ export interface EmptyStateProps {
   action?: React.ReactNode;
 }
 
-export function EmptyState({
-  title,
-  description,
-  icon,
-  action,
-}: EmptyStateProps) {
+export function EmptyState({ title, description, icon, action }: EmptyStateProps) {
   return (
     <div className="rounded-2xl border border-dashed border-[var(--border-strong)] bg-[#10131a]/50 p-8 text-center flex flex-col items-center justify-center space-y-3">
       {icon && (

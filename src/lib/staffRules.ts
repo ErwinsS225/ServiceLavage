@@ -47,7 +47,10 @@ export function activeMemberCount(members: readonly MemberRow[]): number {
 }
 
 /** Les invitations encore utilisables, les plus récentes d'abord. */
-export function pendingInvitations(invitations: readonly InvitationRow[], now: Date = new Date()): InvitationRow[] {
+export function pendingInvitations(
+  invitations: readonly InvitationRow[],
+  now: Date = new Date(),
+): InvitationRow[] {
   return invitations
     .filter(invitation => invitationState(invitation, now) === 'en_attente')
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());

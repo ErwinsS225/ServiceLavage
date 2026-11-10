@@ -29,7 +29,10 @@ export function toReceiptData(order: OrderRow): OrderReceiptData {
     totalXof: order.total_xof,
     status: order.status,
     createdAt: order.created_at,
-    items: (order.station_order_items ?? []).map(item => ({ name: item.service_name, price: item.price_xof })),
+    items: (order.station_order_items ?? []).map(item => ({
+      name: item.service_name,
+      price: item.price_xof,
+    })),
   };
 }
 

@@ -1,7 +1,14 @@
 import { Building2, Plus, ShieldCheck } from 'lucide-react';
 import {
-  Card, CardHeader, CardTitle, CardDescription, CardContent,
-  StatusBadge, buttonStyles, formControlStyles, FormField,
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+  StatusBadge,
+  buttonStyles,
+  formControlStyles,
+  FormField,
 } from '../ui/designSystem';
 import { NO_STATION_COPY } from '../auth/authCopy';
 import { ROLE_LABELS, type StationRole } from '../../lib/portalNavigation';
@@ -52,9 +59,8 @@ export function StationPicker({
       <Card>
         <CardHeader
           action={
-            activeStation && stationRole && (
-              <StatusBadge status="info" label={ROLE_LABELS[stationRole]} size="sm" />
-            )
+            activeStation &&
+            stationRole && <StatusBadge status="info" label={ROLE_LABELS[stationRole]} size="sm" />
           }
         >
           <CardTitle as="h2" className="flex items-center gap-2">

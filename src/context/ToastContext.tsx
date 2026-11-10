@@ -83,29 +83,41 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     setToasts(previous => previous.filter(toast => toast.id !== id));
   }, []);
 
-  const push = useCallback<ToastActions['push']>((input) => {
-    sequence += 1;
-    const id = `toast-${sequence}`;
-    const duration = input.duration === undefined ? DEFAULT_DURATION[input.variant] : input.duration;
-    setToasts(previous => {
-      const next = [...previous, { id, variant: input.variant, message: input.message, detail: input.detail, duration }];
-      // Les plus anciens cèdent la place aux nouveaux.
-      return next.slice(-MAX_VISIBLE);
-    });
-    if (duration !== null) {
-      timers.current.set(id, setTimeout(() => dismiss(id), duration));
-    }
-    return id;
-  }, [dismiss]);
+  const push = useCallback<ToastActions['push']>(
+    input => {
+      sequence += 1;
+      const id = `toast-${sequence}`;
+      const duration = input.duration === undefined ? DEFAULT_DURATION[input.variant] : input.duration;
+      setToasts(previous => {
+        const next = [
+          ...previous,
+          { id, variant: input.variant, message: input.message, detail: input.detail, duration },
+        ];
+        // Les plus anciens cèdent la place aux nouveaux.
+        return next.slice(-MAX_VISIBLE);
+      });
+      if (duration !== null) {
+        timers.current.set(
+          id,
+          setTimeout(() => dismiss(id), duration),
+        );
+      }
+      return id;
+    },
+    [dismiss],
+  );
 
-  const actions = useMemo<ToastActions>(() => ({
-    push,
-    success: (message, detail) => push({ variant: 'success', message, detail }),
-    error: (message, detail) => push({ variant: 'error', message, detail }),
-    info: (message, detail) => push({ variant: 'info', message, detail }),
-    warning: (message, detail) => push({ variant: 'warning', message, detail }),
-    dismiss,
-  }), [push, dismiss]);
+  const actions = useMemo<ToastActions>(
+    () => ({
+      push,
+      success: (message, detail) => push({ variant: 'success', message, detail }),
+      error: (message, detail) => push({ variant: 'error', message, detail }),
+      info: (message, detail) => push({ variant: 'info', message, detail }),
+      warning: (message, detail) => push({ variant: 'warning', message, detail }),
+      dismiss,
+    }),
+    [push, dismiss],
+  );
 
   const list = useMemo(() => ({ toasts, clear: () => setToasts([]) }), [toasts]);
 
@@ -149,10 +161,22 @@ export function useToast(): ToastApi {
 }
 
 const STYLES: Record<ToastVariant, { box: string; icon: React.ReactNode }> = {
-  success: { box: 'border-emerald-500/40 bg-emerald-950/90 text-emerald-100', icon: <CheckCircle2 className="w-4 h-4 text-emerald-400" /> },
-  error: { box: 'border-rose-500/40 bg-rose-950/90 text-rose-100', icon: <XCircle className="w-4 h-4 text-rose-400" /> },
-  warning: { box: 'border-amber-500/40 bg-amber-950/90 text-amber-100', icon: <AlertTriangle className="w-4 h-4 text-amber-400" /> },
-  info: { box: 'border-sky-500/40 bg-sky-950/90 text-sky-100', icon: <Info className="w-4 h-4 text-sky-400" /> },
+  success: {
+    box: 'border-emerald-500/40 bg-emerald-950/90 text-emerald-100',
+    icon: <CheckCircle2 className="w-4 h-4 text-emerald-400" />,
+  },
+  error: {
+    box: 'border-rose-500/40 bg-rose-950/90 text-rose-100',
+    icon: <XCircle className="w-4 h-4 text-rose-400" />,
+  },
+  warning: {
+    box: 'border-amber-500/40 bg-amber-950/90 text-amber-100',
+    icon: <AlertTriangle className="w-4 h-4 text-amber-400" />,
+  },
+  info: {
+    box: 'border-sky-500/40 bg-sky-950/90 text-sky-100',
+    icon: <Info className="w-4 h-4 text-sky-400" />,
+  },
 };
 
 function ToastViewport({ toasts, onDismiss }: { toasts: Toast[]; onDismiss: (id: string) => void }) {
@@ -163,10 +187,14 @@ function ToastViewport({ toasts, onDismiss }: { toasts: Toast[]; onDismiss: (id:
     <div className="fixed bottom-4 right-4 z-[100] flex flex-col gap-2 w-[min(22rem,calc(100vw-2rem))]">
       {/* Deux régions : une erreur doit interrompre, un succès attend son tour. */}
       <div aria-live="polite" className="flex flex-col gap-2">
-        {polite.map(toast => <ToastCard key={toast.id} toast={toast} onDismiss={onDismiss} />)}
+        {polite.map(toast => (
+          <ToastCard key={toast.id} toast={toast} onDismiss={onDismiss} />
+        ))}
       </div>
       <div aria-live="assertive" className="flex flex-col gap-2">
-        {assertive.map(toast => <ToastCard key={toast.id} toast={toast} onDismiss={onDismiss} />)}
+        {assertive.map(toast => (
+          <ToastCard key={toast.id} toast={toast} onDismiss={onDismiss} />
+        ))}
       </div>
     </div>
   );

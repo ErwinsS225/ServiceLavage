@@ -41,16 +41,18 @@ export const ORDERS_CSV_HEADERS = [
 
 /** Construit le contenu CSV complet, en-tête compris. */
 export function buildOrdersCsv(rows: readonly CsvOrderRow[]): string {
-  const lines = rows.map(row => [
-    csvCell(row.id),
-    csvCell(new Date(row.created_at).toLocaleString('fr-FR')),
-    csvCell(row.vehicle_info),
-    csvCell(row.plate_number ?? ''),
-    csvCell(row.total_xof),
-    // 0 pour une prestation non terminée : le prix existe, rien n'est dû.
-    csvCell(row.billedXof),
-    csvCell(row.statusLabel),
-  ].join(','));
+  const lines = rows.map(row =>
+    [
+      csvCell(row.id),
+      csvCell(new Date(row.created_at).toLocaleString('fr-FR')),
+      csvCell(row.vehicle_info),
+      csvCell(row.plate_number ?? ''),
+      csvCell(row.total_xof),
+      // 0 pour une prestation non terminée : le prix existe, rien n'est dû.
+      csvCell(row.billedXof),
+      csvCell(row.statusLabel),
+    ].join(','),
+  );
 
   return '\ufeff' + [ORDERS_CSV_HEADERS.join(','), ...lines].join('\r\n');
 }

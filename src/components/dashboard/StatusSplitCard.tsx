@@ -38,7 +38,12 @@ export function StatusSplitCard({
       </CardHeader>
       <CardContent className="flex flex-col items-center justify-between">
         {!loaded ? (
-          <p role="status" className="h-44 flex items-center justify-center text-sm text-[var(--text-secondary)]">Chargement…</p>
+          <p
+            role="status"
+            className="h-44 flex items-center justify-center text-sm text-[var(--text-secondary)]"
+          >
+            Chargement…
+          </p>
         ) : empty ? (
           <div className="h-44 flex items-center justify-center">
             <EmptyState
@@ -67,7 +72,13 @@ export function StatusSplitCard({
                     ))}
                   </Pie>
                   <Tooltip
-                    contentStyle={{ backgroundColor: '#141822', borderColor: '#2d3748', borderRadius: '0.75rem', color: '#fff', fontSize: '12px' }}
+                    contentStyle={{
+                      backgroundColor: '#141822',
+                      borderColor: '#2d3748',
+                      borderRadius: '0.75rem',
+                      color: '#fff',
+                      fontSize: '12px',
+                    }}
                   />
                 </PieChart>
               </ResponsiveContainer>
@@ -79,7 +90,9 @@ export function StatusSplitCard({
                     <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: slice.color }} />
                     <span className="text-slate-300">{slice.name}</span>
                   </div>
-                  <span className="font-bold text-[var(--text-primary)] font-mono tabular-nums">{slice.value}</span>
+                  <span className="font-bold text-[var(--text-primary)] font-mono tabular-nums">
+                    {slice.value}
+                  </span>
                 </div>
               ))}
             </div>

@@ -24,23 +24,30 @@ import { Modal } from '../src/components/ui/Modal';
 afterEach(cleanup);
 
 function opener(label = 'Ouvrir') {
-  return (
-    <button type="button">
-      {label}
-    </button>
-  );
+  return <button type="button">{label}</button>;
 }
 
 /** Petit banc d'essai : bouton d'ouverture, modale, deux champs. */
-function Dialog({ onClose = () => {}, title = 'Nouvelle prestation' }: { onClose?: () => void; title?: string }) {
+function Dialog({
+  onClose = () => {},
+  title = 'Nouvelle prestation',
+}: {
+  onClose?: () => void;
+  title?: string;
+}) {
   const [open, setOpen] = useState(false);
   return (
     <div>
-      <button type="button" onClick={() => setOpen(true)}>Ouvrir</button>
+      <button type="button" onClick={() => setOpen(true)}>
+        Ouvrir
+      </button>
       <button type="button">Après la modale</button>
       <Modal
         isOpen={open}
-        onClose={() => { setOpen(false); onClose(); }}
+        onClose={() => {
+          setOpen(false);
+          onClose();
+        }}
         title={title}
         description="Description de la modale."
       >
@@ -62,7 +69,10 @@ test('le focus entre dans la modale à l’ouverture', async () => {
 
   const dialog = await screen.findByRole('dialog');
   // Le focus doit être dans la boîte, pas resté sur le déclencheur.
-  assert.ok(dialog.contains(document.activeElement), `focus hors modale : ${document.activeElement?.outerHTML.slice(0, 60)}`);
+  assert.ok(
+    dialog.contains(document.activeElement),
+    `focus hors modale : ${document.activeElement?.outerHTML.slice(0, 60)}`,
+  );
 });
 
 test('Tab et Maj+Tab bouclent à l’intérieur, sans sortir', async () => {
@@ -107,7 +117,13 @@ test('le focus revient sur le bouton d’origine à la fermeture', async () => {
 test('Échap ferme et le bouton « Fermer » porte un nom accessible', async () => {
   const user = userEvent.setup();
   let closed = false;
-  render(<Dialog onClose={() => { closed = true; }} />);
+  render(
+    <Dialog
+      onClose={() => {
+        closed = true;
+      }}
+    />,
+  );
 
   await user.click(screen.getByRole('button', { name: 'Ouvrir' }));
   await screen.findByRole('dialog');
@@ -140,7 +156,9 @@ test('les identifiants sont uniques : deux modales ne se confondent pas', async 
     const [open, setOpen] = useState(false);
     return (
       <div>
-        <button type="button" onClick={() => setOpen(true)}>Ouvrir</button>
+        <button type="button" onClick={() => setOpen(true)}>
+          Ouvrir
+        </button>
         <Modal isOpen title="Première" onClose={() => {}}>
           <button type="button">un</button>
         </Modal>
@@ -167,7 +185,9 @@ test('une modale sans élément interactif reste focusable et fermable', async (
     const [open, setOpen] = useState(false);
     return (
       <div>
-        <button type="button" onClick={() => setOpen(true)}>Ouvrir</button>
+        <button type="button" onClick={() => setOpen(true)}>
+          Ouvrir
+        </button>
         <Modal isOpen={open} onClose={() => setOpen(false)} title="Information">
           <p>Texte seul.</p>
         </Modal>

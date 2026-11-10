@@ -2,14 +2,31 @@ import { useState } from 'react';
 import { invitationSchema, parseForm } from '../lib/schemas';
 import { useToastActions } from '../context/ToastContext';
 import {
-  Table, TableHeader, TableBody, TableHead, TableRow, TableCell,
-  StatusBadge, buttonStyles, formControlStyles, FormField, Modal, Alert, EmptyState
+  Table,
+  TableHeader,
+  TableBody,
+  TableHead,
+  TableRow,
+  TableCell,
+  StatusBadge,
+  buttonStyles,
+  formControlStyles,
+  FormField,
+  Modal,
+  Alert,
+  EmptyState,
 } from './ui/designSystem';
 import { Users, UserPlus, Shield, XCircle, RotateCw, Copy } from 'lucide-react';
 import { useStationStaff } from '../hooks/useStationStaff';
 import {
-  STAFF_ROLE_LABELS, STAFF_ROLES, activeMemberCount, canCancelInvitation,
-  canRevokeMember, describeMember, invitationState, normalizeInvitationEmail,
+  STAFF_ROLE_LABELS,
+  STAFF_ROLES,
+  activeMemberCount,
+  canCancelInvitation,
+  canRevokeMember,
+  describeMember,
+  invitationState,
+  normalizeInvitationEmail,
 } from '../lib/staffRules';
 import type { StaffRole } from '../lib/stationApi';
 
@@ -56,7 +73,8 @@ export function StationStaff({
   // écrite ici : deux règles finissent toujours par diverger.
   const emailCheck = invitationSchema.shape.email.safeParse(email);
   const emailValid = emailCheck.success;
-  const emailError = email.length > 0 && !emailCheck.success ? emailCheck.error.issues[0]?.message : undefined;
+  const emailError =
+    email.length > 0 && !emailCheck.success ? emailCheck.error.issues[0]?.message : undefined;
   const activeMembers = activeMemberCount(members);
 
   function closeInvite() {
@@ -89,11 +107,16 @@ export function StationStaff({
   }
 
   return (
-    <section className="space-y-6 border-t border-[var(--border-subtle)] pt-6" aria-label="Personnel de la station">
+    <section
+      className="space-y-6 border-t border-[var(--border-subtle)] pt-6"
+      aria-label="Personnel de la station"
+    >
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-bold text-[var(--text-primary)] tracking-tight">Personnel & Rôles</h2>
-          <p className="text-xs text-[var(--text-secondary)] mt-0.5">Permissions appliquées au niveau de la base de données (RLS PostgreSQL)</p>
+          <p className="text-xs text-[var(--text-secondary)] mt-0.5">
+            Permissions appliquées au niveau de la base de données (RLS PostgreSQL)
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -109,7 +132,11 @@ export function StationStaff({
             <button
               type="button"
               className={buttonStyles({ variant: 'primary', size: 'sm' })}
-              onClick={() => { setInviteOpen(true); staff.clearMessages(); setCreatedReference(''); }}
+              onClick={() => {
+                setInviteOpen(true);
+                staff.clearMessages();
+                setCreatedReference('');
+              }}
               disabled={loading || busy || !roleFeaturesReady}
             >
               <UserPlus className="w-4 h-4 mr-1.5" />
@@ -121,7 +148,8 @@ export function StationStaff({
 
       {!roleFeaturesReady && (
         <Alert variant="info">
-          Votre rôle sur cette station n’est pas encore confirmé par le serveur : la liste reste en lecture seule.
+          Votre rôle sur cette station n’est pas encore confirmé par le serveur : la liste reste en lecture
+          seule.
         </Alert>
       )}
 
@@ -129,7 +157,14 @@ export function StationStaff({
         <Alert
           variant="error"
           action={
-            <button type="button" className="underline text-xs font-semibold text-rose-300" onClick={() => { staff.clearMessages(); staff.reload(); }}>
+            <button
+              type="button"
+              className="underline text-xs font-semibold text-rose-300"
+              onClick={() => {
+                staff.clearMessages();
+                staff.reload();
+              }}
+            >
               Réessayer
             </button>
           }
@@ -147,13 +182,22 @@ export function StationStaff({
           variant="warning"
           title="Invitation créée — référence à transmettre"
           action={
-            <button type="button" className="underline text-xs font-semibold text-amber-200" onClick={() => void copyReference(createdReference)}>
-              <Copy className="inline w-3 h-3 mr-1" />Copier
+            <button
+              type="button"
+              className="underline text-xs font-semibold text-amber-200"
+              onClick={() => void copyReference(createdReference)}
+            >
+              <Copy className="inline w-3 h-3 mr-1" />
+              Copier
             </button>
           }
         >
-          <p className="text-xs mb-1">Aucun email n’est envoyé automatiquement. Transmettez cette référence au collaborateur invité :</p>
-          <code className="block font-mono text-[11px] break-all bg-black/30 rounded px-2 py-1">{createdReference}</code>
+          <p className="text-xs mb-1">
+            Aucun email n’est envoyé automatiquement. Transmettez cette référence au collaborateur invité :
+          </p>
+          <code className="block font-mono text-[11px] break-all bg-black/30 rounded px-2 py-1">
+            {createdReference}
+          </code>
         </Alert>
       )}
 
@@ -196,7 +240,9 @@ export function StationStaff({
                             {/* The roster exposes a UUID, not an email: showing
                                 anything friendlier would mean joining user data
                                 this role has no right to read. */}
-                            <span className="font-mono text-xs text-[var(--text-primary)] block">{describeMember(member.user_id)}</span>
+                            <span className="font-mono text-xs text-[var(--text-primary)] block">
+                              {describeMember(member.user_id)}
+                            </span>
                             <span className="text-[11px] text-[var(--text-muted)]">
                               Membre depuis le {new Date(member.created_at).toLocaleDateString('fr-FR')}
                             </span>
@@ -242,7 +288,9 @@ export function StationStaff({
                 Invitations émises ({invitations.length})
               </h3>
               {invitations.length === 0 ? (
-                <p className="text-xs text-[var(--text-secondary)]">Aucune invitation émise pour l’instant.</p>
+                <p className="text-xs text-[var(--text-secondary)]">
+                  Aucune invitation émise pour l’instant.
+                </p>
               ) : (
                 <Table label="Invitations en attente">
                   <TableHeader>
@@ -267,10 +315,14 @@ export function StationStaff({
                       return (
                         <TableRow key={invitation.id}>
                           <TableCell>
-                            <span className="font-semibold text-[var(--text-primary)] text-xs">{invitation.email}</span>
+                            <span className="font-semibold text-[var(--text-primary)] text-xs">
+                              {invitation.email}
+                            </span>
                           </TableCell>
                           <TableCell>
-                            <span className="text-xs text-slate-300">{STAFF_ROLE_LABELS[invitation.role]}</span>
+                            <span className="text-xs text-slate-300">
+                              {STAFF_ROLE_LABELS[invitation.role]}
+                            </span>
                           </TableCell>
                           <TableCell>
                             <span className="font-mono text-[11px] text-[var(--text-secondary)] bg-slate-900/60 px-2 py-0.5 rounded border border-slate-800">
@@ -356,11 +408,17 @@ export function StationStaff({
           </FormField>
 
           <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/25 text-xs text-amber-300">
-            Aucun email automatique n’est envoyé : la référence générée devra être transmise vous-même au collaborateur.
+            Aucun email automatique n’est envoyé : la référence générée devra être transmise vous-même au
+            collaborateur.
           </div>
 
           <div className="flex items-center justify-end gap-3 pt-3 border-t border-[var(--border-subtle)]">
-            <button type="button" disabled={busy} className={buttonStyles({ variant: 'ghost', size: 'md' })} onClick={closeInvite}>
+            <button
+              type="button"
+              disabled={busy}
+              className={buttonStyles({ variant: 'ghost', size: 'md' })}
+              onClick={closeInvite}
+            >
               Annuler
             </button>
             <button
@@ -383,7 +441,13 @@ export function StationStaff({
         size="sm"
         footer={
           <>
-            <button type="button" className={buttonStyles({ variant: 'ghost', size: 'sm' })} onClick={() => setRevokeTarget(null)}>Conserver l’accès</button>
+            <button
+              type="button"
+              className={buttonStyles({ variant: 'ghost', size: 'sm' })}
+              onClick={() => setRevokeTarget(null)}
+            >
+              Conserver l’accès
+            </button>
             <button
               type="button"
               disabled={busy}
@@ -399,7 +463,9 @@ export function StationStaff({
           </>
         }
       >
-        <p className="text-xs text-[var(--text-secondary)]">Les prestations déjà affectées à ce membre restent dans l’historique.</p>
+        <p className="text-xs text-[var(--text-secondary)]">
+          Les prestations déjà affectées à ce membre restent dans l’historique.
+        </p>
       </Modal>
     </section>
   );

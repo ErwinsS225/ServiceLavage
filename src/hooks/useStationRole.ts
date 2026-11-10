@@ -68,20 +68,29 @@ export function useStationRole(
       const cached = stations.find(station => station.id === stationId);
       setRole(cached?.owner_id === userId ? 'owner' : null);
       setRoleLoading(false);
-      return () => { active = false; };
+      return () => {
+        active = false;
+      };
     }
 
     fetchStationRole(client, stationId)
       .then(result => {
         if (!active) return;
-        if (result.failed) { void fallbackFromOwnerId(); return; }
+        if (result.failed) {
+          void fallbackFromOwnerId();
+          return;
+        }
         setRole(parseStationRole(result.role));
         setRoleFromServer(true);
         setRoleLoading(false);
       })
-      .catch(() => { if (active) void fallbackFromOwnerId(); });
+      .catch(() => {
+        if (active) void fallbackFromOwnerId();
+      });
 
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, [client, userId, stationId, stations, online]);
 
   return { role, roleLoading, roleFromServer };

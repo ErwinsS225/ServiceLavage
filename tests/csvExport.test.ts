@@ -46,7 +46,9 @@ test('le contenu exporté porte un BOM, un en-tête et une ligne par prestation'
 test('le prix figé et le montant facturé restent deux colonnes distinctes', () => {
   // Une prestation annulée garde son prix d'origine mais rien n'est facturé.
   const cancelled = buildOrdersCsv([{ ...ROW, statusLabel: 'Annulé', billedXof: 0 }])
-    .slice(1).split('\r\n')[1].split(',');
+    .slice(1)
+    .split('\r\n')[1]
+    .split(',');
   assert.equal(cancelled[4], '"8500"');
   assert.equal(cancelled[5], '"0"');
   assert.equal(cancelled[6], '"Annulé"');

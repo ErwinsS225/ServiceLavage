@@ -29,7 +29,9 @@ export function BrandLogo({ size = 'md', showTagline = false, className = '' }: 
       </div>
       <div className="flex flex-col min-w-0">
         <div className="flex items-center gap-2">
-          <span className={`${titleSizes[size]} tracking-tight text-[var(--text-primary)] font-sans whitespace-nowrap`}>
+          <span
+            className={`${titleSizes[size]} tracking-tight text-[var(--text-primary)] font-sans whitespace-nowrap`}
+          >
             Service<span className="text-sky-400">Lavage</span>
           </span>
           <span className="text-[10px] font-mono uppercase tracking-widest px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 font-medium">

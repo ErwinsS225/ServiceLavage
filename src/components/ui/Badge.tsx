@@ -71,12 +71,7 @@ export interface BadgeProps {
   className?: string;
 }
 
-export function Badge({
-  children,
-  variant = 'neutral',
-  size = 'md',
-  className = '',
-}: BadgeProps) {
+export function Badge({ children, variant = 'neutral', size = 'md', className = '' }: BadgeProps) {
   const sizeClasses = {
     sm: 'text-[10px] px-1.5 py-0.5',
     md: 'text-xs px-2.5 py-1',

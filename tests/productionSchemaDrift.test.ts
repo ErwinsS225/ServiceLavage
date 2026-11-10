@@ -31,7 +31,12 @@ interface Reference extends SchemaSnapshot {
   _projet: Record<string, string>;
   _capture: Record<string, string>;
   _migrations_distantes: Array<{ version: string; name: string }>;
-  _migrations_locales: Array<{ fichier: string; fichier_origine?: string; version_distante: string; identique: boolean }>;
+  _migrations_locales: Array<{
+    fichier: string;
+    fichier_origine?: string;
+    version_distante: string;
+    identique: boolean;
+  }>;
   schema: SchemaSnapshot;
 }
 
@@ -90,12 +95,16 @@ test('the schema produced by the migrations equals the deployed schema', () => {
 test('the deployed database still satisfies the runbook checks', () => {
   const prod = reference.schema;
   // 1. RLS activée partout.
-  assert.deepEqual(prod.tables.filter(table => !table.rls), []);
-  // 2. Les trois déclencheurs de quota sont présents.
   assert.deepEqual(
-    prod.triggers.map(trigger => trigger.name).sort(),
-    ['enforce_monthly_order_limit', 'enforce_station_limit', 'owner_subscription_lock'],
+    prod.tables.filter(table => !table.rls),
+    [],
   );
+  // 2. Les trois déclencheurs de quota sont présents.
+  assert.deepEqual(prod.triggers.map(trigger => trigger.name).sort(), [
+    'enforce_monthly_order_limit',
+    'enforce_station_limit',
+    'owner_subscription_lock',
+  ]);
   // 3. Aucun droit d'écriture métier pour `authenticated` hors catalogue/clients :
   //    les prestations passent exclusivement par des fonctions SECURITY DEFINER.
   const writeGrants = prod.grants
@@ -113,8 +122,10 @@ test('the five late migrations keep the trace of their execution-time versions',
   const renamed = reference._migrations_locales.filter(item => item.fichier_origine);
   assert.equal(renamed.length, 5, 'cinq fichiers ont été renommés');
   for (const item of renamed) {
-    assert.ok(item.version_distante > item.fichier_origine!.slice(0, 14),
-      `${item.fichier_origine} doit être enregistrée sous une version postérieure`);
+    assert.ok(
+      item.version_distante > item.fichier_origine!.slice(0, 14),
+      `${item.fichier_origine} doit être enregistrée sous une version postérieure`,
+    );
     assert.ok(item.fichier.startsWith(item.version_distante));
     // Le contenu n'a pas bougé : c'est `npm run db:content` qui le prouve.
     assert.equal(item.identique, true);

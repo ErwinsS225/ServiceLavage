@@ -97,8 +97,11 @@ test('les couleurs du contrôle correspondent aux jetons de src/index.css', asyn
   ];
 
   for (const [block, name, expected] of expectations) {
-    assert.equal(expected.startsWith('#') ? token(block, name).toLowerCase() : null, expected.toLowerCase(),
-      `--${name} a changé sans mettre à jour scripts/checkContrast.mjs`);
+    assert.equal(
+      expected.startsWith('#') ? token(block, name).toLowerCase() : null,
+      expected.toLowerCase(),
+      `--${name} a changé sans mettre à jour scripts/checkContrast.mjs`,
+    );
   }
 });
 

@@ -37,7 +37,11 @@ test('the password is hidden until the user explicitly reveals it', async () => 
   for (const file of [FILES.credentials, FILES.reset]) {
     const source = await readFile(file, 'utf8');
     assert.match(source, /useState\(false\)/, `${file}: reveal must start hidden`);
-    assert.match(source, /type=\{reveal \? 'text' : 'password'\}/, `${file}: password type must be conditional`);
+    assert.match(
+      source,
+      /type=\{reveal \? 'text' : 'password'\}/,
+      `${file}: password type must be conditional`,
+    );
     assert.match(source, /aria-pressed=\{reveal\}/, `${file}: the toggle must expose its state`);
   }
 });
@@ -153,7 +157,9 @@ test('a brand new account sees no station and no error', async () => {
     }
 
     const userId = '33333333-3333-4333-8333-333333333333';
-    await db.exec(`insert into auth.users(id,email,email_confirmed_at) values ('${userId}','new@example.invalid',now())`);
+    await db.exec(
+      `insert into auth.users(id,email,email_confirmed_at) values ('${userId}','new@example.invalid',now())`,
+    );
     await db.exec(`set local role authenticated`);
     await db.exec(`select set_config('request.jwt.claim.sub','${userId}',true)`);
     const { rows } = await db.query<{ n: number }>('select count(*)::int as n from public.stations');
@@ -174,16 +180,19 @@ test('the sales copy only mentions features that actually work', async () => {
   const features = await readFile('src/data/planFeatures.ts', 'utf8');
 
   // Labels of everything not yet operational.
-  const planned = [...features.matchAll(
-    /\{ id: '[\w-]+', label: '([^']+)', delivery: '(planned|partial)'/g,
-  )].map(match => match[1]);
+  const planned = [
+    ...features.matchAll(/\{ id: '[\w-]+', label: '([^']+)', delivery: '(planned|partial)'/g),
+  ].map(match => match[1]);
   assert.ok(planned.length > 0, 'the feature list must still mark unsold items');
 
   // Words that would only make sense for an unbuilt feature.
   const forbidden = ['rapport', 'commission', 'whatsapp', 'pdf', 'excel', 'caisse', 'vitrine', 'marketplace'];
   for (const word of forbidden) {
-    assert.doesNotMatch(copy, new RegExp(word, 'i'),
-      `the auth copy promises "${word}", which is still planned`);
+    assert.doesNotMatch(
+      copy,
+      new RegExp(word, 'i'),
+      `the auth copy promises "${word}", which is still planned`,
+    );
   }
 
   // Each screen must carry a claim, a sentence and at least two benefits.

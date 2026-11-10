@@ -10,7 +10,13 @@ import { describeError } from '../../lib/errorMessages';
  * what the user already typed; only the password autocomplete and the minimum
  * length differ, which is what the browser needs to offer the right thing.
  */
-export function AuthCredentialsForm({ supabase, mode, onModeChange, onForgot, onMessage }: {
+export function AuthCredentialsForm({
+  supabase,
+  mode,
+  onModeChange,
+  onForgot,
+  onMessage,
+}: {
   supabase: SupabaseClient;
   mode: 'signin' | 'signup';
   onModeChange: (mode: 'signin' | 'signup') => void;
@@ -38,7 +44,9 @@ export function AuthCredentialsForm({ supabase, mode, onModeChange, onForgot, on
     }
     setFieldErrors({});
 
-    setBusy(true); setError(''); onMessage('');
+    setBusy(true);
+    setError('');
+    onMessage('');
     try {
       if (signup) {
         const { error: failure } = await supabase.auth.signUp({
@@ -51,7 +59,10 @@ export function AuthCredentialsForm({ supabase, mode, onModeChange, onForgot, on
         // `describeError` traduit le code GoTrue ; afficher le texte brut
         // montrait « User already registered » en anglais.
         if (failure) setError(describeError(failure).message);
-        else onMessage('Compte créé. Vérifiez votre boîte de réception : un e-mail de confirmation vous a été envoyé.');
+        else
+          onMessage(
+            'Compte créé. Vérifiez votre boîte de réception : un e-mail de confirmation vous a été envoyé.',
+          );
       } else {
         const { error: failure } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
         if (failure) {
@@ -66,66 +77,88 @@ export function AuthCredentialsForm({ supabase, mode, onModeChange, onForgot, on
     }
   }
 
-  return <form onSubmit={submit} noValidate className="space-y-5">
-    <AuthField label="E-mail" error={fieldErrors.email}>
-      <input
-        className={authInput}
-        type="email"
-        name="email"
-        autoComplete="email"
-        inputMode="email"
-        placeholder="vous@exemple.ci"
-        value={email}
-        aria-invalid={!!fieldErrors.email}
-        onChange={event => { setEmail(event.target.value); setFieldErrors(prev => ({ ...prev, email: undefined })); }}
-      />
-    </AuthField>
-
-    <AuthField
-      label="Mot de passe"
-      error={fieldErrors.password}
-      hint={signup ? `Au moins ${MIN_PASSWORD_LENGTH} caractères, et unique à ce compte.` : undefined}
-    >
-      <div className="relative">
+  return (
+    <form onSubmit={submit} noValidate className="space-y-5">
+      <AuthField label="E-mail" error={fieldErrors.email}>
         <input
-          className={`${authInput} pr-20`}
-          type={reveal ? 'text' : 'password'}
-          name="password"
-          autoComplete={signup ? 'new-password' : 'current-password'}
-          placeholder="••••••••"
-          value={password}
-          aria-invalid={!!fieldErrors.password}
-          onChange={event => { setPassword(event.target.value); setFieldErrors(prev => ({ ...prev, password: undefined })); }}
+          className={authInput}
+          type="email"
+          name="email"
+          autoComplete="email"
+          inputMode="email"
+          placeholder="vous@exemple.ci"
+          value={email}
+          aria-invalid={!!fieldErrors.email}
+          onChange={event => {
+            setEmail(event.target.value);
+            setFieldErrors(prev => ({ ...prev, email: undefined }));
+          }}
         />
+      </AuthField>
+
+      <AuthField
+        label="Mot de passe"
+        error={fieldErrors.password}
+        hint={signup ? `Au moins ${MIN_PASSWORD_LENGTH} caractères, et unique à ce compte.` : undefined}
+      >
+        <div className="relative">
+          <input
+            className={`${authInput} pr-20`}
+            type={reveal ? 'text' : 'password'}
+            name="password"
+            autoComplete={signup ? 'new-password' : 'current-password'}
+            placeholder="••••••••"
+            value={password}
+            aria-invalid={!!fieldErrors.password}
+            onChange={event => {
+              setPassword(event.target.value);
+              setFieldErrors(prev => ({ ...prev, password: undefined }));
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => setReveal(value => !value)}
+            aria-pressed={reveal}
+            className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md px-2 py-1 text-[11px] font-semibold uppercase tracking-wider text-gray-400 hover:text-gray-200"
+          >
+            {reveal ? 'Masquer' : 'Voir'}
+          </button>
+        </div>
+      </AuthField>
+
+      {error && (
+        <p
+          role="alert"
+          className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2.5 text-sm text-red-300"
+        >
+          {error}
+        </p>
+      )}
+
+      <button type="submit" className={authButton} disabled={busy}>
+        {busy ? 'Veuillez patienter…' : signup ? 'Créer ma station' : 'Accéder à ma station'}
+      </button>
+
+      <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 pt-1">
         <button
           type="button"
-          onClick={() => setReveal(value => !value)}
-          aria-pressed={reveal}
-          className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md px-2 py-1 text-[11px] font-semibold uppercase tracking-wider text-gray-400 hover:text-gray-200"
+          className={authLink}
+          disabled={busy}
+          onClick={() => {
+            setError('');
+            setFieldErrors({});
+            onMessage('');
+            onModeChange(signup ? 'signin' : 'signup');
+          }}
         >
-          {reveal ? 'Masquer' : 'Voir'}
+          {signup ? 'Déjà un compte ? Se connecter' : 'Ouvrir mon compte gratuitement'}
         </button>
+        {!signup && (
+          <button type="button" className={authLink} disabled={busy} onClick={onForgot}>
+            Mot de passe oublié ?
+          </button>
+        )}
       </div>
-    </AuthField>
-
-    {error && <p role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2.5 text-sm text-red-300">{error}</p>}
-
-    <button type="submit" className={authButton} disabled={busy}>
-      {busy ? 'Veuillez patienter…' : signup ? 'Créer ma station' : 'Accéder à ma station'}
-    </button>
-
-    <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 pt-1">
-      <button
-        type="button"
-        className={authLink}
-        disabled={busy}
-        onClick={() => { setError(''); setFieldErrors({}); onMessage(''); onModeChange(signup ? 'signin' : 'signup'); }}
-      >
-        {signup ? 'Déjà un compte ? Se connecter' : 'Ouvrir mon compte gratuitement'}
-      </button>
-      {!signup && <button type="button" className={authLink} disabled={busy} onClick={onForgot}>
-        Mot de passe oublié ?
-      </button>}
-    </div>
-  </form>;
+    </form>
+  );
 }

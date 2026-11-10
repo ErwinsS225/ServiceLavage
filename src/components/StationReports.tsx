@@ -27,7 +27,7 @@ import {
   StatCard,
   Alert,
   EmptyState,
-  buttonStyles
+  buttonStyles,
 } from './ui/designSystem';
 import {
   FileText,
@@ -68,11 +68,22 @@ export function StationReports({ stationId, stationName, client = defaultClient 
   // borne grandirait à chaque lavage.
   const yearStart = useMemo(() => new Date(startOfYear(new Date())), []);
   const reportQuery = useReportOrders(stationId, yearStart, client);
-  const orders: StationOrderRow[] = reportQuery.data ?? [];
+  // `data ?? []` construirait un tableau neuf à chaque rendu, invalidant tous
+  // les `useMemo` en aval. On le stabilise une fois pour toutes.
+  const rawOrders = reportQuery.data;
+  const orders: StationOrderRow[] = useMemo(() => rawOrders ?? [], [rawOrders]);
   const loading = reportQuery.isPending;
-  const error = reportQuery.error ? describeError(reportQuery.error, 'Chargement du rapport impossible. Vérifiez votre connexion.') : '';
-  const load = () => { void reportQuery.refetch(); };
+  const error = reportQuery.error
+    ? describeError(reportQuery.error, 'Chargement du rapport impossible. Vérifiez votre connexion.')
+    : '';
+  const load = () => {
+    void reportQuery.refetch();
+  };
 
+  // La référence est l'instant de calcul : elle doit être figée pendant un
+  // rendu. Elle est recalculée quand la période ou les données changent, pour
+  // que « aujourd'hui » ne soit pas celui du premier affichage.
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- dépendances volontaires : l'instant suit les données et la période
   const reference = useMemo(() => new Date(), [orders, period]);
   const metrics = useMemo(() => reportMetrics(orders, period, reference), [orders, period, reference]);
 
@@ -96,7 +107,10 @@ export function StationReports({ stationId, stationName, client = defaultClient 
     setIsProcessing(true);
     setFeedback('Génération du PDF en cours…');
     try {
-      const { blob } = await generatePdfFromElement(reportRef.current, { format: 'a4', orientation: 'portrait' });
+      const { blob } = await generatePdfFromElement(reportRef.current, {
+        format: 'a4',
+        orientation: 'portrait',
+      });
       downloadPdfBlob(blob, `rapport_activite_${stationName.replace(/\s+/g, '_')}_${period}.pdf`);
       setFeedback('PDF téléchargé.');
     } catch {
@@ -112,14 +126,17 @@ export function StationReports({ stationId, stationName, client = defaultClient 
     setIsProcessing(true);
     setFeedback('Préparation du PDF…');
     try {
-      const { blob } = await generatePdfFromElement(reportRef.current, { format: 'a4', orientation: 'portrait' });
+      const { blob } = await generatePdfFromElement(reportRef.current, {
+        format: 'a4',
+        orientation: 'portrait',
+      });
       const outcome = await sharePdfToMessaging(
         blob,
         `rapport_activite_${period}.pdf`,
         `Rapport d’activité - ${stationName}`,
         `Bonjour, voici le rapport d’activité de la station ${stationName} pour la période : ${periodLabel(period)}. ` +
-        `${metrics.completedCount} prestation(s) terminée(s) pour ${formatXof(metrics.billedXof)} facturés. ` +
-        `Les paiements ne sont pas suivis par l’application : ces montants sont facturés, pas encaissés.`,
+          `${metrics.completedCount} prestation(s) terminée(s) pour ${formatXof(metrics.billedXof)} facturés. ` +
+          `Les paiements ne sont pas suivis par l’application : ces montants sont facturés, pas encaissés.`,
       );
       setFeedback(outcome === 'shared' ? 'PDF partagé.' : 'PDF téléchargé et WhatsApp ouvert.');
     } catch {
@@ -131,15 +148,17 @@ export function StationReports({ stationId, stationName, client = defaultClient 
   };
 
   const handleExportCsv = () => {
-    const csv = buildOrdersCsv(periodOrders.map(order => ({
-      id: order.id,
-      created_at: order.created_at,
-      vehicle_info: order.vehicle_info,
-      plate_number: order.plate_number,
-      total_xof: safeXof(order.total_xof),
-      billedXof: orderBilledXof(order),
-      statusLabel: STATUS_LABELS[order.status] ?? order.status,
-    })));
+    const csv = buildOrdersCsv(
+      periodOrders.map(order => ({
+        id: order.id,
+        created_at: order.created_at,
+        vehicle_info: order.vehicle_info,
+        plate_number: order.plate_number,
+        total_xof: safeXof(order.total_xof),
+        billedXof: orderBilledXof(order),
+        statusLabel: STATUS_LABELS[order.status] ?? order.status,
+      })),
+    );
     downloadCsv(csv, `prestations_${period}.csv`);
     setFeedback(`${periodOrders.length} ligne(s) exportée(s).`);
     setTimeout(() => setFeedback(''), 4000);
@@ -167,10 +186,18 @@ export function StationReports({ stationId, stationName, client = defaultClient 
                 onClick={() => setPeriod(value)}
                 aria-pressed={period === value}
                 className={`px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer ${
-                  period === value ? 'bg-indigo-600 text-white shadow-sm' : 'text-[var(--text-secondary)] hover:text-white'
+                  period === value
+                    ? 'bg-indigo-600 text-white shadow-sm'
+                    : 'text-[var(--text-secondary)] hover:text-white'
                 }`}
               >
-                {value === 'today' ? "Aujourd'hui" : value === 'week' ? 'Semaine' : value === 'month' ? 'Ce mois' : 'Année'}
+                {value === 'today'
+                  ? "Aujourd'hui"
+                  : value === 'week'
+                    ? 'Semaine'
+                    : value === 'month'
+                      ? 'Ce mois'
+                      : 'Année'}
               </button>
             ))}
           </div>
@@ -180,7 +207,9 @@ export function StationReports({ stationId, stationName, client = defaultClient 
             disabled={isProcessing || nothingToReport}
             onClick={handleDownloadPdf}
             className={`${buttonStyles({ variant: 'primary', size: 'sm' })} cursor-pointer`}
-            title={nothingToReport ? 'Aucune donnée à exporter sur cette période' : 'Enregistrer le rapport en PDF'}
+            title={
+              nothingToReport ? 'Aucune donnée à exporter sur cette période' : 'Enregistrer le rapport en PDF'
+            }
           >
             <Download className="w-3.5 h-3.5 mr-1.5" />
             <span>Télécharger en PDF</span>
@@ -222,15 +251,28 @@ export function StationReports({ stationId, stationName, client = defaultClient 
       </div>
 
       {error && (
-        <Alert variant="error" className="no-print" action={
-          <button type="button" className="underline text-xs font-semibold text-rose-300" onClick={() => void load()}>
-            Réessayer
-          </button>
-        }>{error}</Alert>
+        <Alert
+          variant="error"
+          className="no-print"
+          action={
+            <button
+              type="button"
+              className="underline text-xs font-semibold text-rose-300"
+              onClick={() => void load()}
+            >
+              Réessayer
+            </button>
+          }
+        >
+          {error}
+        </Alert>
       )}
 
       {feedback && (
-        <div role="status" className="no-print p-3 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs flex items-center gap-2">
+        <div
+          role="status"
+          className="no-print p-3 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs flex items-center gap-2"
+        >
           <CheckCircle2 className="w-4 h-4 shrink-0" />
           <span>{feedback}</span>
         </div>
@@ -244,7 +286,9 @@ export function StationReports({ stationId, stationName, client = defaultClient 
       </Alert>
 
       {loading ? (
-        <p role="status" className="no-print text-sm text-[var(--text-secondary)]">Chargement du rapport…</p>
+        <p role="status" className="no-print text-sm text-[var(--text-secondary)]">
+          Chargement du rapport…
+        </p>
       ) : nothingToReport ? (
         <Card className="no-print">
           <CardContent>
@@ -262,7 +306,11 @@ export function StationReports({ stationId, stationName, client = defaultClient 
             <StatCard
               title="Prestations créées"
               value={metrics.createdCount}
-              subtext={metrics.cancelledCount > 0 ? `${metrics.cancelledCount} annulée(s) exclue(s)` : 'Hors annulations'}
+              subtext={
+                metrics.cancelledCount > 0
+                  ? `${metrics.cancelledCount} annulée(s) exclue(s)`
+                  : 'Hors annulations'
+              }
               icon={<Car className="w-5 h-5 text-amber-400" />}
             />
             <StatCard
@@ -298,7 +346,10 @@ export function StationReports({ stationId, stationName, client = defaultClient 
                 <li className="flex gap-2">
                   <span className="text-[var(--text-muted)]">Prestation terminée</span>
                   <span className="text-[var(--text-muted)]">→</span>
-                  <span>le lavage est fait. <strong className="text-[var(--text-primary)]">Ce n’est pas un paiement.</strong></span>
+                  <span>
+                    le lavage est fait.{' '}
+                    <strong className="text-[var(--text-primary)]">Ce n’est pas un paiement.</strong>
+                  </span>
                 </li>
                 <li className="flex gap-2">
                   <span className="text-[var(--text-muted)]">Montant facturé</span>
@@ -308,12 +359,16 @@ export function StationReports({ stationId, stationName, client = defaultClient 
                 <li className="flex gap-2">
                   <span className="text-[var(--text-muted)]">Recette encaissée</span>
                   <span className="text-[var(--text-muted)]">→</span>
-                  <span className="text-amber-300">non enregistrée : aucun moyen de paiement n’est stocké.</span>
+                  <span className="text-amber-300">
+                    non enregistrée : aucun moyen de paiement n’est stocké.
+                  </span>
                 </li>
                 <li className="flex gap-2">
                   <span className="text-[var(--text-muted)]">Dépense / bénéfice</span>
                   <span className="text-[var(--text-muted)]">→</span>
-                  <span className="text-amber-300">non enregistrés : aucune marge ne peut être calculée.</span>
+                  <span className="text-amber-300">
+                    non enregistrés : aucune marge ne peut être calculée.
+                  </span>
                 </li>
               </ul>
             </CardContent>

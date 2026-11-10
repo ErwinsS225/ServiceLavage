@@ -3,9 +3,14 @@ import test from 'node:test';
 import { planFeatures } from '../src/data/planFeatures';
 
 test('plan matrix preserves confirmed station and monthly order quotas', () => {
-  assert.deepEqual(planFeatures.map(plan => [plan.id, plan.stationLimit, plan.monthlyOrderLimit]), [
-    ['starter', 1, 500], ['pro', 2, 2500], ['business', 10, 10000],
-  ]);
+  assert.deepEqual(
+    planFeatures.map(plan => [plan.id, plan.stationLimit, plan.monthlyOrderLimit]),
+    [
+      ['starter', 1, 500],
+      ['pro', 2, 2500],
+      ['business', 10, 10000],
+    ],
+  );
 });
 
 test('higher plans inherit lower-tier features and expose their own additions', () => {
@@ -28,7 +33,11 @@ test('unfinished benefits are never labeled operational', () => {
   for (const plan of planFeatures) {
     for (const feature of plan.features) {
       if (['tickets', 'cash', 'reports-basic', 'staff-basic', 'showcase-basic'].includes(feature.id)) {
-        assert.notEqual(feature.delivery, 'operational', `${feature.id} must remain transparent until implemented`);
+        assert.notEqual(
+          feature.delivery,
+          'operational',
+          `${feature.id} must remain transparent until implemented`,
+        );
       }
     }
   }

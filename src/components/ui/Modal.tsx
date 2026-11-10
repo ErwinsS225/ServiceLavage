@@ -35,15 +35,7 @@ export interface ModalProps {
  * l'était de toute façon pas) : on ne peut donc pas le focus, ce qui est le
  * comportement attendu puisqu'il ne sert qu'au clic.
  */
-export function Modal({
-  isOpen,
-  onClose,
-  title,
-  description,
-  children,
-  footer,
-  size = 'md',
-}: ModalProps) {
+export function Modal({ isOpen, onClose, title, description, children, footer, size = 'md' }: ModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   /** Élément qui avait le focus avant l'ouverture : il le récupère après. */
   const returnFocusRef = useRef<HTMLElement | null>(null);

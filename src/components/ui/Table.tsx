@@ -28,17 +28,31 @@ export function Table({
 
 export function TableHeader({ children, className = '' }: { children: React.ReactNode; className?: string }) {
   return (
-    <thead className={`bg-[var(--surface-elevated)] text-[11px] uppercase tracking-wider text-[var(--text-secondary)] font-semibold border-b border-[var(--border-subtle)] ${className}`}>
+    <thead
+      className={`bg-[var(--surface-elevated)] text-[11px] uppercase tracking-wider text-[var(--text-secondary)] font-semibold border-b border-[var(--border-subtle)] ${className}`}
+    >
       {children}
     </thead>
   );
 }
 
 export function TableBody({ children, className = '' }: { children: React.ReactNode; className?: string }) {
-  return <tbody className={`divide-y divide-[var(--border-subtle)] bg-[var(--surface-card)] ${className}`}>{children}</tbody>;
+  return (
+    <tbody className={`divide-y divide-[var(--border-subtle)] bg-[var(--surface-card)] ${className}`}>
+      {children}
+    </tbody>
+  );
 }
 
-export function TableRow({ children, className = '', onClick }: { children: React.ReactNode; className?: string; onClick?: () => void }) {
+export function TableRow({
+  children,
+  className = '',
+  onClick,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  onClick?: () => void;
+}) {
   return (
     <tr
       onClick={onClick}
@@ -78,6 +92,13 @@ export function TableCell({
   align?: 'left' | 'center' | 'right';
   className?: string;
 }) {
-  const alignClass = align === 'right' ? 'text-right font-mono tabular-nums' : align === 'center' ? 'text-center' : 'text-left';
-  return <td className={`px-4 py-3.5 text-xs sm:text-sm text-slate-200 ${alignClass} ${className}`}>{children}</td>;
+  const alignClass =
+    align === 'right'
+      ? 'text-right font-mono tabular-nums'
+      : align === 'center'
+        ? 'text-center'
+        : 'text-left';
+  return (
+    <td className={`px-4 py-3.5 text-xs sm:text-sm text-slate-200 ${alignClass} ${className}`}>{children}</td>
+  );
 }

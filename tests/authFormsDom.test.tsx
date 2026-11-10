@@ -22,10 +22,22 @@ afterEach(cleanup);
 function fakeClient(overrides: Record<string, (payload: any, options?: any) => any> = {}) {
   const calls: Array<{ method: string; args: any[] }> = [];
   const auth = {
-    signInWithPassword: async (...args: any[]) => { calls.push({ method: 'signInWithPassword', args }); return overrides.signInWithPassword?.(...args as [any]) ?? { error: null }; },
-    signUp: async (...args: any[]) => { calls.push({ method: 'signUp', args }); return overrides.signUp?.(...args as [any]) ?? { error: null, data: { session: null } }; },
-    resetPasswordForEmail: async (...args: any[]) => { calls.push({ method: 'resetPasswordForEmail', args }); return overrides.resetPasswordForEmail?.(...args as [any]) ?? { error: null }; },
-    updateUser: async (...args: any[]) => { calls.push({ method: 'updateUser', args }); return overrides.updateUser?.(...args as [any]) ?? { error: null }; },
+    signInWithPassword: async (...args: any[]) => {
+      calls.push({ method: 'signInWithPassword', args });
+      return overrides.signInWithPassword?.(...(args as [any])) ?? { error: null };
+    },
+    signUp: async (...args: any[]) => {
+      calls.push({ method: 'signUp', args });
+      return overrides.signUp?.(...(args as [any])) ?? { error: null, data: { session: null } };
+    },
+    resetPasswordForEmail: async (...args: any[]) => {
+      calls.push({ method: 'resetPasswordForEmail', args });
+      return overrides.resetPasswordForEmail?.(...(args as [any])) ?? { error: null };
+    },
+    updateUser: async (...args: any[]) => {
+      calls.push({ method: 'updateUser', args });
+      return overrides.updateUser?.(...(args as [any])) ?? { error: null };
+    },
   };
   return { client: { auth } as any, calls };
 }
@@ -34,8 +46,18 @@ const noop = () => {};
 
 test('a wrong password shows a French message and never leaks the raw one', async () => {
   const user = userEvent.setup();
-  const { client } = fakeClient({ signInWithPassword: () => ({ error: { message: 'Invalid login credentials' } }) });
-  render(<AuthCredentialsForm supabase={client} mode="signin" onModeChange={noop} onForgot={noop} onMessage={noop} />);
+  const { client } = fakeClient({
+    signInWithPassword: () => ({ error: { message: 'Invalid login credentials' } }),
+  });
+  render(
+    <AuthCredentialsForm
+      supabase={client}
+      mode="signin"
+      onModeChange={noop}
+      onForgot={noop}
+      onMessage={noop}
+    />,
+  );
 
   await user.type(screen.getByLabelText(/E-mail/), 'owner@example.ci');
   await user.type(screen.getByLabelText(/Mot de passe/), 'supersecret');
@@ -51,7 +73,15 @@ test('a wrong password shows a French message and never leaks the raw one', asyn
 test('an empty form is refused locally, without calling the server', async () => {
   const user = userEvent.setup();
   const { client, calls } = fakeClient();
-  render(<AuthCredentialsForm supabase={client} mode="signin" onModeChange={noop} onForgot={noop} onMessage={noop} />);
+  render(
+    <AuthCredentialsForm
+      supabase={client}
+      mode="signin"
+      onModeChange={noop}
+      onForgot={noop}
+      onMessage={noop}
+    />,
+  );
 
   await user.click(screen.getByRole('button', { name: 'Accéder à ma station' }));
 
@@ -63,7 +93,15 @@ test('an empty form is refused locally, without calling the server', async () =>
 test('a malformed address is rejected before the server sees it', async () => {
   const user = userEvent.setup();
   const { client, calls } = fakeClient();
-  render(<AuthCredentialsForm supabase={client} mode="signin" onModeChange={noop} onForgot={noop} onMessage={noop} />);
+  render(
+    <AuthCredentialsForm
+      supabase={client}
+      mode="signin"
+      onModeChange={noop}
+      onForgot={noop}
+      onMessage={noop}
+    />,
+  );
 
   await user.type(screen.getByLabelText(/E-mail/), 'pas-une-adresse');
   await user.type(screen.getByLabelText(/Mot de passe/), 'quelquechose');
@@ -76,7 +114,15 @@ test('a malformed address is rejected before the server sees it', async () => {
 test('sign-up refuses a password under the documented minimum', async () => {
   const user = userEvent.setup();
   const { client, calls } = fakeClient();
-  render(<AuthCredentialsForm supabase={client} mode="signup" onModeChange={noop} onForgot={noop} onMessage={noop} />);
+  render(
+    <AuthCredentialsForm
+      supabase={client}
+      mode="signup"
+      onModeChange={noop}
+      onForgot={noop}
+      onMessage={noop}
+    />,
+  );
 
   await user.type(screen.getByLabelText(/E-mail/), 'nouveau@example.ci');
   await user.type(screen.getByLabelText(/Mot de passe/), 'court');
@@ -89,7 +135,15 @@ test('sign-up refuses a password under the documented minimum', async () => {
 test('the reveal toggle switches the field type without losing its value', async () => {
   const user = userEvent.setup();
   const { client } = fakeClient();
-  render(<AuthCredentialsForm supabase={client} mode="signin" onModeChange={noop} onForgot={noop} onMessage={noop} />);
+  render(
+    <AuthCredentialsForm
+      supabase={client}
+      mode="signin"
+      onModeChange={noop}
+      onForgot={noop}
+      onMessage={noop}
+    />,
+  );
 
   const field = screen.getByLabelText(/Mot de passe/) as HTMLInputElement;
   await user.type(field, 'monmotdepasse');
@@ -106,7 +160,15 @@ test('the reveal toggle switches the field type without losing its value', async
 test('a successful sign-in sends exactly the typed credentials', async () => {
   const user = userEvent.setup();
   const { client, calls } = fakeClient();
-  render(<AuthCredentialsForm supabase={client} mode="signin" onModeChange={noop} onForgot={noop} onMessage={noop} />);
+  render(
+    <AuthCredentialsForm
+      supabase={client}
+      mode="signin"
+      onModeChange={noop}
+      onForgot={noop}
+      onMessage={noop}
+    />,
+  );
 
   await user.type(screen.getByLabelText(/E-mail/), '  owner@example.ci  ');
   await user.type(screen.getByLabelText(/Mot de passe/), 'motdepasse123');
@@ -121,7 +183,15 @@ test('sign-up warns to confirm the address instead of claiming a session', async
   const user = userEvent.setup();
   const messages: string[] = [];
   const { client } = fakeClient();
-  render(<AuthCredentialsForm supabase={client} mode="signup" onModeChange={noop} onForgot={noop} onMessage={m => messages.push(m)} />);
+  render(
+    <AuthCredentialsForm
+      supabase={client}
+      mode="signup"
+      onModeChange={noop}
+      onForgot={noop}
+      onMessage={m => messages.push(m)}
+    />,
+  );
 
   await user.type(screen.getByLabelText(/E-mail/), 'nouveau@example.ci');
   await user.type(screen.getByLabelText(/Mot de passe/), 'motdepasse123');
@@ -137,7 +207,9 @@ test('sign-up warns to confirm the address instead of claiming a session', async
 test('the recovery request always shows the same message, even for a failing address', async () => {
   const user = userEvent.setup();
   const messages: string[] = [];
-  const { client, calls } = fakeClient({ resetPasswordForEmail: () => ({ error: { message: 'User not found' } }) });
+  const { client, calls } = fakeClient({
+    resetPasswordForEmail: () => ({ error: { message: 'User not found' } }),
+  });
   render(<AuthForgotForm supabase={client} onBack={noop} onMessage={m => messages.push(m)} />);
 
   await user.type(screen.getByLabelText(/E-mail/), 'inconnu@example.ci');

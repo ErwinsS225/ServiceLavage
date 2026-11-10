@@ -23,7 +23,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
         {...props}
       />
     );
-  }
+  },
 );
 Input.displayName = 'Input';
 
@@ -42,7 +42,7 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
         {children}
       </select>
     );
-  }
+  },
 );
 Select.displayName = 'Select';
 
@@ -67,7 +67,11 @@ export function FormField({
     <div className={`space-y-1.5 ${className}`}>
       <label htmlFor={htmlFor} className="block text-xs font-semibold text-slate-300">
         {label}
-        {required && <span className="text-rose-400 ml-1" aria-hidden="true">*</span>}
+        {required && (
+          <span className="text-rose-400 ml-1" aria-hidden="true">
+            *
+          </span>
+        )}
       </label>
       {children}
       {error ? (

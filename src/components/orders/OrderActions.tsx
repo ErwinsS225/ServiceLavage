@@ -38,19 +38,34 @@ export function OrderActions({
   return (
     <div className="flex items-center justify-end gap-1.5">
       {status === 'en_attente' && (
-        <button type="button" disabled={busy} className={buttonStyles({ variant: 'primary', size: 'sm' })} onClick={onStart}>
+        <button
+          type="button"
+          disabled={busy}
+          className={buttonStyles({ variant: 'primary', size: 'sm' })}
+          onClick={onStart}
+        >
           <Play className="w-3.5 h-3.5 mr-1" />
           Démarrer
         </button>
       )}
       {status === 'en_cours' && (
-        <button type="button" disabled={busy} className={buttonStyles({ variant: 'success', size: 'sm' })} onClick={onFinish}>
+        <button
+          type="button"
+          disabled={busy}
+          className={buttonStyles({ variant: 'success', size: 'sm' })}
+          onClick={onFinish}
+        >
           <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
           Terminer
         </button>
       )}
       {canCancel && (status === 'en_attente' || status === 'en_cours') && (
-        <button type="button" disabled={busy} className={buttonStyles({ variant: 'danger', size: 'sm' })} onClick={onCancel}>
+        <button
+          type="button"
+          disabled={busy}
+          className={buttonStyles({ variant: 'danger', size: 'sm' })}
+          onClick={onCancel}
+        >
           <XCircle className="w-3.5 h-3.5 mr-1" />
           Annuler
         </button>

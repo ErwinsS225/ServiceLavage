@@ -23,7 +23,13 @@ const THRESHOLD = { text: 4.5, large: 3, ui: 3 };
 
 function hexToRgb(value) {
   const hex = value.replace('#', '');
-  const full = hex.length === 3 ? hex.split('').map(c => c + c).join('') : hex;
+  const full =
+    hex.length === 3
+      ? hex
+          .split('')
+          .map(c => c + c)
+          .join('')
+      : hex;
   return [0, 2, 4].map(index => parseInt(full.slice(index, index + 2), 16));
 }
 
@@ -64,10 +70,14 @@ export const DARK = {
   brandPrimary: '#4f46e5',
   focusRing: '#a5b4fc',
   alert: {
-    infoText: '#7dd3fc', infoBg: [14, 165, 233, 0.1],
-    warningText: '#fcd34d', warningBg: [245, 158, 11, 0.1],
-    successText: '#6ee7b7', successBg: [16, 185, 129, 0.1],
-    errorText: '#fda4af', errorBg: [244, 63, 94, 0.1],
+    infoText: '#7dd3fc',
+    infoBg: [14, 165, 233, 0.1],
+    warningText: '#fcd34d',
+    warningBg: [245, 158, 11, 0.1],
+    successText: '#6ee7b7',
+    successBg: [16, 185, 129, 0.1],
+    errorText: '#fda4af',
+    errorBg: [244, 63, 94, 0.1],
   },
 };
 
@@ -82,10 +92,14 @@ export const LIGHT = {
   brandPrimary: '#4f46e5',
   focusRing: '#4f46e5',
   alert: {
-    infoText: '#1e40af', infoBg: '#eff6ff',
-    warningText: '#92400e', warningBg: '#fffbeb',
-    successText: '#065f46', successBg: '#ecfdf5',
-    errorText: '#9f1239', errorBg: '#fff1f2',
+    infoText: '#1e40af',
+    infoBg: '#eff6ff',
+    warningText: '#92400e',
+    warningBg: '#fffbeb',
+    successText: '#065f46',
+    successBg: '#ecfdf5',
+    errorText: '#9f1239',
+    errorBg: '#fff1f2',
   },
 };
 
@@ -115,7 +129,8 @@ export function pairs(theme) {
 function alertPairs(theme) {
   const t = theme.alert;
   const surface = hex(theme.card);
-  const resolve = value => (Array.isArray(value) ? over(hex(rgbHex(value[0], value[1], value[2])), surface, value[3]) : hex(value));
+  const resolve = value =>
+    Array.isArray(value) ? over(hex(rgbHex(value[0], value[1], value[2])), surface, value[3]) : hex(value);
   const result = [];
   for (const variant of ['info', 'warning', 'success', 'error']) {
     result.push({
@@ -135,7 +150,10 @@ function rgbHex(r, g, b) {
 export function audit() {
   const rows = [];
   const failures = [];
-  for (const [themeName, theme] of [['sombre', DARK], ['clair', LIGHT]]) {
+  for (const [themeName, theme] of [
+    ['sombre', DARK],
+    ['clair', LIGHT],
+  ]) {
     for (const pair of [...pairs(theme), ...alertPairs(theme)]) {
       // `pairs` décrit ses couleurs en hexadécimal (lisible, comparable à la
       // feuille de style) ; `alertPairs` renvoie déjà des triplets calculés
@@ -145,7 +163,8 @@ export function audit() {
       const threshold = THRESHOLD[pair.level];
       const pass = ratio >= threshold;
       rows.push({ theme: themeName, label: pair.label, ratio: Number(ratio.toFixed(2)), threshold, pass });
-      if (!pass) failures.push({ theme: themeName, label: pair.label, ratio: Number(ratio.toFixed(2)), threshold });
+      if (!pass)
+        failures.push({ theme: themeName, label: pair.label, ratio: Number(ratio.toFixed(2)), threshold });
     }
   }
   return { rows, failures };
@@ -162,7 +181,9 @@ if (import.meta.url === `file://${process.argv[1]}`) {
         console.log(`\n--- thème ${row.theme} ---`);
         lastTheme = row.theme;
       }
-      console.log(`${row.pass ? 'OK  ' : 'ÉCHEC'} ${row.ratio.toFixed(2).padStart(6)} / ${row.threshold}  ${row.label}`);
+      console.log(
+        `${row.pass ? 'OK  ' : 'ÉCHEC'} ${row.ratio.toFixed(2).padStart(6)} / ${row.threshold}  ${row.label}`,
+      );
     }
     console.log();
     if (failures.length === 0) console.log(`${rows.length} paires contrôlées, toutes conformes AA.`);

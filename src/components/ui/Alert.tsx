@@ -29,13 +29,7 @@ export interface AlertProps {
  * La couleur n'est jamais seule porteuse du sens : chaque variante a une icône
  * et, quand il y a un titre, un texte explicite.
  */
-export function Alert({
-  variant = 'info',
-  title,
-  children,
-  action,
-  className = '',
-}: AlertProps) {
+export function Alert({ variant = 'info', title, children, action, className = '' }: AlertProps) {
   const configs = {
     info: {
       role: 'status' as const,
@@ -45,18 +39,30 @@ export function Alert({
     warning: {
       // Un avertissement peut faire perdre du travail : il interrompt.
       role: 'alert' as const,
-      icon: <AlertTriangle className="w-4 h-4 text-[var(--alert-warning-icon)] shrink-0 mt-0.5" aria-hidden="true" />,
+      icon: (
+        <AlertTriangle
+          className="w-4 h-4 text-[var(--alert-warning-icon)] shrink-0 mt-0.5"
+          aria-hidden="true"
+        />
+      ),
       box: 'border-[var(--alert-warning-border)] bg-[var(--alert-warning-bg)] text-[var(--alert-warning-text)]',
     },
     success: {
       role: 'status' as const,
-      icon: <CheckCircle2 className="w-4 h-4 text-[var(--alert-success-icon)] shrink-0 mt-0.5" aria-hidden="true" />,
+      icon: (
+        <CheckCircle2
+          className="w-4 h-4 text-[var(--alert-success-icon)] shrink-0 mt-0.5"
+          aria-hidden="true"
+        />
+      ),
       box: 'border-[var(--alert-success-border)] bg-[var(--alert-success-bg)] text-[var(--alert-success-text)]',
     },
     error: {
       // Une erreur empêche d'avancer : elle interrompt.
       role: 'alert' as const,
-      icon: <AlertCircle className="w-4 h-4 text-[var(--alert-error-icon)] shrink-0 mt-0.5" aria-hidden="true" />,
+      icon: (
+        <AlertCircle className="w-4 h-4 text-[var(--alert-error-icon)] shrink-0 mt-0.5" aria-hidden="true" />
+      ),
       box: 'border-[var(--alert-error-border)] bg-[var(--alert-error-bg)] text-[var(--alert-error-text)]',
     },
   };

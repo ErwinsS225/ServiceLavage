@@ -6,8 +6,18 @@ import { useToastActions } from '../context/ToastContext';
 import { type CustomerRow, type StationClient } from '../lib/stationApi';
 import { useCreateCustomer, useCustomers, useUpdateCustomer } from '../hooks/useStationQueries';
 import {
-  Table, TableHeader, TableBody, TableHead, TableRow, TableCell,
-  buttonStyles, formControlStyles, FormField, Modal, Alert, EmptyState
+  Table,
+  TableHeader,
+  TableBody,
+  TableHead,
+  TableRow,
+  TableCell,
+  buttonStyles,
+  formControlStyles,
+  FormField,
+  Modal,
+  Alert,
+  EmptyState,
 } from './ui/designSystem';
 import { Plus, User, Phone, Edit2, RotateCw } from 'lucide-react';
 
@@ -24,7 +34,13 @@ import { Plus, User, Phone, Edit2, RotateCw } from 'lucide-react';
  * `station_customers` (le `station_id` passé à PostgREST ne fait que filtrer
  * ce que la politique autorise déjà).
  */
-export function StationCustomers({ stationId, client }: { stationId: string; client?: StationClient | null }) {
+export function StationCustomers({
+  stationId,
+  client,
+}: {
+  stationId: string;
+  client?: StationClient | null;
+}) {
   const customersQuery = useCustomers(stationId, client);
   const createMutation = useCreateCustomer(stationId, client);
   const updateMutation = useUpdateCustomer(stationId, client);
@@ -33,8 +49,12 @@ export function StationCustomers({ stationId, client }: { stationId: string; cli
   const customers = {
     data: customersQuery.data ?? [],
     loading: customersQuery.isPending,
-    error: customersQuery.error ? describeError(customersQuery.error, 'Impossible de charger les clients.') : '',
-    reload: () => { void customersQuery.refetch(); },
+    error: customersQuery.error
+      ? describeError(customersQuery.error, 'Impossible de charger les clients.')
+      : '',
+    reload: () => {
+      void customersQuery.refetch();
+    },
   };
 
   const [busy, setBusy] = useState(false);
@@ -93,7 +113,10 @@ export function StationCustomers({ stationId, client }: { stationId: string; cli
       // La mutation invalide la clé `customers` : la liste relue est celle du
       // serveur, pas une copie locale supposée identique.
       if (editing) {
-        await updateMutation.mutateAsync({ customerId: editing, changes: { name: cleanName, phone: cleanPhone } });
+        await updateMutation.mutateAsync({
+          customerId: editing,
+          changes: { name: cleanName, phone: cleanPhone },
+        });
       } else {
         await createMutation.mutateAsync({ name: cleanName, phone: cleanPhone });
       }
@@ -111,20 +134,30 @@ export function StationCustomers({ stationId, client }: { stationId: string; cli
   const error = formError || customers.error;
 
   return (
-    <section className="space-y-5 border-t border-[var(--border-subtle)] pt-6" aria-label="Clients de la station">
+    <section
+      className="space-y-5 border-t border-[var(--border-subtle)] pt-6"
+      aria-label="Clients de la station"
+    >
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-bold text-[var(--text-primary)] tracking-tight">Répertoire Clients</h2>
-          <p className="text-xs text-[var(--text-secondary)] mt-0.5">Clients enregistrés dans la station active (isolation multitenant Supabase)</p>
+          <p className="text-xs text-[var(--text-secondary)] mt-0.5">
+            Clients enregistrés dans la station active (isolation multitenant Supabase)
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <button
             type="button"
             className={buttonStyles({ variant: 'outline', size: 'sm' })}
-            onClick={() => { setFormError(''); customers.reload(); }}
+            onClick={() => {
+              setFormError('');
+              customers.reload();
+            }}
             disabled={customers.loading || busy}
           >
-            <RotateCw className={`w-3.5 h-3.5 mr-1.5 ${customers.loading ? 'animate-spin motion-safe-keep' : ''}`} />
+            <RotateCw
+              className={`w-3.5 h-3.5 mr-1.5 ${customers.loading ? 'animate-spin motion-safe-keep' : ''}`}
+            />
             Actualiser
           </button>
           <button
@@ -140,24 +173,26 @@ export function StationCustomers({ stationId, client }: { stationId: string; cli
       </div>
 
       {error && (
-        <Alert variant="error" action={
-          <button
-            type="button"
-            className="underline text-xs font-semibold text-rose-300"
-            onClick={() => { setFormError(''); customers.reload(); }}
-          >
-            Réessayer
-          </button>
-        }>
+        <Alert
+          variant="error"
+          action={
+            <button
+              type="button"
+              className="underline text-xs font-semibold text-rose-300"
+              onClick={() => {
+                setFormError('');
+                customers.reload();
+              }}
+            >
+              Réessayer
+            </button>
+          }
+        >
           {error}
         </Alert>
       )}
 
-      {message && (
-        <Alert variant="success">
-          {message}
-        </Alert>
-      )}
+      {message && <Alert variant="success">{message}</Alert>}
 
       {customers.loading ? (
         <div className="p-8 text-center text-sm text-[var(--text-secondary)] rounded-xl bg-[var(--surface-card)] border border-[var(--border-subtle)]">
@@ -182,7 +217,9 @@ export function StationCustomers({ stationId, client }: { stationId: string; cli
                     </div>
                     <div>
                       <span className="font-semibold text-[var(--text-primary)] block">{customer.name}</span>
-                      <span className="text-[11px] text-[var(--text-secondary)] font-mono">ID: {customer.id.slice(0, 8)}</span>
+                      <span className="text-[11px] text-[var(--text-secondary)] font-mono">
+                        ID: {customer.id.slice(0, 8)}
+                      </span>
                     </div>
                   </div>
                 </TableCell>
