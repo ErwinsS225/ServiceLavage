@@ -1,0 +1,1287 @@
+{
+  "_lisez_moi": "Instantané du catalogue PostgreSQL réellement déployé (projet LavAuto, avvkzliysacpyavmetsx), capturé via le connecteur Supabase le 2026-11-10. Sert de référence à tests/productionSchemaDrift.test.ts : le schéma produit par supabase/migrations doit rester identique à ce fichier. Aucun secret, aucune donnée métier.",
+  "_projet": {
+    "ref": "avvkzliysacpyavmetsx",
+    "nom": "LavAuto",
+    "region": "eu-west-2",
+    "postgres": "17.11.0.018"
+  },
+  "_capture": {
+    "date": "2026-11-10",
+    "methode": "connecteur Supabase (execute_query), catalogue public uniquement"
+  },
+  "_migrations_distantes": [
+    {
+      "version": "20261109121406",
+      "name": "owner_stations"
+    },
+    {
+      "version": "20261109122729",
+      "name": "station_customers"
+    },
+    {
+      "version": "20261109122929",
+      "name": "station_services"
+    },
+    {
+      "version": "20261109123327",
+      "name": "station_orders"
+    },
+    {
+      "version": "20261109130303",
+      "name": "order_idempotency"
+    },
+    {
+      "version": "20261109130602",
+      "name": "restrict_station_privileges"
+    },
+    {
+      "version": "20261109182442",
+      "name": "station_memberships"
+    },
+    {
+      "version": "20261109182456",
+      "name": "subscription_limits"
+    },
+    {
+      "version": "20261109182509",
+      "name": "station_inventory"
+    },
+    {
+      "version": "20261109182534",
+      "name": "station_role_permissions"
+    },
+    {
+      "version": "20261109184205",
+      "name": "revoke_legacy_order_rpc"
+    }
+  ],
+  "_migrations_locales": [
+    {
+      "fichier": "20261109121406_owner_stations.sql",
+      "version_distante": "20261109121406",
+      "identique": true
+    },
+    {
+      "fichier": "20261109122729_station_customers.sql",
+      "version_distante": "20261109122729",
+      "identique": true
+    },
+    {
+      "fichier": "20261109122929_station_services.sql",
+      "version_distante": "20261109122929",
+      "identique": true
+    },
+    {
+      "fichier": "20261109123327_station_orders.sql",
+      "version_distante": "20261109123327",
+      "identique": true
+    },
+    {
+      "fichier": "20261109130303_order_idempotency.sql",
+      "version_distante": "20261109130303",
+      "identique": true
+    },
+    {
+      "fichier": "20261109130602_restrict_station_privileges.sql",
+      "version_distante": "20261109130602",
+      "identique": true
+    },
+    {
+      "fichier": "20261109140000_station_memberships.sql",
+      "version_distante": "20261109182442",
+      "identique": false
+    },
+    {
+      "fichier": "20261109141000_subscription_limits.sql",
+      "version_distante": "20261109182456",
+      "identique": false
+    },
+    {
+      "fichier": "20261109142000_station_inventory.sql",
+      "version_distante": "20261109182509",
+      "identique": false
+    },
+    {
+      "fichier": "20261109150000_station_role_permissions.sql",
+      "version_distante": "20261109182534",
+      "identique": false
+    },
+    {
+      "fichier": "20261109160000_revoke_legacy_order_rpc.sql",
+      "version_distante": "20261109184205",
+      "identique": false
+    }
+  ],
+  "schema": {
+    "tables": [
+      {
+        "name": "owner_subscriptions",
+        "rls": true
+      },
+      {
+        "name": "station_customers",
+        "rls": true
+      },
+      {
+        "name": "station_inventory",
+        "rls": true
+      },
+      {
+        "name": "station_inventory_operations",
+        "rls": true
+      },
+      {
+        "name": "station_invitations",
+        "rls": true
+      },
+      {
+        "name": "station_memberships",
+        "rls": true
+      },
+      {
+        "name": "station_order_assignments",
+        "rls": true
+      },
+      {
+        "name": "station_order_items",
+        "rls": true
+      },
+      {
+        "name": "station_order_requests",
+        "rls": true
+      },
+      {
+        "name": "station_orders",
+        "rls": true
+      },
+      {
+        "name": "station_services",
+        "rls": true
+      },
+      {
+        "name": "stations",
+        "rls": true
+      }
+    ],
+    "columns": [
+      {
+        "table": "owner_subscriptions",
+        "name": "owner_id",
+        "type": "uuid",
+        "nullable": "NO"
+      },
+      {
+        "table": "owner_subscriptions",
+        "name": "plan",
+        "type": "text",
+        "nullable": "NO"
+      },
+      {
+        "table": "owner_subscriptions",
+        "name": "updated_at",
+        "type": "timestamp with time zone",
+        "nullable": "NO"
+      },
+      {
+        "table": "station_customers",
+        "name": "created_at",
+        "type": "timestamp with time zone",
+        "nullable": "NO"
+      },
+      {
+        "table": "station_customers",
+        "name": "id",
+        "type": "uuid",
+        "nullable": "NO"
+      },
+      {
+        "table": "station_customers",
+        "name": "name",
+        "type": "text",
+        "nullable": "NO"
+      },
+      {
+        "table": "station_customers",
+        "name": "phone",
+        "type": "text",
+        "nullable": "NO"
+      },
+      {
+        "table": "station_customers",
+        "name": "station_id",
+        "type": "uuid",
+        "nullable": "NO"
+      },
+      {
+        "table": "station_inventory",
+        "name": "created_at",
+        "type": "timestamp with time zone",
+        "nullable": "NO"
+      },
+      {
+        "table": "station_inventory",
+        "name": "id",
+        "type": "uuid",
+        "nullable": "NO"
+      },
+      {
+        "table": "station_inventory",
+        "name": "min_threshold",
+        "type": "integer",
+        "nullable": "NO"
+      },
+      {
+        "table": "station_inventory",
+        "name": "name",
+        "type": "text",
+        "nullable": "NO"
+      },
+      {
+        "table": "station_inventory",
+        "name": "quantity",
+        "type": "integer",
+        "nullable": "NO"
+      },
+      {
+        "table": "station_inventory",
+        "name": "station_id",
+        "type": "uuid",
+        "nullable": "NO"
+      },
+      {
+        "table": "station_inventory",
+        "name": "unit",
+        "type": "text",
+        "nullable": "NO"
+      },
+      {
+        "table": "station_inventory_operations",
+        "name": "created_at",
+        "type": "timestamp with time zone",
+        "nullable": "NO"
+      },
+      {
+        "table": "station_inventory_operations",
+        "name": "item_id",
+        "type": "uuid",
+        "nullable": "NO"
+      },
+      {
+        "table": "station_inventory_operations",
+        "name": "owner_id",
+        "type": "uuid",
+        "nullable": "NO"
+      },
+      {
+        "table": "station_inventory_operations",
+        "name": "payload",
+        "type": "jsonb",
+        "nullable": "NO"
+      },
+      {
+        "table": "station_inventory_operations",
+        "name": "request_id",
+        "type": "uuid",
+        "nullable": "NO"
+      },
+      {
+        "table": "station_inventory_operations",
+        "name": "resulting_quantity",
+        "type": "integer",
+        "nullable": "NO"
+      },
+      {
+        "table": "station_inventory_operations",
+        "name": "station_id",
+        "type": "uuid",
+        "nullable": "NO"
+      },
+      {
+        "table": "station_invitations",
+        "name": "accepted_at",
+        "type": "timestamp with time zone",
+        "nullable": "YES"
+      },
+      {
+        "table": "station_invitations",
+        "name": "cancelled_at",
+        "type": "timestamp with time zone",
+        "nullable": "YES"
+      },
+      {
+        "table": "station_invitations",
+        "name": "created_at",
+        "type": "timestamp with time zone",
+        "nullable": "NO"
+      },
+      {
+        "table": "station_invitations",
+        "name": "email",
+        "type": "text",
+        "nullable": "NO"
+      },
+      {
+        "table": "station_invitations",
+        "name": "expires_at",
+        "type": "timestamp with time zone",
+        "nullable": "NO"
+      },
+      {
+        "table": "station_invitations",
+        "name": "id",
+        "type": "uuid",
+        "nullable": "NO"
+      },
+      {
+        "table": "station_invitations",
+        "name": "role",
+        "type": "text",
+        "nullable": "NO"
+      },
+      {
+        "table": "station_invitations",
+        "name": "station_id",
+        "type": "uuid",
+        "nullable": "NO"
+      },
+      {
+        "table": "station_memberships",
+        "name": "created_at",
+        "type": "timestamp with time zone",
+        "nullable": "NO"
+      },
+      {
+        "table": "station_memberships",
+        "name": "revoked_at",
+        "type": "timestamp with time zone",
+        "nullable": "YES"
+      },
+      {
+        "table": "station_memberships",
+        "name": "role",
+        "type": "text",
+        "nullable": "NO"
+      },
+      {
+        "table": "station_memberships",
+        "name": "station_id",
+        "type": "uuid",
+        "nullable": "NO"
+      },
+      {
+        "table": "station_memberships",
+        "name": "user_id",
+        "type": "uuid",
+        "nullable": "NO"
+      },
+      {
+        "table": "station_order_assignments",
+        "name": "assigned_by",
+        "type": "uuid",
+        "nullable": "NO"
+      },
+      {
+        "table": "station_order_assignments",
+        "name": "created_at",
+        "type": "timestamp with time zone",
+        "nullable": "NO"
+      },
+      {
+        "table": "station_order_assignments",
+        "name": "order_id",
+        "type": "uuid",
+        "nullable": "NO"
+      },
+      {
+        "table": "station_order_assignments",
+        "name": "station_id",
+        "type": "uuid",
+        "nullable": "NO"
+      },
+      {
+        "table": "station_order_assignments",
+        "name": "user_id",
+        "type": "uuid",
+        "nullable": "NO"
+      },
+      {
+        "table": "station_order_items",
+        "name": "id",
+        "type": "uuid",
+        "nullable": "NO"
+      },
+      {
+        "table": "station_order_items",
+        "name": "order_id",
+        "type": "uuid",
+        "nullable": "NO"
+      },
+      {
+        "table": "station_order_items",
+        "name": "price_xof",
+        "type": "integer",
+        "nullable": "NO"
+      },
+      {
+        "table": "station_order_items",
+        "name": "service_id",
+        "type": "uuid",
+        "nullable": "NO"
+      },
+      {
+        "table": "station_order_items",
+        "name": "service_name",
+        "type": "text",
+        "nullable": "NO"
+      },
+      {
+        "table": "station_order_requests",
+        "name": "created_at",
+        "type": "timestamp with time zone",
+        "nullable": "NO"
+      },
+      {
+        "table": "station_order_requests",
+        "name": "order_id",
+        "type": "uuid",
+        "nullable": "NO"
+      },
+      {
+        "table": "station_order_requests",
+        "name": "owner_id",
+        "type": "uuid",
+        "nullable": "NO"
+      },
+      {
+        "table": "station_order_requests",
+        "name": "payload",
+        "type": "jsonb",
+        "nullable": "NO"
+      },
+      {
+        "table": "station_order_requests",
+        "name": "request_id",
+        "type": "uuid",
+        "nullable": "NO"
+      },
+      {
+        "table": "station_orders",
+        "name": "created_at",
+        "type": "timestamp with time zone",
+        "nullable": "NO"
+      },
+      {
+        "table": "station_orders",
+        "name": "customer_id",
+        "type": "uuid",
+        "nullable": "YES"
+      },
+      {
+        "table": "station_orders",
+        "name": "id",
+        "type": "uuid",
+        "nullable": "NO"
+      },
+      {
+        "table": "station_orders",
+        "name": "plate_number",
+        "type": "text",
+        "nullable": "YES"
+      },
+      {
+        "table": "station_orders",
+        "name": "station_id",
+        "type": "uuid",
+        "nullable": "NO"
+      },
+      {
+        "table": "station_orders",
+        "name": "status",
+        "type": "text",
+        "nullable": "NO"
+      },
+      {
+        "table": "station_orders",
+        "name": "total_xof",
+        "type": "integer",
+        "nullable": "NO"
+      },
+      {
+        "table": "station_orders",
+        "name": "vehicle_info",
+        "type": "text",
+        "nullable": "NO"
+      },
+      {
+        "table": "station_services",
+        "name": "created_at",
+        "type": "timestamp with time zone",
+        "nullable": "NO"
+      },
+      {
+        "table": "station_services",
+        "name": "duration_minutes",
+        "type": "integer",
+        "nullable": "NO"
+      },
+      {
+        "table": "station_services",
+        "name": "id",
+        "type": "uuid",
+        "nullable": "NO"
+      },
+      {
+        "table": "station_services",
+        "name": "is_active",
+        "type": "boolean",
+        "nullable": "NO"
+      },
+      {
+        "table": "station_services",
+        "name": "name",
+        "type": "text",
+        "nullable": "NO"
+      },
+      {
+        "table": "station_services",
+        "name": "price_xof",
+        "type": "integer",
+        "nullable": "NO"
+      },
+      {
+        "table": "station_services",
+        "name": "station_id",
+        "type": "uuid",
+        "nullable": "NO"
+      },
+      {
+        "table": "stations",
+        "name": "created_at",
+        "type": "timestamp with time zone",
+        "nullable": "NO"
+      },
+      {
+        "table": "stations",
+        "name": "id",
+        "type": "uuid",
+        "nullable": "NO"
+      },
+      {
+        "table": "stations",
+        "name": "name",
+        "type": "text",
+        "nullable": "NO"
+      },
+      {
+        "table": "stations",
+        "name": "owner_id",
+        "type": "uuid",
+        "nullable": "NO"
+      }
+    ],
+    "policies": [
+      {
+        "table": "owner_subscriptions",
+        "name": "Owners read their subscription",
+        "cmd": "SELECT",
+        "roles": "{authenticated}"
+      },
+      {
+        "table": "station_customers",
+        "name": "Managers and cashiers create customers",
+        "cmd": "INSERT",
+        "roles": "{authenticated}"
+      },
+      {
+        "table": "station_customers",
+        "name": "Managers and cashiers read customers",
+        "cmd": "SELECT",
+        "roles": "{authenticated}"
+      },
+      {
+        "table": "station_customers",
+        "name": "Managers and cashiers update customers",
+        "cmd": "UPDATE",
+        "roles": "{authenticated}"
+      },
+      {
+        "table": "station_customers",
+        "name": "Owners create customers",
+        "cmd": "INSERT",
+        "roles": "{authenticated}"
+      },
+      {
+        "table": "station_customers",
+        "name": "Owners read customers",
+        "cmd": "SELECT",
+        "roles": "{authenticated}"
+      },
+      {
+        "table": "station_customers",
+        "name": "Owners update customers",
+        "cmd": "UPDATE",
+        "roles": "{authenticated}"
+      },
+      {
+        "table": "station_inventory",
+        "name": "Managers read station inventory",
+        "cmd": "SELECT",
+        "roles": "{authenticated}"
+      },
+      {
+        "table": "station_inventory",
+        "name": "Owners read station inventory",
+        "cmd": "SELECT",
+        "roles": "{authenticated}"
+      },
+      {
+        "table": "station_inventory_operations",
+        "name": "Managers read inventory operation log",
+        "cmd": "SELECT",
+        "roles": "{authenticated}"
+      },
+      {
+        "table": "station_inventory_operations",
+        "name": "Owners read stock operations",
+        "cmd": "SELECT",
+        "roles": "{authenticated}"
+      },
+      {
+        "table": "station_invitations",
+        "name": "Owners read invitations",
+        "cmd": "SELECT",
+        "roles": "{authenticated}"
+      },
+      {
+        "table": "station_memberships",
+        "name": "Managers read station roster",
+        "cmd": "SELECT",
+        "roles": "{authenticated}"
+      },
+      {
+        "table": "station_memberships",
+        "name": "Owners and members read memberships",
+        "cmd": "SELECT",
+        "roles": "{authenticated}"
+      },
+      {
+        "table": "station_order_assignments",
+        "name": "Managers and assignees read assignments",
+        "cmd": "SELECT",
+        "roles": "{authenticated}"
+      },
+      {
+        "table": "station_order_items",
+        "name": "Managers and assigned washers read order items",
+        "cmd": "SELECT",
+        "roles": "{authenticated}"
+      },
+      {
+        "table": "station_order_items",
+        "name": "Owners read order items",
+        "cmd": "SELECT",
+        "roles": "{authenticated}"
+      },
+      {
+        "table": "station_orders",
+        "name": "Managers and assigned washers read orders",
+        "cmd": "SELECT",
+        "roles": "{authenticated}"
+      },
+      {
+        "table": "station_orders",
+        "name": "Owners read orders",
+        "cmd": "SELECT",
+        "roles": "{authenticated}"
+      },
+      {
+        "table": "station_services",
+        "name": "Managers create services",
+        "cmd": "INSERT",
+        "roles": "{authenticated}"
+      },
+      {
+        "table": "station_services",
+        "name": "Managers read services",
+        "cmd": "SELECT",
+        "roles": "{authenticated}"
+      },
+      {
+        "table": "station_services",
+        "name": "Managers update services",
+        "cmd": "UPDATE",
+        "roles": "{authenticated}"
+      },
+      {
+        "table": "station_services",
+        "name": "Owners create services",
+        "cmd": "INSERT",
+        "roles": "{authenticated}"
+      },
+      {
+        "table": "station_services",
+        "name": "Owners read services",
+        "cmd": "SELECT",
+        "roles": "{authenticated}"
+      },
+      {
+        "table": "station_services",
+        "name": "Owners update services",
+        "cmd": "UPDATE",
+        "roles": "{authenticated}"
+      },
+      {
+        "table": "stations",
+        "name": "Members read their station",
+        "cmd": "SELECT",
+        "roles": "{authenticated}"
+      },
+      {
+        "table": "stations",
+        "name": "Owners can create stations",
+        "cmd": "INSERT",
+        "roles": "{authenticated}"
+      },
+      {
+        "table": "stations",
+        "name": "Owners can read their stations",
+        "cmd": "SELECT",
+        "roles": "{authenticated}"
+      },
+      {
+        "table": "stations",
+        "name": "Owners can update their stations",
+        "cmd": "UPDATE",
+        "roles": "{authenticated}"
+      }
+    ],
+    "functions": [
+      {
+        "name": "accept_station_invitation",
+        "args": "p_invitation_id uuid",
+        "secdef": true
+      },
+      {
+        "name": "apply_inventory_operation",
+        "args": "p_request_id uuid, p_station_id uuid, p_item_id uuid, p_name text, p_unit text, p_quantity integer, p_min_threshold integer",
+        "secdef": true
+      },
+      {
+        "name": "assign_station_order",
+        "args": "p_order_id uuid, p_user_id uuid",
+        "secdef": true
+      },
+      {
+        "name": "cancel_station_invitation",
+        "args": "p_invitation_id uuid",
+        "secdef": true
+      },
+      {
+        "name": "create_station_invitation",
+        "args": "p_station_id uuid, p_email text, p_role text",
+        "secdef": true
+      },
+      {
+        "name": "create_station_order",
+        "args": "p_station_id uuid, p_customer_id uuid, p_vehicle_info text, p_plate_number text, p_service_ids uuid[]",
+        "secdef": true
+      },
+      {
+        "name": "create_station_order_idempotent",
+        "args": "p_request_id uuid, p_station_id uuid, p_customer_id uuid, p_vehicle_info text, p_plate_number text, p_service_ids uuid[]",
+        "secdef": true
+      },
+      {
+        "name": "current_station_role",
+        "args": "p_station_id uuid",
+        "secdef": true
+      },
+      {
+        "name": "enforce_monthly_order_limit",
+        "args": "",
+        "secdef": true
+      },
+      {
+        "name": "enforce_station_limit",
+        "args": "",
+        "secdef": true
+      },
+      {
+        "name": "lock_subscription_owner",
+        "args": "",
+        "secdef": true
+      },
+      {
+        "name": "my_subscription",
+        "args": "",
+        "secdef": true
+      },
+      {
+        "name": "revoke_station_membership",
+        "args": "p_station_id uuid, p_user_id uuid",
+        "secdef": true
+      },
+      {
+        "name": "subscription_limits",
+        "args": "p_owner_id uuid",
+        "secdef": true
+      },
+      {
+        "name": "transition_station_order",
+        "args": "p_order_id uuid, p_status text",
+        "secdef": true
+      },
+      {
+        "name": "unassign_station_order",
+        "args": "p_order_id uuid, p_user_id uuid",
+        "secdef": true
+      }
+    ],
+    "triggers": [
+      {
+        "table": "owner_subscriptions",
+        "name": "owner_subscription_lock"
+      },
+      {
+        "table": "station_orders",
+        "name": "enforce_monthly_order_limit"
+      },
+      {
+        "table": "stations",
+        "name": "enforce_station_limit"
+      }
+    ],
+    "indexes": [
+      {
+        "table": "owner_subscriptions",
+        "name": "owner_subscriptions_pkey",
+        "columns": "owner_id"
+      },
+      {
+        "table": "station_customers",
+        "name": "station_customers_pkey",
+        "columns": "id"
+      },
+      {
+        "table": "station_customers",
+        "name": "station_customers_station_created_idx",
+        "columns": "station_id, created_at DESC"
+      },
+      {
+        "table": "station_inventory",
+        "name": "station_inventory_pkey",
+        "columns": "id"
+      },
+      {
+        "table": "station_inventory",
+        "name": "station_inventory_station_name_idx",
+        "columns": "station_id, name"
+      },
+      {
+        "table": "station_inventory_operations",
+        "name": "station_inventory_operations_pkey",
+        "columns": "owner_id, request_id"
+      },
+      {
+        "table": "station_invitations",
+        "name": "station_invitations_pkey",
+        "columns": "id"
+      },
+      {
+        "table": "station_invitations",
+        "name": "station_invitations_station_idx",
+        "columns": "station_id, created_at DESC"
+      },
+      {
+        "table": "station_memberships",
+        "name": "station_memberships_pkey",
+        "columns": "station_id, user_id"
+      },
+      {
+        "table": "station_memberships",
+        "name": "station_memberships_user_idx",
+        "columns": "user_id"
+      },
+      {
+        "table": "station_order_assignments",
+        "name": "station_order_assignments_pkey",
+        "columns": "order_id, user_id"
+      },
+      {
+        "table": "station_order_assignments",
+        "name": "station_order_assignments_user_idx",
+        "columns": "user_id, station_id"
+      },
+      {
+        "table": "station_order_items",
+        "name": "station_order_items_order_id_service_id_key",
+        "columns": "order_id, service_id"
+      },
+      {
+        "table": "station_order_items",
+        "name": "station_order_items_pkey",
+        "columns": "id"
+      },
+      {
+        "table": "station_order_requests",
+        "name": "station_order_requests_pkey",
+        "columns": "owner_id, request_id"
+      },
+      {
+        "table": "station_orders",
+        "name": "station_orders_pkey",
+        "columns": "id"
+      },
+      {
+        "table": "station_orders",
+        "name": "station_orders_station_created_idx",
+        "columns": "station_id, created_at DESC"
+      },
+      {
+        "table": "station_services",
+        "name": "station_services_pkey",
+        "columns": "id"
+      },
+      {
+        "table": "station_services",
+        "name": "station_services_station_created_idx",
+        "columns": "station_id, created_at DESC"
+      },
+      {
+        "table": "stations",
+        "name": "stations_owner_id_idx",
+        "columns": "owner_id"
+      },
+      {
+        "table": "stations",
+        "name": "stations_pkey",
+        "columns": "id"
+      }
+    ],
+    "constraints": [
+      {
+        "table": "owner_subscriptions",
+        "name": "owner_subscriptions_owner_id_fkey",
+        "type": "f"
+      },
+      {
+        "table": "owner_subscriptions",
+        "name": "owner_subscriptions_pkey",
+        "type": "p"
+      },
+      {
+        "table": "owner_subscriptions",
+        "name": "owner_subscriptions_plan_check",
+        "type": "c"
+      },
+      {
+        "table": "station_customers",
+        "name": "station_customers_name_check",
+        "type": "c"
+      },
+      {
+        "table": "station_customers",
+        "name": "station_customers_phone_check",
+        "type": "c"
+      },
+      {
+        "table": "station_customers",
+        "name": "station_customers_pkey",
+        "type": "p"
+      },
+      {
+        "table": "station_customers",
+        "name": "station_customers_station_id_fkey",
+        "type": "f"
+      },
+      {
+        "table": "station_inventory",
+        "name": "station_inventory_min_threshold_check",
+        "type": "c"
+      },
+      {
+        "table": "station_inventory",
+        "name": "station_inventory_name_check",
+        "type": "c"
+      },
+      {
+        "table": "station_inventory",
+        "name": "station_inventory_pkey",
+        "type": "p"
+      },
+      {
+        "table": "station_inventory",
+        "name": "station_inventory_quantity_check",
+        "type": "c"
+      },
+      {
+        "table": "station_inventory",
+        "name": "station_inventory_station_id_fkey",
+        "type": "f"
+      },
+      {
+        "table": "station_inventory",
+        "name": "station_inventory_unit_check",
+        "type": "c"
+      },
+      {
+        "table": "station_inventory_operations",
+        "name": "station_inventory_operations_item_id_fkey",
+        "type": "f"
+      },
+      {
+        "table": "station_inventory_operations",
+        "name": "station_inventory_operations_owner_id_fkey",
+        "type": "f"
+      },
+      {
+        "table": "station_inventory_operations",
+        "name": "station_inventory_operations_pkey",
+        "type": "p"
+      },
+      {
+        "table": "station_inventory_operations",
+        "name": "station_inventory_operations_station_id_fkey",
+        "type": "f"
+      },
+      {
+        "table": "station_invitations",
+        "name": "station_invitations_email_check",
+        "type": "c"
+      },
+      {
+        "table": "station_invitations",
+        "name": "station_invitations_pkey",
+        "type": "p"
+      },
+      {
+        "table": "station_invitations",
+        "name": "station_invitations_role_check",
+        "type": "c"
+      },
+      {
+        "table": "station_invitations",
+        "name": "station_invitations_station_id_fkey",
+        "type": "f"
+      },
+      {
+        "table": "station_memberships",
+        "name": "station_memberships_pkey",
+        "type": "p"
+      },
+      {
+        "table": "station_memberships",
+        "name": "station_memberships_role_check",
+        "type": "c"
+      },
+      {
+        "table": "station_memberships",
+        "name": "station_memberships_station_id_fkey",
+        "type": "f"
+      },
+      {
+        "table": "station_memberships",
+        "name": "station_memberships_user_id_fkey",
+        "type": "f"
+      },
+      {
+        "table": "station_order_assignments",
+        "name": "station_order_assignments_assigned_by_fkey",
+        "type": "f"
+      },
+      {
+        "table": "station_order_assignments",
+        "name": "station_order_assignments_order_id_fkey",
+        "type": "f"
+      },
+      {
+        "table": "station_order_assignments",
+        "name": "station_order_assignments_pkey",
+        "type": "p"
+      },
+      {
+        "table": "station_order_assignments",
+        "name": "station_order_assignments_station_id_fkey",
+        "type": "f"
+      },
+      {
+        "table": "station_order_assignments",
+        "name": "station_order_assignments_user_id_fkey",
+        "type": "f"
+      },
+      {
+        "table": "station_order_items",
+        "name": "station_order_items_order_id_fkey",
+        "type": "f"
+      },
+      {
+        "table": "station_order_items",
+        "name": "station_order_items_order_id_service_id_key",
+        "type": "u"
+      },
+      {
+        "table": "station_order_items",
+        "name": "station_order_items_pkey",
+        "type": "p"
+      },
+      {
+        "table": "station_order_items",
+        "name": "station_order_items_price_xof_check",
+        "type": "c"
+      },
+      {
+        "table": "station_order_items",
+        "name": "station_order_items_service_id_fkey",
+        "type": "f"
+      },
+      {
+        "table": "station_order_requests",
+        "name": "station_order_requests_order_id_fkey",
+        "type": "f"
+      },
+      {
+        "table": "station_order_requests",
+        "name": "station_order_requests_owner_id_fkey",
+        "type": "f"
+      },
+      {
+        "table": "station_order_requests",
+        "name": "station_order_requests_pkey",
+        "type": "p"
+      },
+      {
+        "table": "station_orders",
+        "name": "station_orders_customer_id_fkey",
+        "type": "f"
+      },
+      {
+        "table": "station_orders",
+        "name": "station_orders_pkey",
+        "type": "p"
+      },
+      {
+        "table": "station_orders",
+        "name": "station_orders_plate_number_check",
+        "type": "c"
+      },
+      {
+        "table": "station_orders",
+        "name": "station_orders_station_id_fkey",
+        "type": "f"
+      },
+      {
+        "table": "station_orders",
+        "name": "station_orders_status_check",
+        "type": "c"
+      },
+      {
+        "table": "station_orders",
+        "name": "station_orders_total_xof_check",
+        "type": "c"
+      },
+      {
+        "table": "station_orders",
+        "name": "station_orders_vehicle_info_check",
+        "type": "c"
+      },
+      {
+        "table": "station_services",
+        "name": "station_services_duration_minutes_check",
+        "type": "c"
+      },
+      {
+        "table": "station_services",
+        "name": "station_services_name_check",
+        "type": "c"
+      },
+      {
+        "table": "station_services",
+        "name": "station_services_pkey",
+        "type": "p"
+      },
+      {
+        "table": "station_services",
+        "name": "station_services_price_xof_check",
+        "type": "c"
+      },
+      {
+        "table": "station_services",
+        "name": "station_services_station_id_fkey",
+        "type": "f"
+      },
+      {
+        "table": "stations",
+        "name": "stations_name_check",
+        "type": "c"
+      },
+      {
+        "table": "stations",
+        "name": "stations_owner_id_fkey",
+        "type": "f"
+      },
+      {
+        "table": "stations",
+        "name": "stations_pkey",
+        "type": "p"
+      }
+    ],
+    "grants": [
+      {
+        "table": "owner_subscriptions",
+        "grantee": "authenticated",
+        "privs": "SELECT"
+      },
+      {
+        "table": "station_customers",
+        "grantee": "authenticated",
+        "privs": "INSERT,SELECT"
+      },
+      {
+        "table": "station_inventory",
+        "grantee": "authenticated",
+        "privs": "SELECT"
+      },
+      {
+        "table": "station_inventory_operations",
+        "grantee": "authenticated",
+        "privs": "SELECT"
+      },
+      {
+        "table": "station_invitations",
+        "grantee": "authenticated",
+        "privs": "SELECT"
+      },
+      {
+        "table": "station_memberships",
+        "grantee": "authenticated",
+        "privs": "SELECT"
+      },
+      {
+        "table": "station_order_assignments",
+        "grantee": "authenticated",
+        "privs": "SELECT"
+      },
+      {
+        "table": "station_order_items",
+        "grantee": "authenticated",
+        "privs": "SELECT"
+      },
+      {
+        "table": "station_orders",
+        "grantee": "authenticated",
+        "privs": "SELECT"
+      },
+      {
+        "table": "station_services",
+        "grantee": "authenticated",
+        "privs": "INSERT,SELECT"
+      },
+      {
+        "table": "stations",
+        "grantee": "authenticated",
+        "privs": "SELECT"
+      }
+    ]
+  }
+}

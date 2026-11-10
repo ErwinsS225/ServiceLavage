@@ -16,7 +16,7 @@ configuration Auth et du dernier run CI.
 | Sécurité (RLS / RPC / privilèges) | **A−** | Aucune faille détectée ; écritures exclusivement serveur, `SECURITY DEFINER`, `search_path = ''`. |
 | Modèle de données | **A−** | Contraintes fortes, index corrects, idempotence transactionnelle, prix figés. |
 | Qualité du code actif | **B** | Typé, défensif, mais quatre écrans affichaient des chiffres inventés. |
-| Fiabilité / tests | **A−** | 107 tests verts (dont 32 ajoutés en deuxième passe) ; 1 test d'intégration toujours ignoré ; aucun test de bout en bout. |
+| Fiabilité / tests | **A−** | 115 tests verts (dont 32 en deuxième passe, 8 sur l'état de la base) ; 1 test d'intégration toujours ignoré ; aucun test de bout en bout. |
 | Performance | **C+** | `jsPDF + html2canvas` (600 kB) étaient chargés pour tous ; correctif appliqué → −68 % sur le bundle initial. |
 | Produit livré vs promis | **C** | Quotas, rôles et invitations sont réellement appliqués ; caisse, paiements, dépenses et exports Excel manquent. |
 | Documentation | **B+** | Riche et honnête, mais plusieurs affirmations étaient périmées (corrigées). |
@@ -50,7 +50,7 @@ prend des décisions commerciales sur ces chiffres.
 npm ci                    → 166 paquets, lockfile cohérent
 npm run lint (tsc)        → 0 erreur
 npm run check:reachability→ 43 fichiers atteignables, 0 inutilisé
-npm test                  → 108 tests : 107 passés, 0 échec, 1 ignoré (opt-in Supabase local)
+npm test                  → 116 tests : 115 passés, 0 échec, 1 ignoré (opt-in Supabase local)
 npm run build             → OK ; chunk initial 531 kB (149 kB gzip) au lieu de 1 142 kB (330 kB)
 node --check dist/sw.js   → OK
 npm audit                 → 0 vulnérabilité
@@ -93,6 +93,50 @@ Le QR est un **bitmap figé** (`src/lib/receiptQrBitmap.ts`, 608 caractères bas
 plutôt qu'une dépendance : `qrcode-generator` reste une `devDependency` utilisée par
 `scripts/generateReceiptQr.mjs` et par les tests, le bundle navigateur ne bouge pas
 (chunk `ReceiptModal` : 12,85 kB).
+
+---
+
+## 1 bis. État de la base cible, vérifié le 10 novembre 2026 (P0)
+
+**Rien n'a été déployé ni modifié.** Cette section consigne une vérification en
+lecture seule ; elle remplace les constats du rapport du 9 novembre, désormais
+marqué historique.
+
+| Contrôle | Résultat |
+| --- | --- |
+| Projet | LavAuto, ref `avvkzliysacpyavmetsx`, région `eu-west-2`, PostgreSQL 17.11 |
+| Historique distant (`list_migrations`) | **11 migrations**, `20261109121406` → `20261109184205` |
+| Catalogue `public` | 12 tables (toutes en RLS), 69 colonnes, 29 politiques, 16 fonctions, 3 déclencheurs, 21 index, 53 contraintes nommées, 11 privilèges `authenticated` |
+| Schéma dépôt ↔ production | **identique objet par objet** (tables, colonnes, politiques, fonctions, déclencheurs, index, contraintes, privilèges) |
+| Quotas | 3 déclencheurs présents (`enforce_station_limit`, `enforce_monthly_order_limit`, `owner_subscription_lock`) |
+| Écritures `authenticated` | `SELECT` partout, `INSERT`/`UPDATE` sur `station_customers`, `INSERT` sur `station_services` ; prestations via fonctions `SECURITY DEFINER` |
+| Volumétrie | 2 stations (CocoWash, Coco&Wash), 2 comptes, 1 abonnement `pro`, **0 prestation, 0 client, 0 service, 0 article** |
+| Auth | `site_url = http://localhost:3000`, liste blanche `localhost` + `https://3000-*.e2b.app` → cohérent pour le développement et les aperçus, mais **aucune URL de production** : les liens de récupération pointeront sur `localhost` tant qu'un domaine n'est pas choisi (voir § 3.2) |
+
+**Conclusion : il n'y a rien à appliquer.** Le seul écart est un écart de
+**versions**, pas de schéma : les cinq dernières migrations ont été appliquées
+par le connecteur, qui horodate à l'exécution. `supabase db push` les croirait
+« en attente » et rejouerait du SQL déjà présent — c'est la seule raison de ne
+pas le lancer. La réconciliation se fait par `supabase migration repair`
+(aucun SQL), **après** avoir prouvé l'identité des schémas.
+
+**Garde-fou ajouté** pour que cet état ne dérive pas silencieusement :
+
+* `docs/sauvegardes/prod-schema-2026-11-10.json` — instantané du catalogue réel
+  (aucun secret, aucune donnée métier) + correspondance entre les 11 fichiers
+  locaux et les 11 versions distantes ;
+* `docs/sauvegardes/2026-11-10-avant-nouvelle-migration.json` — sauvegarde
+  logique des lignes existantes, exigée avant toute future migration ;
+* `scripts/dumpLocalSchema.ts` — rejoue les migrations dans PGlite et produit le
+  même catalogue normalisé ;
+* `tests/productionSchemaDrift.test.ts` (4 tests) — échoue si une migration
+  appliquée est éditée, si une nouvelle migration part en production sans être
+  déployée, ou si un contrôle du runbook (RLS, quotas, privilèges d'écriture)
+  n'est plus satisfait.
+
+**Règle rappelée dans le runbook** : aucune migration appliquée n'est modifiée ;
+toute correction est une **nouvelle** migration additive, testée, précédée d'une
+sauvegarde logique.
 
 ---
 
@@ -149,6 +193,7 @@ par des données réelles.
 | **L7** | **Quotas non pilotés par l'UI** | `enforce_monthly_order_limit` refuse la prestation n°501 en erreur SQL brute (`P0001`), non traduite ; l'interface affiche le message PostgreSQL. | RPC `my_subscription` en amont + message dédié quand le quota est atteint |
 | **L8** | **Aucune pagination nulle part** | 5 écrans chargent l'historique complet (`station_orders`, `station_customers`…). À 5 000 prestations, un téléphone en 3G télécharge plusieurs Mo. | `.range()` + compteur `count`, ou curseur `created_at` |
 | **L9** | **Recherche absente** | Retrouver un client par téléphone dans une liste non paginée n'est pas possible. | Champ de recherche (index `pg_trgm` sur `name`, `phone`) |
+| **L10b** | **Aucune URL de production dans la configuration Auth** | Vérifié le 10/11 : `site_url = http://localhost:3000`, liste blanche `localhost` + `https://3000-*.e2b.app`. Les e-mails de récupération pointeront sur `localhost` dès qu'un vrai domaine sera utilisé. | Au premier domaine retenu : `site_url` = ce domaine, ajouter les URL de redirection (apex + `www`), et retirer les aperçus si l'application est publique |
 | **L10** | **Un `owner` sans ligne `owner_subscriptions` est bloqué à la 2ᵉ station** | Cas réel présent en base (1 propriétaire sans abonnement → Starter, 1 station). C'est voulu, mais l'erreur remontée est un message SQL brut. | Message « Plan Starter : 1 station. Contactez l'administrateur. » |
 
 ### 3.3 🟡 Moyennes
@@ -299,7 +344,8 @@ quotas, test d'accessibilité automatisé, test du rendu mobile.
 npm ci                                             # lockfile cohérent (corrigé)
 npm run lint                                       # tsc --noEmit
 npm run check:reachability                         # 40 fichiers, 0 inutilisé
-npm test                                           # 108 tests
+npm test                                           # 116 tests
+npx tsx scripts/dumpLocalSchema.ts                 # catalogue produit par les migrations
 VITE_SUPABASE_URL=https://example.supabase.co \
 VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_example \
 npm run build && node --check dist/sw.js
@@ -349,6 +395,11 @@ tests/stationMetrics.test.ts       (2e passe) 12 tests sur fixtures exactes
 tests/dashboardFigures.test.tsx    (2e passe) 6 tests de rendu sur fixtures
 tests/receiptModal.test.tsx        (2e passe) 5 tests sur le reçu rendu
 tests/receiptQr.test.ts            (2e passe) 6 tests sur le bitmap QR
+scripts/dumpLocalSchema.ts         (3e passe) catalogue normalisé produit par les migrations
+tests/productionSchemaDrift.test.ts (3e passe) 4 tests : schéma dépôt = schéma de production
+tests/productionState.test.ts      (3e passe) 4 tests : rapport du 9/11 archivé, runbook à jour
+docs/sauvegardes/prod-schema-2026-11-10.json         (3e passe) instantané du catalogue réel + correspondance des versions
+docs/sauvegardes/2026-11-10-avant-nouvelle-migration.json (3e passe) sauvegarde avant toute future migration
 src/components/StationOrders.tsx   reçu chargé à la demande, dialogue d'annulation, nom de station réel
 src/components/StationStaff.tsx    dialogue de révocation accessible
 tests/tabPermissions.test.ts       nouveau (5 tests)
