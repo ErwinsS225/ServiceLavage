@@ -2,6 +2,21 @@
 
 Application React / TypeScript pour la gestion de stations de lavage, avec Supabase Auth et PostgreSQL. Les **11 migrations sont déployées** — vérifié sur la base le 10 novembre 2026 : l'historique distant compte 11 versions et le catalogue déployé est identique à celui que produisent les fichiers du dépôt (`tests/productionSchemaDrift.test.ts`, voir [runbook](docs/runbook-migrations.md)) : l'espace propriétaire couvre les stations, le catalogue, les clients, les prestations, l'inventaire, le personnel avec rôles (gérant, caissier, laveur) et les limites d'abonnement appliquées par PostgreSQL. Les rapports existent mais restent partiels (aucune dépense ni moyen de paiement n'est enregistré) ; la caisse, les paiements et les vitrines restent à développer ; les anciens écrans ne sont pas opérationnels et restent dans le dépôt comme référence. Les anciens composants et données fictives ne doivent pas être utilisés comme données de production.
 
+## CLI Supabase
+
+La CLI s'invoque via `npx` et la configuration du projet est versionnée
+(`supabase/config.toml`, aucun secret) :
+
+```bash
+npm run db:version   # la CLI répond
+npm run db:login     # jeton personnel (navigateur, --no-browser)
+npm run db:link      # lie le poste au projet avvkzliysacpyavmetsx (aucun SQL)
+npm run db:status    # migration list : local ↔ distant
+npm run db:drift     # le schéma du dépôt est-il toujours celui de la production ?
+```
+
+Détail et procédure de déploiement : [runbook des migrations](docs/runbook-migrations.md).
+
 ## Prérequis
 
 - Node.js 22.12 ou plus récent (la CI utilise Node 22) et npm ; `package-lock.json` est la référence pour l'installation et la CI.

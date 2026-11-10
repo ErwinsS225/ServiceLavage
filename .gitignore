@@ -9,3 +9,6 @@ coverage/
 
 # Artefacts de loutil de generation (caches temporaires, non sources)
 .aistudio/
+
+# État local de la CLI Supabase (jeton de session, version liée) : jamais committé
+supabase/.temp/

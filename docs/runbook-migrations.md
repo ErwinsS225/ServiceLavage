@@ -4,6 +4,42 @@
 
 **Aucune migration existante n'est modifiée après application.** L'historique distant est immuable : éditer un fichier déjà appliqué crée une dérive silencieuse entre le dépôt et la base. Tout correctif passe par une **nouvelle** migration.
 
+## CLI Supabase : activation sur le poste
+
+La CLI n'est pas embarquée dans le dépôt ; elle s'invoque par `npx` (version
+épinglée par l'appel `supabase@latest`, comportement vérifié avec **3.1.0**) et
+lit `supabase/config.toml`, versionné, qui déclare le projet cible
+`avvkzliysacpyavmetsx`. Aucun secret n'y figure : le jeton personnel vit dans
+`~/.supabase` ou dans `SUPABASE_ACCESS_TOKEN`, jamais dans le dépôt.
+
+```bash
+npm run db:version      # vérifie que la CLI répond
+npm run db:login        # npx supabase login --no-browser → coller le code affiché
+                        # sur https://supabase.com/dashboard/account/tokens
+npm run db:link         # lie la CLI au projet avvkzliysacpyavmetsx
+npm run db:status       # supabase migration list : compare local ↔ distant
+npm run db:drift        # prouve que le schéma du dépôt = schéma déployé
+```
+
+### Ce que fait `link`, et ce qu'il ne fait pas
+
+`supabase link` **écrit uniquement un état local** (`supabase/.temp/`, gitignoré) :
+la référence du projet et, si le pooler est disponible, l'URL de connexion. Il
+n'exécute aucun SQL, ne modifie ni l'historique distant ni le schéma, et
+n'envoie aucune migration. C'est un `git remote add` : rien de plus.
+
+Le lier est sans risque ; **ce qui est risqué, c'est ce qu'on lancerait après**.
+Dans l'état vérifié du 10 novembre, `db push` doit rester interdit : le schéma
+est déjà complet, seules les versions diffèrent (voir § « État vérifié »).
+
+### Si le jeton n'est pas disponible
+
+Toutes les commandes qui interrogent le projet échouent avec
+`Access token not provided`. Les vérifications de schéma, elles, ne demandent
+aucun jeton : `npm run db:drift` rejoue les migrations et compare le résultat à
+l'instantané de production. C'est le contrôle à faire en premier, même sans CLI
+authentifiée.
+
 ## Prérequis d'environnement
 
 Les scripts supposent un environnement Supabase, c'est-à-dire :

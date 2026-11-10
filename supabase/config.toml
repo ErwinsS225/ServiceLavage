@@ -1,0 +1,60 @@
+# Configuration de la CLI Supabase — projet LavAuto
+#
+# Versionné volontairement : sans ce fichier, `supabase link` ne connaît pas le
+# projet cible et chaque poste recrée sa configuration à la main.
+#
+# Aucun secret ici. Les clés vivent dans `.env.local` (gitignoré) et le jeton
+# personnel de la CLI dans `~/.supabase` ou `SUPABASE_ACCESS_TOKEN`.
+# Déploiement : voir docs/runbook-migrations.md. Ne jamais lancer `db push`
+# sans avoir prouvé l'absence de dérive (`npm run db:drift`).
+
+project_id = "avvkzliysacpyavmetsx"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+major_version = 17
+
+[studio]
+enabled = true
+port = 54323
+
+[inbucket]
+enabled = true
+port = 54324
+
+[auth]
+enabled = true
+site_url = "http://localhost:3000"
+additional_redirect_urls = [
+  "http://localhost:3000",
+  "http://localhost:3000/*",
+  "https://3000-*.e2b.app",
+  "https://3000-*.e2b.app/*",
+]
+jwt_expiry = 3600
+enable_signup = true
+
+[auth.email]
+enable_signup = true
+# La production exige une confirmation d'e-mail ; on garde le même réglage en
+# local pour ne pas tester un parcours que l'utilisateur ne vivra jamais.
+enable_confirmations = true
+
+[storage]
+enabled = true
+file_size_limit = "5MiB"
+
+[migration]
+# Déclencheurs de quota créés par les migrations ; le contenu n'est pas
+# versionné (aucune donnée métier).
+enabled = false
+
+[analytics]
+enabled = false

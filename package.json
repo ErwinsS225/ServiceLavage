@@ -11,7 +11,12 @@
     "lint": "tsc --noEmit",
     "test": "tsx --test \"tests/*.test.ts\" \"tests/*.test.tsx\"",
     "test:integration": "RUN_LOCAL_SUPABASE_INTEGRATION=1 tsx --test tests/supabaseLocalIntegration.test.ts",
-    "check:reachability": "node scripts/checkReachability.mjs"
+    "check:reachability": "node scripts/checkReachability.mjs",
+    "db:version": "npx --yes supabase@latest --version",
+    "db:login": "npx --yes supabase@latest login --no-browser",
+    "db:link": "npx --yes supabase@latest link --project-ref avvkzliysacpyavmetsx",
+    "db:status": "npx --yes supabase@latest migration list",
+    "db:drift": "tsx --test tests/productionSchemaDrift.test.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.119.0",
