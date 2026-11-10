@@ -47,6 +47,14 @@ function integerField(label: string, min: number, max: number) {
 export const stationNameSchema = trimmedText('Nom de la station', 120);
 
 /**
+ * Enveloppe un champ texte seul dans un objet, pour que `parseForm` renvoie
+ * une erreur sous une clé nommée (`_form` quand le champ n'a pas de nom).
+ * Sans cela, un formulaire à un seul champ ne saurait pas à qui rattacher son
+ * message.
+ */
+export const stationNameFormSchema = z.object({ name: stationNameSchema });
+
+/**
  * `station_services` : nom 1..120, prix 0..100 000 000, durée 1..1440.
  * Les trois `check` sont dans `20261109122929_station_services.sql`.
  */

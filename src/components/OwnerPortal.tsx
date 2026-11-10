@@ -11,7 +11,7 @@ import { useStations } from '../hooks/useStations';
 import { useStationRole } from '../hooks/useStationRole';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { acceptInvitation, resolvePortalClient } from '../lib/portalApi';
-import { invitationReferenceSchema, parseForm, stationNameSchema } from '../lib/schemas';
+import { invitationReferenceSchema, parseForm, stationNameFormSchema } from '../lib/schemas';
 import { errorText } from '../lib/errorMessages';
 import { describeError } from '../lib/queryResult';
 import { resolveTab, type StationTabId } from '../lib/portalNavigation';
@@ -116,15 +116,15 @@ export function OwnerPortal({ client }: { client?: SupabaseClient | null }) {
     event.preventDefault();
     // Auparavant un nom vide provoquait un `return` muet : le bouton semblait
     // inerte. La borne est celle de `stations.name` (1..120 après trim).
-    const parsed = parseForm(stationNameSchema, newStationName);
+    const parsed = parseForm(stationNameFormSchema, { name: newStationName });
     if (!parsed.ok) {
-      setActionError(parsed.errors._form ?? 'Nom de la station invalide.');
+      setActionError(parsed.errors.name ?? 'Nom de la station invalide.');
       return;
     }
     setBusy(true);
     setActionError('');
     try {
-      await createStation(parsed.data);
+      await createStation(parsed.data.name);
       setNewStationName('');
       setTab('dashboard');
     } catch (cause) {
