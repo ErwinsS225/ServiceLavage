@@ -193,3 +193,14 @@ test('une écriture invalide la lecture correspondante', async () => {
     'invalider l’inventaire ne doit pas jeter le catalogue',
   );
 });
+
+test('la liste des stations se manipule au clavier', async () => {
+  // SonarCloud a relevé un <li onClick> sans équivalent clavier dans une
+  // première version de StationPicker : la liste était inutilisable sans
+  // souris. La règle est vérifiée sur la source, faute de test visuel ici.
+  const { readFile } = await import('node:fs/promises');
+  const source = await readFile('src/components/portal/StationPicker.tsx', 'utf8');
+  assert.doesNotMatch(source, /<li[^>]*onClick/, 'aucun <li> cliquable');
+  assert.match(source, /<button[^>]*type="button"/, 'la sélection passe par un bouton');
+  assert.match(source, /aria-pressed=\{isSelected\}/, 'l’état sélectionné est annoncé');
+});

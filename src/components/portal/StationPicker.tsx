@@ -90,20 +90,25 @@ export function StationPicker({
                 <ul className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
                   {stations.map(station => {
                     const isSelected = stationId === station.id;
+                    // A real button, not a clickable <li>: sélectionner une
+                    // station au clavier doit être possible (Tab puis Entrée).
                     return (
-                      <li
-                        key={station.id}
-                        onClick={() => onSelectStation(station.id)}
-                        className={`p-2.5 rounded-xl border text-xs cursor-pointer flex items-center justify-between transition-all ${
-                          isSelected
-                            ? 'border-indigo-500 bg-indigo-500/10 text-white font-semibold shadow-sm'
-                            : 'border-[#242936] bg-[#161a23] text-slate-300 hover:border-slate-600'
-                        }`}
-                      >
-                        <span className="truncate">{station.name}</span>
-                        <span className="text-[10px] font-mono text-slate-500 shrink-0 ml-2">
-                          {station.owner_id === userId ? 'Propriétaire' : 'Membre'}
-                        </span>
+                      <li key={station.id}>
+                        <button
+                          type="button"
+                          onClick={() => onSelectStation(station.id)}
+                          aria-pressed={isSelected}
+                          className={`w-full p-2.5 rounded-xl border text-xs cursor-pointer flex items-center justify-between transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-400 ${
+                            isSelected
+                              ? 'border-indigo-500 bg-indigo-500/10 text-white font-semibold shadow-sm'
+                              : 'border-[#242936] bg-[#161a23] text-slate-300 hover:border-slate-600'
+                          }`}
+                        >
+                          <span className="truncate">{station.name}</span>
+                          <span className="text-[10px] font-mono text-slate-500 shrink-0 ml-2">
+                            {station.owner_id === userId ? 'Propriétaire' : 'Membre'}
+                          </span>
+                        </button>
                       </li>
                     );
                   })}
