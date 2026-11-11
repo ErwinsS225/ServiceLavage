@@ -1,10 +1,23 @@
 import { useState } from 'react';
 import { describeError } from '../lib/queryResult';
+import { customerSchema, parseForm } from '../lib/schemas';
+import { errorText } from '../lib/errorMessages';
+import { useToastActions } from '../context/ToastContext';
 import { type CustomerRow, type StationClient } from '../lib/stationApi';
 import { useCreateCustomer, useCustomers, useUpdateCustomer } from '../hooks/useStationQueries';
 import {
-  Table, TableHeader, TableBody, TableHead, TableRow, TableCell,
-  buttonStyles, formControlStyles, FormField, Modal, Alert, EmptyState
+  Table,
+  TableHeader,
+  TableBody,
+  TableHead,
+  TableRow,
+  TableCell,
+  buttonStyles,
+  formControlStyles,
+  FormField,
+  Modal,
+  Alert,
+  EmptyState,
 } from './ui/designSystem';
 import { Plus, User, Phone, Edit2, RotateCw } from 'lucide-react';
 
@@ -21,7 +34,13 @@ import { Plus, User, Phone, Edit2, RotateCw } from 'lucide-react';
  * `station_customers` (le `station_id` passé à PostgREST ne fait que filtrer
  * ce que la politique autorise déjà).
  */
-export function StationCustomers({ stationId, client }: { stationId: string; client?: StationClient | null }) {
+export function StationCustomers({
+  stationId,
+  client,
+}: {
+  stationId: string;
+  client?: StationClient | null;
+}) {
   const customersQuery = useCustomers(stationId, client);
   const createMutation = useCreateCustomer(stationId, client);
   const updateMutation = useUpdateCustomer(stationId, client);
@@ -30,8 +49,12 @@ export function StationCustomers({ stationId, client }: { stationId: string; cli
   const customers = {
     data: customersQuery.data ?? [],
     loading: customersQuery.isPending,
-    error: customersQuery.error ? describeError(customersQuery.error, 'Impossible de charger les clients.') : '',
-    reload: () => { void customersQuery.refetch(); },
+    error: customersQuery.error
+      ? describeError(customersQuery.error, 'Impossible de charger les clients.')
+      : '',
+    reload: () => {
+      void customersQuery.refetch();
+    },
   };
 
   const [busy, setBusy] = useState(false);
@@ -41,12 +64,15 @@ export function StationCustomers({ stationId, client }: { stationId: string; cli
   const [modalOpen, setModalOpen] = useState(false);
   const [formError, setFormError] = useState('');
   const [message, setMessage] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const toast = useToastActions();
 
   function startAdd() {
     setEditing(null);
     setName('');
     setPhone('');
     setFormError('');
+    setFieldErrors({});
     setMessage('');
     setModalOpen(true);
   }
@@ -56,6 +82,7 @@ export function StationCustomers({ stationId, client }: { stationId: string; cli
     setName(customer.name);
     setPhone(customer.phone);
     setFormError('');
+    setFieldErrors({});
     setMessage('');
     setModalOpen(true);
   }
@@ -65,31 +92,40 @@ export function StationCustomers({ stationId, client }: { stationId: string; cli
     setEditing(null);
     setName('');
     setPhone('');
+    setFieldErrors({});
   }
 
   async function save(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const cleanName = name.trim();
-    const cleanPhone = phone.trim();
-    if (!cleanName || !cleanPhone) {
-      setFormError('Le nom et le téléphone sont obligatoires.');
+    // Bornes de `station_customers` : nom 1..120, téléphone 1..40 (trim).
+    const parsed = parseForm(customerSchema, { name, phone });
+    if (!parsed.ok) {
+      setFieldErrors(parsed.errors);
+      setFormError(Object.values(parsed.errors)[0] ?? '');
       return;
     }
+    const { name: cleanName, phone: cleanPhone } = parsed.data;
     setBusy(true);
     setFormError('');
+    setFieldErrors({});
     setMessage('');
     try {
       // La mutation invalide la clé `customers` : la liste relue est celle du
       // serveur, pas une copie locale supposée identique.
       if (editing) {
-        await updateMutation.mutateAsync({ customerId: editing, changes: { name: cleanName, phone: cleanPhone } });
+        await updateMutation.mutateAsync({
+          customerId: editing,
+          changes: { name: cleanName, phone: cleanPhone },
+        });
       } else {
         await createMutation.mutateAsync({ name: cleanName, phone: cleanPhone });
       }
+      const wasEditing = editing !== null;
       closeModal();
-      setMessage(editing ? 'Client modifié avec succès.' : 'Nouveau client enregistré.');
+      setMessage(wasEditing ? 'Client modifié avec succès.' : 'Nouveau client enregistré.');
+      toast.success(wasEditing ? 'Client modifié.' : 'Client enregistré.', cleanName);
     } catch (cause) {
-      setFormError(describeError(cause, 'Enregistrement impossible. Vérifiez votre connexion et réessayez.'));
+      setFormError(errorText(cause));
     } finally {
       setBusy(false);
     }
@@ -98,20 +134,30 @@ export function StationCustomers({ stationId, client }: { stationId: string; cli
   const error = formError || customers.error;
 
   return (
-    <section className="space-y-5 border-t border-[#232834] pt-6" aria-label="Clients de la station">
+    <section
+      className="space-y-5 border-t border-[var(--border-subtle)] pt-6"
+      aria-label="Clients de la station"
+    >
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-bold text-white tracking-tight">Répertoire Clients</h2>
-          <p className="text-xs text-slate-400 mt-0.5">Clients enregistrés dans la station active (isolation multitenant Supabase)</p>
+          <h2 className="text-lg font-bold text-[var(--text-primary)] tracking-tight">Répertoire Clients</h2>
+          <p className="text-xs text-[var(--text-secondary)] mt-0.5">
+            Clients enregistrés dans la station active (isolation multitenant Supabase)
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <button
             type="button"
             className={buttonStyles({ variant: 'outline', size: 'sm' })}
-            onClick={() => { setFormError(''); customers.reload(); }}
+            onClick={() => {
+              setFormError('');
+              customers.reload();
+            }}
             disabled={customers.loading || busy}
           >
-            <RotateCw className={`w-3.5 h-3.5 mr-1.5 ${customers.loading ? 'animate-spin' : ''}`} />
+            <RotateCw
+              className={`w-3.5 h-3.5 mr-1.5 ${customers.loading ? 'animate-spin motion-safe-keep' : ''}`}
+            />
             Actualiser
           </button>
           <button
@@ -127,31 +173,33 @@ export function StationCustomers({ stationId, client }: { stationId: string; cli
       </div>
 
       {error && (
-        <Alert variant="error" action={
-          <button
-            type="button"
-            className="underline text-xs font-semibold text-rose-300"
-            onClick={() => { setFormError(''); customers.reload(); }}
-          >
-            Réessayer
-          </button>
-        }>
+        <Alert
+          variant="error"
+          action={
+            <button
+              type="button"
+              className="underline text-xs font-semibold text-rose-300"
+              onClick={() => {
+                setFormError('');
+                customers.reload();
+              }}
+            >
+              Réessayer
+            </button>
+          }
+        >
           {error}
         </Alert>
       )}
 
-      {message && (
-        <Alert variant="success">
-          {message}
-        </Alert>
-      )}
+      {message && <Alert variant="success">{message}</Alert>}
 
       {customers.loading ? (
-        <div className="p-8 text-center text-sm text-slate-400 rounded-xl bg-[#141720] border border-[#232834]">
+        <div className="p-8 text-center text-sm text-[var(--text-secondary)] rounded-xl bg-[var(--surface-card)] border border-[var(--border-subtle)]">
           Chargement des clients…
         </div>
       ) : customers.data.length ? (
-        <Table>
+        <Table label="Clients enregistrés dans la station">
           <TableHeader>
             <TableRow>
               <TableHead>Client</TableHead>
@@ -168,14 +216,16 @@ export function StationCustomers({ stationId, client }: { stationId: string; cli
                       {customer.name.slice(0, 2)}
                     </div>
                     <div>
-                      <span className="font-semibold text-white block">{customer.name}</span>
-                      <span className="text-[11px] text-slate-400 font-mono">ID: {customer.id.slice(0, 8)}</span>
+                      <span className="font-semibold text-[var(--text-primary)] block">{customer.name}</span>
+                      <span className="text-[11px] text-[var(--text-secondary)] font-mono">
+                        ID: {customer.id.slice(0, 8)}
+                      </span>
                     </div>
                   </div>
                 </TableCell>
                 <TableCell>
                   <span className="font-mono text-slate-300 flex items-center gap-1.5">
-                    <Phone className="w-3.5 h-3.5 text-slate-500" />
+                    <Phone className="w-3.5 h-3.5 text-[var(--text-muted)]" />
                     {customer.phone}
                   </span>
                 </TableCell>
@@ -196,7 +246,7 @@ export function StationCustomers({ stationId, client }: { stationId: string; cli
         </Table>
       ) : (
         <EmptyState
-          icon={<User className="w-6 h-6 text-slate-400" />}
+          icon={<User className="w-6 h-6 text-[var(--text-secondary)]" />}
           title="Aucun client enregistré"
           description="Enregistrez les coordonnées de vos clients réguliers pour faciliter la création des prestations."
           action={
@@ -219,11 +269,18 @@ export function StationCustomers({ stationId, client }: { stationId: string; cli
         description="Les coordonnées sont protégées et isolées par station."
       >
         <form onSubmit={save} className="space-y-4">
-          <FormField label="Nom complet ou raison sociale" required>
+          <FormField
+            label="Nom complet ou raison sociale"
+            required
+            htmlFor="customer-name"
+            error={fieldErrors.name}
+          >
             <input
+              id="customer-name"
               className={formControlStyles.input}
               required
               maxLength={120}
+              aria-invalid={fieldErrors.name ? true : undefined}
               value={name}
               onChange={e => setName(e.target.value)}
               placeholder="Ex: Jean Kouassi"
@@ -231,11 +288,19 @@ export function StationCustomers({ stationId, client }: { stationId: string; cli
             />
           </FormField>
 
-          <FormField label="Numéro de téléphone" required hint="Format recommandé : +225 07..." >
+          <FormField
+            label="Numéro de téléphone"
+            required
+            hint="Format recommandé : +225 07..."
+            htmlFor="customer-phone"
+            error={fieldErrors.phone}
+          >
             <input
+              id="customer-phone"
               className={formControlStyles.input}
               type="tel"
               required
+              aria-invalid={fieldErrors.phone ? true : undefined}
               maxLength={40}
               value={phone}
               onChange={e => setPhone(e.target.value)}
@@ -245,7 +310,7 @@ export function StationCustomers({ stationId, client }: { stationId: string; cli
 
           {formError && <Alert variant="error">{formError}</Alert>}
 
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#232834]">
+          <div className="flex items-center justify-end gap-3 pt-3 border-t border-[var(--border-subtle)]">
             <button
               type="button"
               disabled={busy}

@@ -32,7 +32,8 @@ export function usePortalSession(client: SupabaseClient | null): PortalSession {
       return;
     }
     let active = true;
-    client.auth.getSession()
+    client.auth
+      .getSession()
       .then(({ data, error: sessionError }) => {
         if (!active) return;
         if (sessionError) setError(sessionError.message);
@@ -60,7 +61,10 @@ export function usePortalSession(client: SupabaseClient | null): PortalSession {
     loading,
     error,
     recovery,
-    leaveRecovery: () => { setRecovery(false); setError(''); },
+    leaveRecovery: () => {
+      setRecovery(false);
+      setError('');
+    },
     startRecovery: () => setRecovery(true),
   };
 }

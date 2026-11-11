@@ -15,6 +15,15 @@ interface StationDashboardProps {
   onNavigateTab?: (tab: 'orders' | 'customers' | 'services' | 'inventory' | 'reports') => void;
   /** Injected in tests; the application always uses the shared client. */
   client?: SupabaseClient | null;
+  /**
+   * Instant de référence pour « aujourd'hui ».
+   *
+   * Injeté par les tests, jamais par l'application : sans lui, un test de
+   * l'écran dépend de l'horloge de la machine, et il échoue le jour où la
+   * machine change de jour. Ce n'est pas le calcul qui est figé (il reste dans
+   * `lib/stationMetrics`), seulement le « maintenant » du rendu.
+   */
+  referenceNow?: Date;
 }
 
 /**
@@ -29,21 +38,36 @@ interface StationDashboardProps {
  * les montants affichés sont des montants *facturés* — l'application
  * n'enregistre aucun paiement.
  */
-export function StationDashboard({ stationId, userId, onNavigateTab, client = defaultClient }: StationDashboardProps) {
+export function StationDashboard({
+  stationId,
+  userId,
+  onNavigateTab,
+  client = defaultClient,
+  referenceNow,
+}: StationDashboardProps) {
   const {
-    queued, loaded, refreshing, error, metrics, series, seriesEmpty,
-    distribution, distributionEmpty, recentOrders, refresh,
-  } = useDashboardMetrics(client, stationId, userId);
+    queued,
+    loaded,
+    refreshing,
+    error,
+    metrics,
+    series,
+    seriesEmpty,
+    distribution,
+    distributionEmpty,
+    recentOrders,
+    refresh,
+  } = useDashboardMetrics(client, stationId, userId, referenceNow);
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-lg font-bold text-white flex items-center gap-2">
+          <h2 className="text-lg font-bold text-[var(--text-primary)] flex items-center gap-2">
             <TrendingUp className="w-5 h-5 text-indigo-400" />
             <span>Tableau de bord opérationnel · ServiceLavage</span>
           </h2>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-[var(--text-secondary)]">
             Flux de lavage et montants facturés, calculés uniquement à partir des prestations enregistrées
           </p>
         </div>
@@ -55,7 +79,9 @@ export function StationDashboard({ stationId, userId, onNavigateTab, client = de
             disabled={refreshing}
             className={buttonStyles({ variant: 'outline', size: 'sm' })}
           >
-            <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${refreshing ? 'animate-spin text-indigo-400' : ''}`} />
+            <RefreshCw
+              className={`w-3.5 h-3.5 mr-1.5 ${refreshing ? 'animate-spin motion-safe-keep text-indigo-400' : ''}`}
+            />
             <span>{refreshing ? 'Actualisation…' : 'Actualiser'}</span>
           </button>
         </div>
@@ -75,7 +101,9 @@ export function StationDashboard({ stationId, userId, onNavigateTab, client = de
       )}
 
       {/* Aucun paiement n'est enregistré : le dire avant d'afficher des montants. */}
-      <Alert variant="info" title="Montants facturés, pas recettes encaissées">{RECEIPTS_NOT_TRACKED_COPY}</Alert>
+      <Alert variant="info" title="Montants facturés, pas recettes encaissées">
+        {RECEIPTS_NOT_TRACKED_COPY}
+      </Alert>
 
       {queued.length > 0 && (
         <Alert variant="warning" title={`${queued.length} prestation(s) en attente de synchronisation`}>
@@ -85,7 +113,9 @@ export function StationDashboard({ stationId, userId, onNavigateTab, client = de
           </p>
           <ul className="mt-1 space-y-0.5 font-mono text-xs">
             {queued.map(item => (
-              <li key={item.requestId}>{item.vehicle} · {item.plate || 'Sans immatriculation'}</li>
+              <li key={item.requestId}>
+                {item.vehicle} · {item.plate || 'Sans immatriculation'}
+              </li>
             ))}
           </ul>
         </Alert>

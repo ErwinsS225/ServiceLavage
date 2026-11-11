@@ -1,0 +1,7 @@
+# Révisions de formatage pur, à ignorer par `git blame`.
+# Sans ce fichier, `git blame` attribue chaque ligne du projet au commit
+# « appliquer Prettier », ce qui efface l'historique réel des décisions.
+#
+# Utilisation :
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+ab60b29

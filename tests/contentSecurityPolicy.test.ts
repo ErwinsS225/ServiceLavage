@@ -11,7 +11,8 @@ const html = await readFile('index.html', 'utf8');
 const config = await readFile('vite.config.ts', 'utf8');
 
 const policy = (html.match(/http-equiv="Content-Security-Policy"\s+content="([^"]+)"/s)?.[1] ?? '')
-  .replace(/\s+/g, ' ').trim();
+  .replace(/\s+/g, ' ')
+  .trim();
 
 test('the policy is declared and injects the Supabase placeholder', () => {
   assert.ok(policy.length > 0, 'aucune CSP déclarée dans index.html');

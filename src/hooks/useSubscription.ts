@@ -22,7 +22,11 @@ export function useSubscription({
   return {
     subscription: query.data ?? null,
     loading: query.isPending,
-    error: query.error ? describeError(query.error, 'Impossible de charger la formule. Vérifiez votre connexion.') : '',
-    reload: () => { void query.refetch(); },
+    error: query.error
+      ? describeError(query.error, 'Impossible de charger la formule. Vérifiez votre connexion.')
+      : '',
+    reload: () => {
+      void query.refetch();
+    },
   };
 }

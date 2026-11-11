@@ -8,6 +8,11 @@ import { PGlite } from '@electric-sql/pglite';
  * the six first migrations applied and four pending ones. Applying all ten at
  * once (as tenantIsolation.test.ts does) cannot prove that the pending set
  * applies cleanly on top of the deployed state.
+ *
+ * Les versions de `PENDING` et `REVOKE` sont celles réellement enregistrées en
+ * base : les fichiers ont été renommés le 10 novembre 2026 pour les rejoindre
+ * (voir `docs/runbook-migrations.md`, étape 3). L'ordre d'application, lui, est
+ * inchangé et reste ce que ce test protège.
  */
 const DEPLOYED = [
   '20261109121406_owner_stations.sql',
@@ -18,14 +23,14 @@ const DEPLOYED = [
   '20261109130602_restrict_station_privileges.sql',
 ];
 const PENDING = [
-  '20261109140000_station_memberships.sql',
-  '20261109141000_subscription_limits.sql',
-  '20261109142000_station_inventory.sql',
-  '20261109150000_station_role_permissions.sql',
+  '20261109182442_station_memberships.sql',
+  '20261109182456_subscription_limits.sql',
+  '20261109182509_station_inventory.sql',
+  '20261109182534_station_role_permissions.sql',
 ];
 // Written after the four above were deployed, so it is a separate increment:
 // it only tightens a grant and adds no table.
-const REVOKE = ['20261109160000_revoke_legacy_order_rpc.sql'];
+const REVOKE = ['20261109184205_revoke_legacy_order_rpc.sql'];
 
 async function apply(db: PGlite, file: string) {
   await db.exec(await readFile(`supabase/migrations/${file}`, 'utf8'));
@@ -67,34 +72,80 @@ test('the four pending migrations apply in order on top of the deployed schema',
       insert into auth.users(id,email,email_confirmed_at) values ('${ownerId}','owner@example.invalid',now());
       insert into public.stations(owner_id,name) values ('${ownerId}','Station existante');
     `);
-    const before = await count(db, `select count(*) from pg_class c join pg_namespace n on n.oid=c.relnamespace
-      where n.nspname='public' and c.relkind='r'`);
+    const before = await count(
+      db,
+      `select count(*) from pg_class c join pg_namespace n on n.oid=c.relnamespace
+      where n.nspname='public' and c.relkind='r'`,
+    );
     assert.equal(before, 6, 'six tables are deployed before the upgrade');
 
     // Apply one migration at a time and check the boundary after each.
     await apply(db, PENDING[0]);
-    assert.equal(await count(db, `select count(*) from pg_class c join pg_namespace n on n.oid=c.relnamespace
-      where n.nspname='public' and c.relkind='r'`), 8, 'memberships adds two tables');
-    assert.equal(await count(db, `select count(*) from pg_proc p join pg_namespace n on n.oid=p.pronamespace
-      where n.nspname='public' and p.proname='accept_station_invitation'`), 1);
+    assert.equal(
+      await count(
+        db,
+        `select count(*) from pg_class c join pg_namespace n on n.oid=c.relnamespace
+      where n.nspname='public' and c.relkind='r'`,
+      ),
+      8,
+      'memberships adds two tables',
+    );
+    assert.equal(
+      await count(
+        db,
+        `select count(*) from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+      where n.nspname='public' and p.proname='accept_station_invitation'`,
+      ),
+      1,
+    );
 
     await apply(db, PENDING[1]);
-    assert.equal(await count(db, `select count(*) from pg_class c join pg_namespace n on n.oid=c.relnamespace
-      where n.nspname='public' and c.relkind='r'`), 9, 'subscription_limits adds owner_subscriptions');
+    assert.equal(
+      await count(
+        db,
+        `select count(*) from pg_class c join pg_namespace n on n.oid=c.relnamespace
+      where n.nspname='public' and c.relkind='r'`,
+      ),
+      9,
+      'subscription_limits adds owner_subscriptions',
+    );
     assert.equal(await count(db, `select count(*) from pg_trigger where tgname='enforce_station_limit'`), 1);
-    assert.equal(await count(db, `select count(*) from pg_trigger where tgname='enforce_monthly_order_limit'`), 1);
+    assert.equal(
+      await count(db, `select count(*) from pg_trigger where tgname='enforce_monthly_order_limit'`),
+      1,
+    );
 
     await apply(db, PENDING[2]);
-    assert.equal(await count(db, `select count(*) from pg_class c join pg_namespace n on n.oid=c.relnamespace
-      where n.nspname='public' and c.relkind='r'`), 11, 'inventory adds station_inventory and station_inventory_operations');
+    assert.equal(
+      await count(
+        db,
+        `select count(*) from pg_class c join pg_namespace n on n.oid=c.relnamespace
+      where n.nspname='public' and c.relkind='r'`,
+      ),
+      11,
+      'inventory adds station_inventory and station_inventory_operations',
+    );
 
     await apply(db, PENDING[3]);
-    assert.equal(await count(db, `select count(*) from pg_class c join pg_namespace n on n.oid=c.relnamespace
-      where n.nspname='public' and c.relkind='r'`), 12, 'role_permissions adds station_order_assignments');
+    assert.equal(
+      await count(
+        db,
+        `select count(*) from pg_class c join pg_namespace n on n.oid=c.relnamespace
+      where n.nspname='public' and c.relkind='r'`,
+      ),
+      12,
+      'role_permissions adds station_order_assignments',
+    );
 
     // No table may be left without RLS, including the four new ones.
-    assert.equal(await count(db, `select count(*) from pg_class c join pg_namespace n on n.oid=c.relnamespace
-      where n.nspname='public' and c.relkind='r' and not c.relrowsecurity`), 0);
+    assert.equal(
+      await count(
+        db,
+        `select count(*) from pg_class c join pg_namespace n on n.oid=c.relnamespace
+      where n.nspname='public' and c.relkind='r' and not c.relrowsecurity`,
+      ),
+      0,
+    );
 
     // The existing station survives and is now covered by the Starter default plan.
     assert.equal(await count(db, `select count(*) from public.stations`), 1);
@@ -104,8 +155,13 @@ test('the four pending migrations apply in order on top of the deployed schema',
     assert.deepEqual(plan[0], { plan: 'starter', max_stations: 1, max_monthly_orders: 500 });
 
     // The deployed-data scripts must still pass on the upgraded database.
-    for (const script of ['tenant_isolation', 'station_memberships', 'subscription_limits',
-      'station_inventory', 'station_role_permissions']) {
+    for (const script of [
+      'tenant_isolation',
+      'station_memberships',
+      'subscription_limits',
+      'station_inventory',
+      'station_role_permissions',
+    ]) {
       await db.exec(await readFile(`supabase/tests/${script}.sql`, 'utf8'));
     }
   } finally {

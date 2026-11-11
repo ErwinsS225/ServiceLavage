@@ -18,6 +18,8 @@ import {
   type ServiceRow,
   type StationClient,
 } from '../lib/stationApi';
+import { measure } from '../lib/performance';
+import { track } from '../lib/telemetry';
 import { listQueuedOrders, saveQueuedOrder, synchronizeOrders, type QueuedOrder } from '../lib/offlineOrders';
 import { useOfflineQueue } from './useOfflineQueue';
 import { useLocalCache } from './useLocalCache';
@@ -70,10 +72,19 @@ export interface NewOrderInput {
   serviceIds: string[];
 }
 
-export function useStationOrders({ stationId, userId, role, roleFeaturesReady, client }: UseStationOrdersOptions) {
+export function useStationOrders({
+  stationId,
+  userId,
+  role,
+  roleFeaturesReady,
+  client,
+}: UseStationOrdersOptions) {
   const api = useCallback(() => resolveClient(client), [client]);
   const canManageOrders = roleCanManageOrders(role);
-  const cache = useLocalCache<CachedCatalogue>(`${ORDER_CACHE_VERSION}:${userId}:${stationId}`, isCachedCatalogue);
+  const cache = useLocalCache<CachedCatalogue>(
+    `${ORDER_CACHE_VERSION}:${userId}:${stationId}`,
+    isCachedCatalogue,
+  );
 
   const [services, setServices] = useState<Array<Pick<ServiceRow, 'id' | 'name' | 'price_xof'>>>([]);
   const [customers, setCustomers] = useState<CustomerRow[]>([]);
@@ -107,7 +118,11 @@ export function useStationOrders({ stationId, userId, role, roleFeaturesReady, c
   });
 
   useEffect(() => {
-    try { queue.refresh(); } catch (cause) { setLoadError(describeError(cause, 'File locale inaccessible.')); }
+    try {
+      queue.refresh();
+    } catch (cause) {
+      setLoadError(describeError(cause, 'File locale inaccessible.'));
+    }
     void queue.sync();
     // `queue.refresh` / `queue.sync` are stable; the scope is the station.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -135,15 +150,21 @@ export function useStationOrders({ stationId, userId, role, roleFeaturesReady, c
     if (!navigator.onLine) {
       setOrders([]);
       setLoading(false);
-      return () => { active = false; };
+      return () => {
+        active = false;
+      };
     }
 
     const stationApi = api();
-    Promise.all([
-      fetchActiveServices(stationApi, stationId),
-      fetchCustomersByName(stationApi, stationId),
-      fetchOrders(stationApi, stationId),
-    ])
+    // Mesuré comme un seul appel : c'est le chargement que l'utilisateur attend
+    // avant de pouvoir créer une prestation, donc celui dont la durée compte.
+    measure('prestations.chargement', () =>
+      Promise.all([
+        fetchActiveServices(stationApi, stationId),
+        fetchCustomersByName(stationApi, stationId),
+        fetchOrders(stationApi, stationId),
+      ]),
+    )
       .then(([serviceList, customerList, orderList]) => {
         if (!active) return;
         setServices(serviceList);
@@ -159,9 +180,13 @@ export function useStationOrders({ stationId, userId, role, roleFeaturesReady, c
       .catch((cause: unknown) => {
         if (active) setLoadError(describeError(cause, 'Chargement impossible. Vérifiez votre connexion.'));
       })
-      .finally(() => { if (active) setLoading(false); });
+      .finally(() => {
+        if (active) setLoading(false);
+      });
 
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stationId, userId, role, reloadToken]);
 
@@ -184,48 +209,70 @@ export function useStationOrders({ stationId, userId, role, roleFeaturesReady, c
       .catch((cause: unknown) => {
         if (active) setActionError(describeError(cause, 'Chargement des affectations impossible.'));
       });
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, [stationId, role, roleFeaturesReady, reloadToken, canManageOrders, api]);
 
   /* ---------------- mutations ---------------- */
 
   /** Enregistre la prestation sur l'appareil puis tente l'envoi. */
-  const createOrder = useCallback(async (input: NewOrderInput): Promise<void> => {
-    const order: QueuedOrder = {
-      version: 1,
-      userId,
-      stationId,
-      requestId: crypto.randomUUID(),
-      customerId: input.customerId || null,
-      vehicle: input.vehicle.trim(),
-      plate: input.plate.trim() || null,
-      serviceIds: input.serviceIds,
-      createdAt: new Date().toISOString(),
-    };
-    saveQueuedOrder(localStorage, order);
-    try {
-      queue.refresh();
-    } catch {
-      throw new Error('Prestation enregistrée localement, mais la file contient une entrée illisible : ne créez pas de doublon.');
-    }
-    void queue.sync();
-  }, [queue, stationId, userId]);
+  const createOrder = useCallback(
+    async (input: NewOrderInput): Promise<void> => {
+      const order: QueuedOrder = {
+        version: 1,
+        userId,
+        stationId,
+        requestId: crypto.randomUUID(),
+        customerId: input.customerId || null,
+        vehicle: input.vehicle.trim(),
+        plate: input.plate.trim() || null,
+        serviceIds: input.serviceIds,
+        createdAt: new Date().toISOString(),
+      };
+      saveQueuedOrder(localStorage, order);
+      try {
+        queue.refresh();
+      } catch {
+        throw new Error(
+          'Prestation enregistrée localement, mais la file contient une entrée illisible : ne créez pas de doublon.',
+        );
+      }
+      // Une prestation créée est d'abord locale : la trace dit « enregistrée »,
+      // jamais « envoyée ». La confirmation vient de `offline.synchronise`.
+      track.info('metier.prestation_enregistree', { stationId, services: input.serviceIds.length });
+      void queue.sync();
+    },
+    [queue, stationId, userId],
+  );
 
-  const transition = useCallback(async (orderId: string, status: Extract<OrderStatus, 'en_cours' | 'termine' | 'annule'>): Promise<void> => {
-    await transitionOrder(api(), orderId, status);
-    reload();
-  }, [api, reload]);
+  const transition = useCallback(
+    async (
+      orderId: string,
+      status: Extract<OrderStatus, 'en_cours' | 'termine' | 'annule'>,
+    ): Promise<void> => {
+      await transitionOrder(api(), orderId, status);
+      reload();
+    },
+    [api, reload],
+  );
 
-  const assign = useCallback(async (orderId: string, washerId: string): Promise<void> => {
-    if (!washerId) throw new Error('Sélectionnez un laveur.');
-    await assignOrder(api(), orderId, washerId);
-    reload();
-  }, [api, reload]);
+  const assign = useCallback(
+    async (orderId: string, washerId: string): Promise<void> => {
+      if (!washerId) throw new Error('Sélectionnez un laveur.');
+      await assignOrder(api(), orderId, washerId);
+      reload();
+    },
+    [api, reload],
+  );
 
-  const unassign = useCallback(async (orderId: string, washerId: string): Promise<void> => {
-    await unassignOrder(api(), orderId, washerId);
-    reload();
-  }, [api, reload]);
+  const unassign = useCallback(
+    async (orderId: string, washerId: string): Promise<void> => {
+      await unassignOrder(api(), orderId, washerId);
+      reload();
+    },
+    [api, reload],
+  );
 
   return {
     services,
@@ -247,6 +294,9 @@ export function useStationOrders({ stationId, userId, role, roleFeaturesReady, c
     actionMessage,
     setActionError,
     setActionMessage,
-    clearActionMessages: useCallback(() => { setActionError(''); setActionMessage(''); }, []),
+    clearActionMessages: useCallback(() => {
+      setActionError('');
+      setActionMessage('');
+    }, []),
   };
 }

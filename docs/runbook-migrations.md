@@ -79,7 +79,42 @@ distant. `supabase db push` les croit « en attente » et tenterait de les rejou
 ```bash
 # 1. Le schéma produit par les migrations est-il toujours celui de la production ?
 npx tsx --test tests/productionSchemaDrift.test.ts
+
+# 2. Le *contenu* exécuté correspond-il aux fichiers du dépôt ?
+npm run db:content
 ```
+
+### Étape 1 — le contenu a été vérifié le 10 novembre 2026
+
+Le runbook affirmait « même schéma, seules les versions diffèrent ». C'était
+déduit d'une comparaison de catalogue ; c'est désormais **prouvé au caractère
+près**, y compris pour les cinq migrations appliquées sous un autre horodatage.
+
+Méthode : la table `supabase_migrations.schema_migrations` conserve le texte
+exécuté dans `statements[1]` (colonne présente sur ce projet, 11 lignes sur 11
+renseignées). On en tire une empreinte insensible à la mise en forme —
+commentaires `--` retirés, tous les blancs supprimés — et on la compare à la
+même empreinte calculée sur chaque fichier local.
+
+| Contrôle | Résultat |
+| --- | --- |
+| Fichiers locaux | 11 |
+| Empreintes identiques au SQL exécuté | **11 / 11** |
+| Divergence de contenu | **aucune** |
+| Versions divergentes (contenu identique) | 5, comme documenté |
+
+Les deux fichiers de relevé sont versionnés :
+`docs/sauvegardes/prod-migration-historique-2026-11-10.json` (versions, noms,
+empreintes ; aucun SQL recopié, aucun secret) et le script
+`scripts/checkMigrationContent.mjs` qui le vérifie, testé par
+`tests/migrationHistory.test.ts`.
+
+**Conclusion pour la suite** : puisqu'aucun contenu ne diffère, une migration
+additive n'est pas nécessaire. La réconciliation se limite à aligner les noms de
+fichiers du dépôt sur les versions distantes. Rappel inchangé : `migration
+repair` n'exécute aucun SQL et n'est **pas** nécessaire dans ce chemin ; s'il
+était lancé avec les versions locales, il inscrirait cinq lignes de plus dans
+l'historique distant (11 → 16) sans rien résoudre.
 
 Ce test rejoue les 11 migrations dans PGlite, puis compare le catalogue obtenu
 (tables, colonnes, politiques, fonctions, déclencheurs, index, contraintes,
@@ -90,6 +125,65 @@ ou si le dépôt ajoute une migration sans que la production la reçoive.
 Pour rafraîchir l'instantané après une application **volontaire** de migration,
 relancer la requête de capture (voir § Annexe) puis mettre à jour le JSON et la
 date dans le test.
+
+### Étape 3 — noms de fichiers alignés (10 novembre 2026)
+
+Les cinq fichiers ont été **renommés** vers la version réellement enregistrée en
+base. Aucun SQL n'a été touché : `npm run db:content` le vérifie après coup et
+répond toujours 11/11 identiques.
+
+| Ancien fichier | Fichier actuel |
+| --- | --- |
+| `20261109140000_station_memberships.sql` | `20261109182442_station_memberships.sql` |
+| `20261109141000_subscription_limits.sql` | `20261109182456_subscription_limits.sql` |
+| `20261109142000_station_inventory.sql` | `20261109182509_station_inventory.sql` |
+| `20261109150000_station_role_permissions.sql` | `20261109182534_station_role_permissions.sql` |
+| `20261109160000_revoke_legacy_order_rpc.sql` | `20261109184205_revoke_legacy_order_rpc.sql` |
+
+**Pourquoi un renommage plutôt que `migration fetch --remote`** : la commande
+exige un jeton d'accès (`SUPABASE_ACCESS_TOKEN`) pour interroger l'API, alors que
+les cinq contenus étaient déjà prouvés identiques. Le renommage obtient le même
+résultat sans écrire quoi que ce soit côté serveur, et il est vérifiable hors
+ligne. `migration fetch` reste la bonne commande quand on ne dispose pas d'une
+telle preuve — c'est-à-dire quand le contenu pourrait différer.
+
+Ce qui devait suivre le renommage, et a été fait :
+
+- `docs/sauvegardes/prod-migration-historique-2026-11-10.json` : le champ
+  `fichier` garde le nom d'origine (trace de l'écart), `version_fichier` donne le
+  nom en vigueur ;
+- `tests/productionState.test.ts`, `tests/migrationUpgradePath.test.ts`,
+  `tests/migrationHistory.test.ts` : listes de fichiers mises à jour, avec
+  l'invariant nouveau — **chaque fichier porte une version réellement appliquée** ;
+- `src/lib/schemas.ts` : les commentaires qui citent une migration citent le nom
+  actuel.
+
+### Étape 4 — vérification finale, à faire par vous
+
+Dernière vérification, celle qui prouve que le CLI voit un dépôt aligné. Elle
+demande un jeton, donc elle se lance depuis votre poste :
+
+```bash
+export SUPABASE_ACCESS_TOKEN=...        # jamais dans le dépôt
+npx supabase login                      # une fois par poste
+npx supabase link --project-ref avvkzliysacpyavmetsx
+npx supabase migration list --linked    # 11 lignes, aucune colonne vide
+npx supabase db push --dry-run          # doit annoncer 0 migration à appliquer
+```
+
+Attendu : `migration list` montre la même version dans les deux colonnes
+(Local / Remote) pour les onze lignes, et `db push --dry-run` ne propose rien.
+Si `db push --dry-run` propose encore quelque chose, **ne pas lancer `db push`** :
+comparer d'abord avec `npx supabase migration list --linked`, puis signaler
+l'écart — c'est le signe qu'une version diffère encore.
+
+Sans jeton, la vérification hors ligne équivalente reste :
+
+```bash
+npm run db:content          # empreinte de chaque fichier == SQL exécuté (11/11)
+npm run db:drift            # schéma rejoué == schéma de production (8 contrôles)
+```
+
 
 ## Historique de déploiement (9 novembre 2026)
 
@@ -107,40 +201,29 @@ date dans le test.
 | `20261109182534` | station_role_permissions | ✅ |
 | `20261109184205` | revoke_legacy_order_rpc | ✅ |
 
-> ⚠️ **Les cinq dernières ont été appliquées via le connecteur Supabase** (`create_migration`), qui horodate au moment de l'exécution. Leurs numéros de version diffèrent donc des noms de fichiers locaux. **L'historique distant fait foi** : ne pas rejouer les fichiers locaux, ce qui les appliquerait une seconde fois.
+> ⚠️ **Les cinq dernières ont été appliquées via le connecteur Supabase** (`create_migration`), qui horodate au moment de l'exécution. **L'historique distant fait foi** : ne pas rejouer de SQL, ce qui appliquerait ces migrations une seconde fois.
 
-| Fichier local | Version distante réelle |
-| --- | --- |
-| `20261109140000_station_memberships.sql` | `20261109182442` |
-| `20261109141000_subscription_limits.sql` | `20261109182456` |
-| `20261109142000_station_inventory.sql` | `20261109182509` |
-| `20261109150000_station_role_permissions.sql` | `20261109182534` |
-| `20261109160000_revoke_legacy_order_rpc.sql` | `20261109184205` |
-
-Cette correspondance est figée dans `docs/sauvegardes/prod-schema-2026-11-10.json`
-et vérifiée par `tests/productionSchemaDrift.test.ts` : elle ne peut pas dériver
-silencieusement.
+Les fichiers portent désormais ces versions (renommage du 10 novembre 2026,
+étape 3). La correspondance n'est plus une donnée de travail : elle est
+conservée dans `docs/sauvegardes/prod-migration-historique-2026-11-10.json`
+comme trace de l'écart constaté et de sa correction.
 
 ### Conséquence sur `supabase db push`
 
-Un `supabase db push` détecterait les **cinq** fichiers locaux comme non appliqués (versions différentes) et tenterait de les rejouer. **Ne pas le lancer en l'état.** Pour aligner le dépôt sur le distant :
+Avant le renommage, `db push` voyait les cinq fichiers comme non appliqués et
+aurait tenté de les rejouer. Depuis l'étape 3, chaque fichier porte la version
+enregistrée : le CLI doit donc annoncer **0** migration à appliquer.
 
-```bash
-supabase link --project-ref avvkzliysacpyavmetsx
-supabase migration list        # confirmer le décalage de versions
-# 1) prouver d'abord que le schéma est identique :
-npx tsx --test tests/productionSchemaDrift.test.ts
-# 2) seulement ensuite, aligner l'historique (aucun SQL exécuté) :
-supabase migration repair --status applied 20261109140000 20261109141000 \
-                                      --status applied 20261109142000 20261109150000 \
-                                      --status applied 20261109160000
-```
+La vérification se fait avec `db push --dry-run` (voir § Étape 4). Si elle
+propose encore quelque chose, **ne pas lancer `db push`** : c'est le signe qu'une
+version diffère, et c'est `npx supabase migration list --linked` qui dira
+laquelle.
 
-> ⚠️ **Ne jamais lancer `migration repair` avant l'étape 1.** Inscrire une version
-> comme appliquée sans avoir prouvé que le schéma correspond masquerait une vraie
-> dérive au lieu de la corriger.
-
-`migration repair` n'exécute aucun SQL : il ne fait qu'inscrire les versions locales comme déjà appliquées. À faire **après** avoir confirmé que le schéma distant correspond bien au contenu des fichiers.
+> ⚠️ **`migration repair` n'est pas dans ce chemin.** Il n'exécute aucun SQL,
+> mais il écrit dans l'historique distant : lancé avec les anciennes versions
+> locales, il aurait ajouté cinq lignes (11 → 16) et créé la dérive qu'on
+> cherchait à éviter. Il ne servirait ici qu'à inscrire une version qu'on n'a
+> pas su aligner — un pansement sur un écart non expliqué.
 
 ## Ordre imposé par les dépendances
 

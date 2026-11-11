@@ -15,19 +15,19 @@ import { ReceiptQrCode } from './ReceiptQrCode';
  * La base n'enregistre ni moyen de paiement ni encaissement, donc le ticket
  * affiche « montant facturé » et « état du lavage », jamais « réglé ».
  */
-export const ReceiptPaper = forwardRef<HTMLDivElement, {
-  order: OrderReceiptData;
-  stationName: string;
-  qrPayload: string;
-}>(function ReceiptPaper({ order, stationName, qrPayload }, ref) {
+export const ReceiptPaper = forwardRef<
+  HTMLDivElement,
+  {
+    order: OrderReceiptData;
+    stationName: string;
+    qrPayload: string;
+  }
+>(function ReceiptPaper({ order, stationName, qrPayload }, ref) {
   const code = receiptTicketCode(order);
   const date = receiptDateLabel(order.createdAt);
 
   return (
-    <div
-      ref={ref}
-      className="p-5 bg-white text-gray-900 font-mono text-xs select-text printable-ticket"
-    >
+    <div ref={ref} className="p-5 bg-white text-gray-900 font-mono text-xs select-text printable-ticket">
       <div className="text-center pb-3 border-b-2 border-dashed border-gray-400 space-y-1">
         <div className="font-sans font-black text-lg text-cyan-700 tracking-tight flex items-center justify-center gap-1.5">
           <span className="w-3.5 h-3.5 rounded-full bg-cyan-600 inline-block" />
@@ -92,9 +92,7 @@ export const ReceiptPaper = forwardRef<HTMLDivElement, {
         <p className="text-[9px] text-gray-500">
           Scanner ce code affiche la référence, le véhicule, le montant et la date du ticket.
         </p>
-        <p className="text-[9px] text-gray-500">
-          ServiceLavage CI • Reçu de prestation, document interne
-        </p>
+        <p className="text-[9px] text-gray-500">ServiceLavage CI • Reçu de prestation, document interne</p>
       </div>
     </div>
   );

@@ -1,5 +1,13 @@
 import { formatXof } from '../../lib/money';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, EmptyState, buttonStyles } from '../ui/designSystem';
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+  EmptyState,
+  buttonStyles,
+} from '../ui/designSystem';
 import { TrendingUp } from 'lucide-react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 
@@ -38,18 +46,29 @@ export function BilledTrendChart({
       </CardHeader>
       <CardContent>
         {!loaded ? (
-          <p role="status" className="h-64 flex items-center justify-center text-sm text-slate-400">Chargement…</p>
+          <p
+            role="status"
+            className="h-64 flex items-center justify-center text-sm text-[var(--text-secondary)]"
+          >
+            Chargement…
+          </p>
         ) : empty ? (
           <div className="h-64 flex items-center justify-center">
             <EmptyState
-              icon={<TrendingUp className="w-6 h-6 text-slate-400" />}
+              icon={<TrendingUp className="w-6 h-6 text-[var(--text-secondary)]" />}
               title="Aucune prestation terminée sur 7 jours"
               description="Le graphique apparaîtra dès qu’une prestation aura été enregistrée puis marquée comme terminée. Aucune valeur de démonstration n’est affichée."
-              action={onNavigateOrders && (
-                <button type="button" className={buttonStyles({ variant: 'primary', size: 'sm' })} onClick={onNavigateOrders}>
-                  Voir les prestations
-                </button>
-              )}
+              action={
+                onNavigateOrders && (
+                  <button
+                    type="button"
+                    className={buttonStyles({ variant: 'primary', size: 'sm' })}
+                    onClick={onNavigateOrders}
+                  >
+                    Voir les prestations
+                  </button>
+                )
+              }
             />
           </div>
         ) : (
@@ -72,7 +91,13 @@ export function BilledTrendChart({
                   tickFormatter={(value: number) => value.toLocaleString('fr-FR')}
                 />
                 <Tooltip
-                  contentStyle={{ backgroundColor: '#141822', borderColor: '#2d3748', borderRadius: '0.75rem', color: '#fff', fontSize: '12px' }}
+                  contentStyle={{
+                    backgroundColor: '#141822',
+                    borderColor: '#2d3748',
+                    borderRadius: '0.75rem',
+                    color: '#fff',
+                    fontSize: '12px',
+                  }}
                   formatter={(value, _name, item) => [
                     `${formatXof(Number(value ?? 0))} · ${(item?.payload as BilledPoint | undefined)?.count ?? 0} prestation(s)`,
                     'Facturé',

@@ -33,6 +33,12 @@ export function useDashboardMetrics(
   client: SupabaseClient | null,
   stationId: string,
   userId: string,
+  /**
+   * Instant de référence, injecté uniquement par les tests. En production il
+   * reste `undefined` et l'instant est celui du rendu : c'est ce qui permet à
+   * « aujourd'hui » de désigner le jour de l'utilisateur, pas celui du build.
+   */
+  referenceNow?: Date,
 ) {
   const [orders, setOrders] = useState<StationOrderRow[]>([]);
   const [queued, setQueued] = useState<QueuedSummary[]>([]);
@@ -63,12 +69,14 @@ export function useDashboardMetrics(
 
       // (3) File locale : comptée, jamais valorisée (voir stationMetrics).
       try {
-        setQueued(listQueuedOrders(localStorage, userId, stationId).map(item => ({
-          requestId: item.requestId,
-          vehicle: item.vehicle,
-          plate: item.plate,
-          createdAt: item.createdAt,
-        })));
+        setQueued(
+          listQueuedOrders(localStorage, userId, stationId).map(item => ({
+            requestId: item.requestId,
+            vehicle: item.vehicle,
+            plate: item.plate,
+            createdAt: item.createdAt,
+          })),
+        );
       } catch {
         setError('La file locale est illisible ; elle a été conservée sur cet appareil.');
       }
@@ -85,7 +93,10 @@ export function useDashboardMetrics(
 
   // One reference instant for the whole render, so every panel describes the
   // same day even if the render straddles midnight.
-  const reference = useMemo(() => new Date(), [orders, customerCount, queued]);
+  // Instant de référence figé pendant le rendu, recalculé quand les données
+  // changent (voir `StationReports`, même motif).
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- volontaire : l'instant suit les données
+  const reference = useMemo(() => referenceNow ?? new Date(), [orders, customerCount, queued, referenceNow]);
 
   const metrics = useMemo(
     () => dashboardMetrics(orders, reference, { customersCount: customerCount, queuedCount: queued.length }),

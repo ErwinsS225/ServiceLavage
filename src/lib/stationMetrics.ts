@@ -196,11 +196,16 @@ export type ReportPeriod = 'today' | 'week' | 'month' | 'year';
 
 export function periodStart(period: ReportPeriod, reference: Date): number {
   switch (period) {
-    case 'today': return startOfDay(reference);
-    case 'week': return startOfWeek(reference);
-    case 'month': return startOfMonth(reference);
-    case 'year': return startOfYear(reference);
-    default: return startOfMonth(reference);
+    case 'today':
+      return startOfDay(reference);
+    case 'week':
+      return startOfWeek(reference);
+    case 'month':
+      return startOfMonth(reference);
+    case 'year':
+      return startOfYear(reference);
+    default:
+      return startOfMonth(reference);
   }
 }
 
@@ -223,7 +228,11 @@ export interface ReportMetrics {
   averageBilledXof: number;
 }
 
-export function reportMetrics(orders: readonly MetricOrder[], period: ReportPeriod, reference: Date): ReportMetrics {
+export function reportMetrics(
+  orders: readonly MetricOrder[],
+  period: ReportPeriod,
+  reference: Date,
+): ReportMetrics {
   const start = periodStart(period, reference);
   const end = reference.getTime();
   const inPeriod = orders.filter(order => {

@@ -17,7 +17,11 @@ const reference = JSON.parse(await readFile('docs/sauvegardes/prod-schema-2026-1
 
 test('the CLI config targets the real project', () => {
   assert.match(config, /^project_id = "avvkzliysacpyavmetsx"$/m, 'projet LavAuto');
-  assert.equal(reference._projet.ref, 'avvkzliysacpyavmetsx', 'la référence doit rester celle de l’instantané');
+  assert.equal(
+    reference._projet.ref,
+    'avvkzliysacpyavmetsx',
+    'la référence doit rester celle de l’instantané',
+  );
 });
 
 test('the local development stack is usable without Docker-specific values', () => {

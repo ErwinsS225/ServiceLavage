@@ -1,6 +1,15 @@
 import { formatXof } from '../../lib/money';
 import { orderBilledXof, safeXof, type StationOrderRow } from '../../lib/stationMetrics';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, EmptyState, StatusBadge, buttonStyles } from '../ui/designSystem';
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+  EmptyState,
+  StatusBadge,
+  buttonStyles,
+} from '../ui/designSystem';
 import type { StatusVariant } from '../ui/designSystem';
 import { Car, ArrowRight } from 'lucide-react';
 
@@ -45,40 +54,53 @@ export function RecentOrdersCard({
       </CardHeader>
       <CardContent>
         {!loaded ? (
-          <p role="status" className="text-xs text-slate-400 text-center py-4">Chargement…</p>
+          <p role="status" className="text-xs text-[var(--text-secondary)] text-center py-4">
+            Chargement…
+          </p>
         ) : orders.length === 0 ? (
           <EmptyState
-            icon={<Car className="w-6 h-6 text-slate-400" />}
+            icon={<Car className="w-6 h-6 text-[var(--text-secondary)]" />}
             title="Aucune prestation enregistrée"
             description="Créez la première prestation depuis l’onglet Prestations : elle apparaîtra ici avec son montant serveur."
-            action={onNavigateOrders && (
-              <button type="button" className={buttonStyles({ variant: 'primary', size: 'sm' })} onClick={onNavigateOrders}>
-                Créer une prestation
-              </button>
-            )}
+            action={
+              onNavigateOrders && (
+                <button
+                  type="button"
+                  className={buttonStyles({ variant: 'primary', size: 'sm' })}
+                  onClick={onNavigateOrders}
+                >
+                  Créer une prestation
+                </button>
+              )
+            }
           />
         ) : (
           <div className="divide-y divide-[var(--border-subtle)]">
             {orders.map(order => (
               <div key={order.id} className="py-3 flex items-center justify-between gap-3 text-xs">
                 <div className="space-y-0.5 min-w-0">
-                  <div className="font-bold text-white flex items-center gap-2">
+                  <div className="font-bold text-[var(--text-primary)] flex items-center gap-2">
                     <span className="truncate">{order.vehicle_info}</span>
                     {order.plate_number && (
-                      <span className="px-1.5 py-0.5 rounded bg-[#202532] text-slate-300 font-mono text-[10px] shrink-0">
+                      <span className="px-1.5 py-0.5 rounded bg-[var(--surface-elevated)] text-slate-300 font-mono text-[10px] shrink-0">
                         {order.plate_number}
                       </span>
                     )}
                   </div>
-                  <span className="text-[11px] text-slate-500">
+                  <span className="text-[11px] text-[var(--text-muted)]">
                     {new Date(order.created_at).toLocaleString('fr-FR', {
-                      day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
+                      day: '2-digit',
+                      month: '2-digit',
+                      hour: '2-digit',
+                      minute: '2-digit',
                     })}
                   </span>
                 </div>
 
                 <div className="flex items-center gap-3 shrink-0">
-                  <span className={`font-bold font-mono tabular-nums ${order.status === 'annule' ? 'text-slate-500 line-through' : 'text-white'}`}>
+                  <span
+                    className={`font-bold font-mono tabular-nums ${order.status === 'annule' ? 'text-[var(--text-muted)] line-through' : 'text-white'}`}
+                  >
                     {formatXof(safeXof(order.total_xof))}
                   </span>
                   <StatusBadge status={order.status as StatusVariant} size="sm" />
@@ -88,9 +110,10 @@ export function RecentOrdersCard({
           </div>
         )}
         {orders.length > 0 && (
-          <p className="pt-3 text-[11px] text-slate-500">
-            Montant facturé = prix figé au moment de la création, compté seulement si la prestation est terminée.
-            Total facturé sur ces {orders.length} lignes : {formatXof(orders.reduce((sum, order) => sum + orderBilledXof(order), 0))}.
+          <p className="pt-3 text-[11px] text-[var(--text-muted)]">
+            Montant facturé = prix figé au moment de la création, compté seulement si la prestation est
+            terminée. Total facturé sur ces {orders.length} lignes :{' '}
+            {formatXof(orders.reduce((sum, order) => sum + orderBilledXof(order), 0))}.
           </p>
         )}
       </CardContent>

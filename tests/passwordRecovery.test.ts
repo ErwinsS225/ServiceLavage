@@ -1,14 +1,25 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  MIN_PASSWORD_LENGTH, RECOVERY_SENT_MESSAGE, authRedirectUrl, validateNewPassword,
+  MIN_PASSWORD_LENGTH,
+  RECOVERY_SENT_MESSAGE,
+  authRedirectUrl,
+  validateNewPassword,
 } from '../src/lib/passwordRecovery';
 
 test('a new password must be long enough and match its confirmation', () => {
   assert.deepEqual(validateNewPassword('', ''), { ok: false, reason: 'empty' });
-  assert.deepEqual(validateNewPassword('a'.repeat(MIN_PASSWORD_LENGTH - 1), 'a'.repeat(MIN_PASSWORD_LENGTH - 1)), { ok: false, reason: 'too_short' });
-  assert.deepEqual(validateNewPassword('a'.repeat(MIN_PASSWORD_LENGTH), 'b'.repeat(MIN_PASSWORD_LENGTH)), { ok: false, reason: 'mismatch' });
-  assert.deepEqual(validateNewPassword('a'.repeat(MIN_PASSWORD_LENGTH), 'a'.repeat(MIN_PASSWORD_LENGTH)), { ok: true });
+  assert.deepEqual(
+    validateNewPassword('a'.repeat(MIN_PASSWORD_LENGTH - 1), 'a'.repeat(MIN_PASSWORD_LENGTH - 1)),
+    { ok: false, reason: 'too_short' },
+  );
+  assert.deepEqual(validateNewPassword('a'.repeat(MIN_PASSWORD_LENGTH), 'b'.repeat(MIN_PASSWORD_LENGTH)), {
+    ok: false,
+    reason: 'mismatch',
+  });
+  assert.deepEqual(validateNewPassword('a'.repeat(MIN_PASSWORD_LENGTH), 'a'.repeat(MIN_PASSWORD_LENGTH)), {
+    ok: true,
+  });
 });
 
 test('password length limit matches the documented minimum of eight', () => {

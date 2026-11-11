@@ -60,25 +60,35 @@ export function useStations(client: SupabaseClient | null, userId: string | null
       .then(list => {
         if (!active) return;
         setStations(list);
-        try { writeStationsCache(userId, list); }
-        catch { setError('Impossible de sauvegarder les stations pour le mode hors ligne.'); }
+        try {
+          writeStationsCache(userId, list);
+        } catch {
+          setError('Impossible de sauvegarder les stations pour le mode hors ligne.');
+        }
       })
       .catch(() => {
         if (!active) return;
         // Keep the cached list visible, explain why it may be stale.
-        setError('Stations hors ligne : les données enregistrées sur cet appareil sont utilisées si disponibles.');
+        setError(
+          'Stations hors ligne : les données enregistrées sur cet appareil sont utilisées si disponibles.',
+        );
       });
 
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, [client, userId, nonce]);
 
-  const create = useCallback(async (name: string): Promise<StationRow> => {
-    if (!client || !userId) throw new Error('Session absente.');
-    const created = await createStationRequest(client, userId, name);
-    setStations(previous => [...previous, created]);
-    setStationId(created.id);
-    return created;
-  }, [client, userId]);
+  const create = useCallback(
+    async (name: string): Promise<StationRow> => {
+      if (!client || !userId) throw new Error('Session absente.');
+      const created = await createStationRequest(client, userId, name);
+      setStations(previous => [...previous, created]);
+      setStationId(created.id);
+      return created;
+    },
+    [client, userId],
+  );
 
   return {
     stations,

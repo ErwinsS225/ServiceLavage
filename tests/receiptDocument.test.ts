@@ -39,13 +39,23 @@ function fakePdf() {
   const written: string[] = [];
   const noop = () => {};
   const doc = {
-    setFont: noop, setFontSize: noop, setTextColor: noop, setDrawColor: noop,
-    setLineDashPattern: noop, setLineWidth: noop, setFillColor: noop,
-    line: noop, rect: noop,
-    text: (value: string) => { written.push(normalize(value)); },
+    setFont: noop,
+    setFontSize: noop,
+    setTextColor: noop,
+    setDrawColor: noop,
+    setLineDashPattern: noop,
+    setLineWidth: noop,
+    setFillColor: noop,
+    line: noop,
+    rect: noop,
+    text: (value: string) => {
+      written.push(normalize(value));
+    },
     output: () => new Blob(),
   };
-  const Constructor = function (this: unknown) { return doc as never; } as unknown as Parameters<typeof drawReceiptPdf>[0];
+  const Constructor = function (this: unknown) {
+    return doc as never;
+  } as unknown as Parameters<typeof drawReceiptPdf>[0];
   return { Constructor, written };
 }
 

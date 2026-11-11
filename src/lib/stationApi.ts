@@ -24,7 +24,10 @@ export type StationClient = SupabaseClient;
 
 export function resolveClient(client?: StationClient | null): StationClient {
   const resolved = client ?? defaultClient;
-  if (!resolved) throw new Error('Supabase n’est pas configuré : VITE_SUPABASE_URL et VITE_SUPABASE_PUBLISHABLE_KEY sont absents.');
+  if (!resolved)
+    throw new Error(
+      'Supabase n’est pas configuré : VITE_SUPABASE_URL et VITE_SUPABASE_PUBLISHABLE_KEY sont absents.',
+    );
   return resolved;
 }
 
@@ -55,19 +58,34 @@ export async function fetchServices(client: StationClient, stationId: string): P
     .select(SERVICE_FIELDS)
     .eq('station_id', stationId)
     .order('created_at', { ascending: false });
-  return unwrap(result as { data: ServiceRow[] | null; error: { message: string } | null }, 'Impossible de charger le catalogue');
+  return unwrap(
+    result as { data: ServiceRow[] | null; error: { message: string } | null },
+    'Impossible de charger le catalogue',
+  );
 }
 
-export async function createService(client: StationClient, stationId: string, input: ServiceInput): Promise<ServiceRow> {
+export async function createService(
+  client: StationClient,
+  stationId: string,
+  input: ServiceInput,
+): Promise<ServiceRow> {
   const result = await client
     .from('station_services')
     .insert({ ...input, station_id: stationId })
     .select(SERVICE_FIELDS)
     .single();
-  return unwrap(result as { data: ServiceRow | null; error: { message: string } | null }, 'Enregistrement impossible');
+  return unwrap(
+    result as { data: ServiceRow | null; error: { message: string } | null },
+    'Enregistrement impossible',
+  );
 }
 
-export async function updateService(client: StationClient, stationId: string, serviceId: string, input: ServiceInput): Promise<ServiceRow> {
+export async function updateService(
+  client: StationClient,
+  stationId: string,
+  serviceId: string,
+  input: ServiceInput,
+): Promise<ServiceRow> {
   const result = await client
     .from('station_services')
     .update(input)
@@ -77,18 +95,30 @@ export async function updateService(client: StationClient, stationId: string, se
     .eq('station_id', stationId)
     .select(SERVICE_FIELDS)
     .single();
-  return unwrap(result as { data: ServiceRow | null; error: { message: string } | null }, 'Enregistrement impossible');
+  return unwrap(
+    result as { data: ServiceRow | null; error: { message: string } | null },
+    'Enregistrement impossible',
+  );
 }
 
 /** Services actifs, pour la création d'une prestation. */
-export async function fetchActiveServices(client: StationClient, stationId: string): Promise<Array<Pick<ServiceRow, 'id' | 'name' | 'price_xof'>>> {
+export async function fetchActiveServices(
+  client: StationClient,
+  stationId: string,
+): Promise<Array<Pick<ServiceRow, 'id' | 'name' | 'price_xof'>>> {
   const result = await client
     .from('station_services')
     .select('id,name,price_xof')
     .eq('station_id', stationId)
     .eq('is_active', true)
     .order('name');
-  return unwrap(result as { data: Array<Pick<ServiceRow, 'id' | 'name' | 'price_xof'>> | null; error: { message: string } | null }, 'Impossible de charger les services actifs');
+  return unwrap(
+    result as {
+      data: Array<Pick<ServiceRow, 'id' | 'name' | 'price_xof'>> | null;
+      error: { message: string } | null;
+    },
+    'Impossible de charger les services actifs',
+  );
 }
 
 /* ------------------------------------------------------------------ */
@@ -109,7 +139,10 @@ export async function fetchCustomers(client: StationClient, stationId: string): 
     .select(CUSTOMER_FIELDS)
     .eq('station_id', stationId)
     .order('created_at', { ascending: false });
-  return unwrap(result as { data: CustomerRow[] | null; error: { message: string } | null }, 'Impossible de charger les clients');
+  return unwrap(
+    result as { data: CustomerRow[] | null; error: { message: string } | null },
+    'Impossible de charger les clients',
+  );
 }
 
 /** Clients triés par nom, pour le sélecteur de la création de prestation. */
@@ -119,16 +152,26 @@ export async function fetchCustomersByName(client: StationClient, stationId: str
     .select(CUSTOMER_FIELDS)
     .eq('station_id', stationId)
     .order('name');
-  return unwrap(result as { data: CustomerRow[] | null; error: { message: string } | null }, 'Impossible de charger les clients');
+  return unwrap(
+    result as { data: CustomerRow[] | null; error: { message: string } | null },
+    'Impossible de charger les clients',
+  );
 }
 
-export async function createCustomer(client: StationClient, stationId: string, input: { name: string; phone: string }): Promise<CustomerRow> {
+export async function createCustomer(
+  client: StationClient,
+  stationId: string,
+  input: { name: string; phone: string },
+): Promise<CustomerRow> {
   const result = await client
     .from('station_customers')
     .insert({ station_id: stationId, name: input.name, phone: input.phone })
     .select(CUSTOMER_FIELDS)
     .single();
-  return unwrap(result as { data: CustomerRow | null; error: { message: string } | null }, 'Enregistrement impossible');
+  return unwrap(
+    result as { data: CustomerRow | null; error: { message: string } | null },
+    'Enregistrement impossible',
+  );
 }
 
 export async function updateCustomer(
@@ -144,7 +187,10 @@ export async function updateCustomer(
     .eq('station_id', stationId)
     .select(CUSTOMER_FIELDS)
     .single();
-  return unwrap(result as { data: CustomerRow | null; error: { message: string } | null }, 'Enregistrement impossible');
+  return unwrap(
+    result as { data: CustomerRow | null; error: { message: string } | null },
+    'Enregistrement impossible',
+  );
 }
 
 /* ------------------------------------------------------------------ */
@@ -163,7 +209,8 @@ export interface OrderRow {
   station_order_items: Array<{ id: string; service_name: string; price_xof: number }>;
 }
 
-export const ORDER_FIELDS = 'id,vehicle_info,plate_number,total_xof,status,created_at,station_order_items(id,service_name,price_xof)';
+export const ORDER_FIELDS =
+  'id,vehicle_info,plate_number,total_xof,status,created_at,station_order_items(id,service_name,price_xof)';
 
 export async function fetchOrders(client: StationClient, stationId: string): Promise<OrderRow[]> {
   const result = await client
@@ -174,7 +221,10 @@ export async function fetchOrders(client: StationClient, stationId: string): Pro
     // the recent ones, the reports read their own, bounded window.
     .order('created_at', { ascending: false })
     .limit(200);
-  return unwrap(result as { data: OrderRow[] | null; error: { message: string } | null }, 'Chargement des prestations impossible');
+  return unwrap(
+    result as { data: OrderRow[] | null; error: { message: string } | null },
+    'Chargement des prestations impossible',
+  );
 }
 
 export interface QueuedOrderLike {
@@ -203,7 +253,11 @@ export async function createOrderIdempotent(client: StationClient, order: Queued
   if (error) throw new Error(`Synchronisation en attente : ${error.message}`);
 }
 
-export async function transitionOrder(client: StationClient, orderId: string, status: 'en_cours' | 'termine' | 'annule'): Promise<void> {
+export async function transitionOrder(
+  client: StationClient,
+  orderId: string,
+  status: 'en_cours' | 'termine' | 'annule',
+): Promise<void> {
   const { error } = await client.rpc('transition_station_order', { p_order_id: orderId, p_status: status });
   if (error) throw new Error(`Mise à jour impossible : ${error.message}`);
 }
@@ -229,18 +283,30 @@ export interface AssignmentRow {
 }
 
 export async function fetchAssignments(client: StationClient, stationId: string): Promise<AssignmentRow[]> {
-  const result = await client.from('station_order_assignments').select('order_id,user_id').eq('station_id', stationId);
-  return unwrap(result as { data: AssignmentRow[] | null; error: { message: string } | null }, 'Chargement des affectations impossible');
+  const result = await client
+    .from('station_order_assignments')
+    .select('order_id,user_id')
+    .eq('station_id', stationId);
+  return unwrap(
+    result as { data: AssignmentRow[] | null; error: { message: string } | null },
+    'Chargement des affectations impossible',
+  );
 }
 
-export async function fetchWashers(client: StationClient, stationId: string): Promise<Array<{ user_id: string }>> {
+export async function fetchWashers(
+  client: StationClient,
+  stationId: string,
+): Promise<Array<{ user_id: string }>> {
   const result = await client
     .from('station_memberships')
     .select('user_id')
     .eq('station_id', stationId)
     .eq('role', 'laveur')
     .is('revoked_at', null);
-  return unwrap(result as { data: Array<{ user_id: string }> | null; error: { message: string } | null }, 'Chargement des laveurs impossible');
+  return unwrap(
+    result as { data: Array<{ user_id: string }> | null; error: { message: string } | null },
+    'Chargement des laveurs impossible',
+  );
 }
 
 export async function assignOrder(client: StationClient, orderId: string, washerId: string): Promise<void> {
@@ -268,8 +334,15 @@ export interface InventoryRow {
 export const INVENTORY_FIELDS = 'id,name,unit,quantity,min_threshold';
 
 export async function fetchInventory(client: StationClient, stationId: string): Promise<InventoryRow[]> {
-  const result = await client.from('station_inventory').select(INVENTORY_FIELDS).eq('station_id', stationId).order('name');
-  return unwrap(result as { data: InventoryRow[] | null; error: { message: string } | null }, 'Impossible de charger l’inventaire');
+  const result = await client
+    .from('station_inventory')
+    .select(INVENTORY_FIELDS)
+    .eq('station_id', stationId)
+    .order('name');
+  return unwrap(
+    result as { data: InventoryRow[] | null; error: { message: string } | null },
+    'Impossible de charger l’inventaire',
+  );
 }
 
 /** Création d'article : la RPC renvoie la ligne créée, ou refuse (rôle, quota). */
@@ -282,10 +355,7 @@ export interface InventoryItemInput {
   minThreshold: number;
 }
 
-export async function createInventoryItem(
-  client: StationClient,
-  input: InventoryItemInput,
-): Promise<void> {
+export async function createInventoryItem(client: StationClient, input: InventoryItemInput): Promise<void> {
   const { data, error } = await client.rpc('apply_inventory_operation', {
     p_request_id: crypto.randomUUID(),
     p_station_id: input.stationId,
@@ -314,7 +384,8 @@ export async function applyInventoryAdjustment(
     p_min_threshold: null,
   });
   if (error) throw new Error(error.message);
-  if (!Array.isArray(data) || data.length === 0) throw new Error('Le serveur n’a pas confirmé l’ajustement de stock.');
+  if (!Array.isArray(data) || data.length === 0)
+    throw new Error('Le serveur n’a pas confirmé l’ajustement de stock.');
 }
 
 /* ------------------------------------------------------------------ */
@@ -346,7 +417,11 @@ export interface InvitationRow {
  * le garantit aussi, mais interroger la table pour rien produirait une erreur
  * trompeuse pour un gérant.
  */
-export async function fetchStaff(client: StationClient, stationId: string, canManageRoles: boolean): Promise<{ members: MemberRow[]; invitations: InvitationRow[] }> {
+export async function fetchStaff(
+  client: StationClient,
+  stationId: string,
+  canManageRoles: boolean,
+): Promise<{ members: MemberRow[]; invitations: InvitationRow[] }> {
   const rosterQuery = client
     .from('station_memberships')
     .select('user_id,role,created_at,revoked_at')
@@ -354,21 +429,36 @@ export async function fetchStaff(client: StationClient, stationId: string, canMa
     .order('created_at');
   const invitationsQuery = canManageRoles
     ? client
-      .from('station_invitations')
-      .select('id,email,role,created_at,expires_at,accepted_at,cancelled_at')
-      .eq('station_id', stationId)
-      .order('created_at', { ascending: false })
+        .from('station_invitations')
+        .select('id,email,role,created_at,expires_at,accepted_at,cancelled_at')
+        .eq('station_id', stationId)
+        .order('created_at', { ascending: false })
     : Promise.resolve({ data: [] as InvitationRow[], error: null });
 
   const [roster, invitations] = await Promise.all([rosterQuery, invitationsQuery]);
-  const members = unwrap(roster as { data: MemberRow[] | null; error: { message: string } | null }, 'Chargement du personnel impossible');
-  const invites = unwrap(invitations as { data: InvitationRow[] | null; error: { message: string } | null }, 'Chargement des invitations impossible');
+  const members = unwrap(
+    roster as { data: MemberRow[] | null; error: { message: string } | null },
+    'Chargement du personnel impossible',
+  );
+  const invites = unwrap(
+    invitations as { data: InvitationRow[] | null; error: { message: string } | null },
+    'Chargement des invitations impossible',
+  );
   return { members, invitations: invites };
 }
 
 /** Renvoie la référence d'invitation à transmettre au collaborateur. */
-export async function createInvitation(client: StationClient, stationId: string, email: string, role: StaffRole): Promise<string> {
-  const { data, error } = await client.rpc('create_station_invitation', { p_station_id: stationId, p_email: email, p_role: role });
+export async function createInvitation(
+  client: StationClient,
+  stationId: string,
+  email: string,
+  role: StaffRole,
+): Promise<string> {
+  const { data, error } = await client.rpc('create_station_invitation', {
+    p_station_id: stationId,
+    p_email: email,
+    p_role: role,
+  });
   if (error) throw new Error(`Création de l’invitation impossible : ${error.message}`);
   return String(data ?? '');
 }
@@ -378,8 +468,15 @@ export async function cancelInvitation(client: StationClient, invitationId: stri
   if (error) throw new Error(`Annulation impossible : ${error.message}`);
 }
 
-export async function revokeMembership(client: StationClient, stationId: string, userId: string): Promise<void> {
-  const { error } = await client.rpc('revoke_station_membership', { p_station_id: stationId, p_user_id: userId });
+export async function revokeMembership(
+  client: StationClient,
+  stationId: string,
+  userId: string,
+): Promise<void> {
+  const { error } = await client.rpc('revoke_station_membership', {
+    p_station_id: stationId,
+    p_user_id: userId,
+  });
   if (error) throw new Error(`Révocation impossible : ${error.message}`);
 }
 
@@ -413,7 +510,10 @@ export async function fetchReportOrders(
     .eq('station_id', stationId)
     .gte('created_at', since.toISOString())
     .order('created_at', { ascending: false });
-  return unwrap(result as { data: ReportOrderRow[] | null; error: { message: string } | null }, 'Chargement du rapport impossible');
+  return unwrap(
+    result as { data: ReportOrderRow[] | null; error: { message: string } | null },
+    'Chargement du rapport impossible',
+  );
 }
 
 /**

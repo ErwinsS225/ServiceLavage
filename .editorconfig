@@ -1,0 +1,18 @@
+# Convention d'édition partagée. Utile surtout pour les éditeurs qui ne lisent
+# pas .prettierrc (certains IDE, éditeurs de fichiers de config).
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 2
+
+[*.md]
+# Un double espace en fin de ligne force un saut de ligne en Markdown.
+trim_trailing_whitespace = false
+
+[*.sql]
+indent_size = 2

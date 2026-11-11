@@ -53,7 +53,13 @@ test('the receipt draws a QR whose content is the order data', () => {
     createdAt: ORDER.createdAt,
   });
   // The accessible label carries the exact payload, field by field.
-  for (const fragment of ['ref:0F0E0D0C', 'vehicle:Toyota RAV4 Blanc', 'amount:5000', 'currency:XOF', 'status:termine']) {
+  for (const fragment of [
+    'ref:0F0E0D0C',
+    'vehicle:Toyota RAV4 Blanc',
+    'amount:5000',
+    'currency:XOF',
+    'status:termine',
+  ]) {
     assert.ok(label.includes(fragment), `le QR doit contenir « ${fragment} »`);
   }
   assert.equal(label.includes(payload.split('\n')[0]), true);

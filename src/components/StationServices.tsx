@@ -1,12 +1,25 @@
 import { useCallback, useState } from 'react';
 import { formatXof } from '../lib/money';
-import { parseServiceInteger } from '../lib/serviceValidation';
 import { describeError } from '../lib/queryResult';
+import { parseForm, serviceSchema } from '../lib/schemas';
+import { errorText } from '../lib/errorMessages';
+import { useToastActions } from '../context/ToastContext';
 import { type ServiceInput, type ServiceRow, type StationClient } from '../lib/stationApi';
 import { useCreateService, useServices, useUpdateService } from '../hooks/useStationQueries';
 import {
-  Table, TableHeader, TableBody, TableHead, TableRow, TableCell,
-  StatusBadge, buttonStyles, formControlStyles, FormField, Modal, Alert, EmptyState
+  Table,
+  TableHeader,
+  TableBody,
+  TableHead,
+  TableRow,
+  TableCell,
+  StatusBadge,
+  buttonStyles,
+  formControlStyles,
+  FormField,
+  Modal,
+  Alert,
+  EmptyState,
 } from './ui/designSystem';
 import { Plus, Sparkles, Clock, Edit2, RotateCw } from 'lucide-react';
 
@@ -31,8 +44,12 @@ export function StationServices({ stationId, client }: { stationId: string; clie
   const services = {
     data: servicesQuery.data ?? [],
     loading: servicesQuery.isPending,
-    error: servicesQuery.error ? describeError(servicesQuery.error, 'Impossible de charger le catalogue.') : '',
-    reload: () => { void servicesQuery.refetch(); },
+    error: servicesQuery.error
+      ? describeError(servicesQuery.error, 'Impossible de charger le catalogue.')
+      : '',
+    reload: () => {
+      void servicesQuery.refetch();
+    },
   };
 
   const [busy, setBusy] = useState(false);
@@ -44,6 +61,8 @@ export function StationServices({ stationId, client }: { stationId: string; clie
   const [modalOpen, setModalOpen] = useState(false);
   const [formError, setFormError] = useState('');
   const [message, setMessage] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const toast = useToastActions();
 
   const resetForm = useCallback(() => {
     setEditing(null);
@@ -51,6 +70,7 @@ export function StationServices({ stationId, client }: { stationId: string; clie
     setPrice('');
     setDuration('');
     setActive(true);
+    setFieldErrors({});
     setModalOpen(false);
   }, []);
 
@@ -61,6 +81,7 @@ export function StationServices({ stationId, client }: { stationId: string; clie
     setDuration('30');
     setActive(true);
     setFormError('');
+    setFieldErrors({});
     setMessage('');
     setModalOpen(true);
   }
@@ -72,21 +93,30 @@ export function StationServices({ stationId, client }: { stationId: string; clie
     setDuration(String(service.duration_minutes));
     setActive(service.is_active);
     setFormError('');
+    setFieldErrors({});
     setMessage('');
     setModalOpen(true);
   }
 
   async function save(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const priceXof = parseServiceInteger(price, 0, 100000000);
-    const minutes = parseServiceInteger(duration, 1, 1440);
-    if (!name.trim() || priceXof === null || minutes === null) {
-      setFormError('Saisissez un nom, un prix entier de 0 à 100 000 000 FCFA et une durée entière de 1 à 1 440 minutes.');
+    // Bornes de `station_services` : nom 1..120, prix 0..100 000 000,
+    // durée 1..1440. Le message nomme désormais le champ fautif.
+    const parsed = parseForm(serviceSchema, {
+      name,
+      price_xof: price,
+      duration_minutes: duration,
+      is_active: active,
+    });
+    if (!parsed.ok) {
+      setFieldErrors(parsed.errors);
+      setFormError(Object.values(parsed.errors)[0] ?? '');
       return;
     }
-    const input: ServiceInput = { name: name.trim(), price_xof: priceXof, duration_minutes: minutes, is_active: active };
+    const input: ServiceInput = parsed.data;
     setBusy(true);
     setFormError('');
+    setFieldErrors({});
     setMessage('');
     try {
       // La mutation invalide la clé `services` : la liste relue vient du
@@ -96,10 +126,14 @@ export function StationServices({ stationId, client }: { stationId: string; clie
       } else {
         await createMutation.mutateAsync(input);
       }
-      setMessage(editing ? 'Prestation modifiée avec succès.' : 'Nouvelle prestation ajoutée au catalogue.');
+      const wasEditing = editing !== null;
+      setMessage(
+        wasEditing ? 'Prestation modifiée avec succès.' : 'Nouvelle prestation ajoutée au catalogue.',
+      );
+      toast.success(wasEditing ? 'Prestation modifiée.' : 'Prestation ajoutée au catalogue.', input.name);
       resetForm();
     } catch (cause) {
-      setFormError(describeError(cause, 'Enregistrement impossible. Vérifiez votre connexion et réessayez.'));
+      setFormError(errorText(cause));
     } finally {
       setBusy(false);
     }
@@ -108,20 +142,32 @@ export function StationServices({ stationId, client }: { stationId: string; clie
   const error = formError || services.error;
 
   return (
-    <section className="space-y-5 border-t border-[#232834] pt-6" aria-label="Catalogue de la station">
+    <section
+      className="space-y-5 border-t border-[var(--border-subtle)] pt-6"
+      aria-label="Catalogue de la station"
+    >
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-bold text-white tracking-tight">Catalogue des Prestations</h2>
-          <p className="text-xs text-slate-400 mt-0.5">Grille tarifaire et durées paramétrées pour la station active (en FCFA entiers)</p>
+          <h2 className="text-lg font-bold text-[var(--text-primary)] tracking-tight">
+            Catalogue des Prestations
+          </h2>
+          <p className="text-xs text-[var(--text-secondary)] mt-0.5">
+            Grille tarifaire et durées paramétrées pour la station active (en FCFA entiers)
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <button
             type="button"
             className={buttonStyles({ variant: 'outline', size: 'sm' })}
-            onClick={() => { setFormError(''); services.reload(); }}
+            onClick={() => {
+              setFormError('');
+              services.reload();
+            }}
             disabled={services.loading || busy}
           >
-            <RotateCw className={`w-3.5 h-3.5 mr-1.5 ${services.loading ? 'animate-spin' : ''}`} />
+            <RotateCw
+              className={`w-3.5 h-3.5 mr-1.5 ${services.loading ? 'animate-spin motion-safe-keep' : ''}`}
+            />
             Actualiser
           </button>
           <button
@@ -137,31 +183,33 @@ export function StationServices({ stationId, client }: { stationId: string; clie
       </div>
 
       {error && (
-        <Alert variant="error" action={
-          <button
-            type="button"
-            className="underline text-xs font-semibold text-rose-300"
-            onClick={() => { setFormError(''); services.reload(); }}
-          >
-            Réessayer
-          </button>
-        }>
+        <Alert
+          variant="error"
+          action={
+            <button
+              type="button"
+              className="underline text-xs font-semibold text-rose-300"
+              onClick={() => {
+                setFormError('');
+                services.reload();
+              }}
+            >
+              Réessayer
+            </button>
+          }
+        >
           {error}
         </Alert>
       )}
 
-      {message && (
-        <Alert variant="success">
-          {message}
-        </Alert>
-      )}
+      {message && <Alert variant="success">{message}</Alert>}
 
       {services.loading ? (
-        <div className="p-8 text-center text-sm text-slate-400 rounded-xl bg-[#141720] border border-[#232834]">
+        <div className="p-8 text-center text-sm text-[var(--text-secondary)] rounded-xl bg-[var(--surface-card)] border border-[var(--border-subtle)]">
           Chargement du catalogue…
         </div>
       ) : services.data.length ? (
-        <Table>
+        <Table label="Catalogue des prestations">
           <TableHeader>
             <TableRow>
               <TableHead>Prestation</TableHead>
@@ -180,19 +228,21 @@ export function StationServices({ stationId, client }: { stationId: string; clie
                       <Sparkles className="w-4 h-4" />
                     </div>
                     <div>
-                      <span className="font-semibold text-white block">{service.name}</span>
-                      <span className="text-[11px] text-slate-400 font-mono">ID: {service.id.slice(0, 8)}</span>
+                      <span className="font-semibold text-[var(--text-primary)] block">{service.name}</span>
+                      <span className="text-[11px] text-[var(--text-secondary)] font-mono">
+                        ID: {service.id.slice(0, 8)}
+                      </span>
                     </div>
                   </div>
                 </TableCell>
                 <TableCell align="right">
-                  <span className="font-bold text-white text-sm font-mono tabular-nums">
+                  <span className="font-bold text-[var(--text-primary)] text-sm font-mono tabular-nums">
                     {formatXof(service.price_xof)}
                   </span>
                 </TableCell>
                 <TableCell>
                   <span className="inline-flex items-center gap-1.5 text-xs text-slate-300 font-mono">
-                    <Clock className="w-3.5 h-3.5 text-slate-400" />
+                    <Clock className="w-3.5 h-3.5 text-[var(--text-secondary)]" />
                     {service.duration_minutes} min
                   </span>
                 </TableCell>
@@ -216,7 +266,7 @@ export function StationServices({ stationId, client }: { stationId: string; clie
         </Table>
       ) : (
         <EmptyState
-          icon={<Sparkles className="w-6 h-6 text-slate-400" />}
+          icon={<Sparkles className="w-6 h-6 text-[var(--text-secondary)]" />}
           title="Catalogue vide"
           description="Ajoutez vos prestations (lavage simple, intérieur, cire…) pour pouvoir les proposer lors de la création d’une prestation."
           action={
@@ -239,9 +289,11 @@ export function StationServices({ stationId, client }: { stationId: string; clie
         description="Le tarif est figé au moment de la création d’une prestation : le modifier ici ne change pas les prestations déjà enregistrées."
       >
         <form onSubmit={save} className="space-y-4">
-          <FormField label="Nom de la prestation" required>
+          <FormField label="Nom de la prestation" required htmlFor="service-name" error={fieldErrors.name}>
             <input
+              id="service-name"
               className={formControlStyles.input}
+              aria-invalid={fieldErrors.name ? true : undefined}
               required
               maxLength={120}
               value={name}
@@ -252,9 +304,17 @@ export function StationServices({ stationId, client }: { stationId: string; clie
           </FormField>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <FormField label="Tarif (FCFA)" required hint="Nombre entier, sans espace">
+            <FormField
+              label="Tarif (FCFA)"
+              required
+              hint="Nombre entier, sans espace"
+              htmlFor="service-price"
+              error={fieldErrors.price_xof}
+            >
               <input
+                id="service-price"
                 className={formControlStyles.input}
+                aria-invalid={fieldErrors.price_xof ? true : undefined}
                 required
                 inputMode="numeric"
                 value={price}
@@ -262,9 +322,16 @@ export function StationServices({ stationId, client }: { stationId: string; clie
                 placeholder="Ex: 5000"
               />
             </FormField>
-            <FormField label="Durée indicative (minutes)" required>
+            <FormField
+              label="Durée indicative (minutes)"
+              required
+              htmlFor="service-duration"
+              error={fieldErrors.duration_minutes}
+            >
               <input
+                id="service-duration"
                 className={formControlStyles.input}
+                aria-invalid={fieldErrors.duration_minutes ? true : undefined}
                 required
                 inputMode="numeric"
                 value={duration}
@@ -277,7 +344,7 @@ export function StationServices({ stationId, client }: { stationId: string; clie
           <label className="flex items-center gap-2 text-xs text-slate-300">
             <input
               type="checkbox"
-              className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 bg-[#12151c] border-[#32394a]"
+              className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 bg-[var(--surface-card)] border-[var(--border-strong)]"
               checked={active}
               onChange={event => setActive(event.target.checked)}
             />
@@ -286,7 +353,7 @@ export function StationServices({ stationId, client }: { stationId: string; clie
 
           {formError && <Alert variant="error">{formError}</Alert>}
 
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#232834]">
+          <div className="flex items-center justify-end gap-3 pt-3 border-t border-[var(--border-subtle)]">
             <button
               type="button"
               disabled={busy}

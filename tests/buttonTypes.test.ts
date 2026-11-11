@@ -31,7 +31,8 @@ test('every active button declares an explicit type', async () => {
   for (const file of ACTIVE_COMPONENTS) {
     const source = await readFile(file, 'utf8');
     for (const tag of buttonTags(source)) {
-      if (!/\btype=("|')(button|submit|reset)\1/.test(tag)) offenders.push(`${file}: ${tag.replace(/\s+/g, ' ').slice(0, 90)}`);
+      if (!/\btype=("|')(button|submit|reset)\1/.test(tag))
+        offenders.push(`${file}: ${tag.replace(/\s+/g, ' ').slice(0, 90)}`);
     }
   }
   assert.deepEqual(offenders, [], 'boutons sans type explicite');

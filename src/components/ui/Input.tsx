@@ -3,11 +3,11 @@ import { AlertCircle } from 'lucide-react';
 
 export const formControlStyles = {
   input:
-    'w-full rounded-xl bg-[#181c25] border border-[#2d3444] px-4 py-2.5 text-sm text-white placeholder:text-slate-500 outline-none transition-all duration-150 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 disabled:opacity-50 disabled:cursor-not-allowed',
+    'w-full rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-strong)] px-4 py-2.5 text-sm text-white placeholder:text-[var(--text-muted)] outline-none transition-all duration-150 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 disabled:opacity-50 disabled:cursor-not-allowed',
   select:
-    'w-full rounded-xl bg-[#181c25] border border-[#2d3444] px-4 py-2.5 text-sm text-white outline-none transition-all duration-150 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 disabled:opacity-50',
+    'w-full rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-strong)] px-4 py-2.5 text-sm text-white outline-none transition-all duration-150 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 disabled:opacity-50',
   textarea:
-    'w-full rounded-xl bg-[#181c25] border border-[#2d3444] px-4 py-2.5 text-sm text-white placeholder:text-slate-500 outline-none transition-all duration-150 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 disabled:opacity-50',
+    'w-full rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-strong)] px-4 py-2.5 text-sm text-white placeholder:text-[var(--text-muted)] outline-none transition-all duration-150 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 disabled:opacity-50',
 };
 
 export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
@@ -23,7 +23,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
         {...props}
       />
     );
-  }
+  },
 );
 Input.displayName = 'Input';
 
@@ -42,7 +42,7 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
         {children}
       </select>
     );
-  }
+  },
 );
 Select.displayName = 'Select';
 
@@ -67,7 +67,11 @@ export function FormField({
     <div className={`space-y-1.5 ${className}`}>
       <label htmlFor={htmlFor} className="block text-xs font-semibold text-slate-300">
         {label}
-        {required && <span className="text-rose-400 ml-1" aria-hidden="true">*</span>}
+        {required && (
+          <span className="text-rose-400 ml-1" aria-hidden="true">
+            *
+          </span>
+        )}
       </label>
       {children}
       {error ? (
@@ -76,7 +80,7 @@ export function FormField({
           <span>{error}</span>
         </p>
       ) : hint ? (
-        <p className="text-[11px] text-slate-400 mt-1">{hint}</p>
+        <p className="text-[11px] text-[var(--text-secondary)] mt-1">{hint}</p>
       ) : null}
     </div>
   );

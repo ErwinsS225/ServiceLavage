@@ -2,10 +2,25 @@ import { lazy, Suspense, useState } from 'react';
 import { formatXof } from '../lib/money';
 import { orderCounts, selectedServicesTotal, toReceiptData } from '../lib/orderPresentation';
 import { describeError } from '../lib/queryResult';
+import { orderSchema, parseForm } from '../lib/schemas';
+import { errorText } from '../lib/errorMessages';
+import { useToastActions } from '../context/ToastContext';
 import { useStationOrders, type NewOrderInput } from '../hooks/useStationOrders';
 import {
-  Table, TableHeader, TableBody, TableHead, TableRow, TableCell,
-  StatusBadge, buttonStyles, formControlStyles, FormField, Modal, Alert, EmptyState, StatCard
+  Table,
+  TableHeader,
+  TableBody,
+  TableHead,
+  TableRow,
+  TableCell,
+  StatusBadge,
+  buttonStyles,
+  formControlStyles,
+  FormField,
+  Modal,
+  Alert,
+  EmptyState,
+  StatCard,
 } from './ui/designSystem';
 import { Plus, Car, Clock, CheckCircle2, RotateCw, Sparkles } from 'lucide-react';
 import { OrderActions } from './orders/OrderActions';
@@ -44,13 +59,32 @@ export function StationOrders({
 }) {
   const data = useStationOrders({ stationId, userId, role, roleFeaturesReady });
   const {
-    services, customers, orders, loading, cached, loadError, queue,
-    assignments, washers, reload, createOrder, transition, assign, unassign,
-    canManageOrders, actionError, actionMessage, setActionError, setActionMessage,
+    services,
+    customers,
+    orders,
+    loading,
+    cached,
+    loadError,
+    queue,
+    assignments,
+    washers,
+    reload,
+    createOrder,
+    transition,
+    assign,
+    unassign,
+    canManageOrders,
+    actionError,
+    actionMessage,
+    setActionError,
+    setActionMessage,
   } = data;
 
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState<NewOrderInput>(EMPTY_FORM);
+  /** Erreurs par champ issues du schéma, affichées sous le champ concerné. */
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const toast = useToastActions();
   const [assignTarget, setAssignTarget] = useState<Record<string, string>>({});
   const [modalOpen, setModalOpen] = useState(false);
   const [receiptOrder, setReceiptOrder] = useState<OrderReceiptData | null>(null);
@@ -66,11 +100,13 @@ export function StationOrders({
     setModalOpen(true);
     setActionError('');
     setActionMessage('');
+    setFieldErrors({});
   }
 
   function resetForm() {
     setForm(EMPTY_FORM);
     setModalOpen(false);
+    setFieldErrors({});
   }
 
   async function runAction(action: () => Promise<void>, success: string) {
@@ -89,40 +125,62 @@ export function StationOrders({
 
   async function create(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!form.vehicle.trim() || form.serviceIds.length < 1 || form.serviceIds.length > 20) {
-      setActionError('Renseignez le véhicule et sélectionnez entre 1 et 20 services.');
+    // Bornes reprises de `create_station_order` : véhicule 1..120, 1..20
+    // services distincts. La vérification est faite ici pour nommer le champ
+    // fautif ; le serveur reste l'autorité en dernier ressort.
+    const parsed = parseForm(orderSchema, {
+      vehicle: form.vehicle,
+      plate: form.plate,
+      customerId: form.customerId || null,
+      serviceIds: form.serviceIds,
+    });
+    if (!parsed.ok) {
+      setFieldErrors(parsed.errors);
+      setActionError(Object.values(parsed.errors)[0] ?? '');
       return;
     }
     setBusy(true);
     setActionError('');
     setActionMessage('');
+    setFieldErrors({});
     try {
       await createOrder(form);
       resetForm();
       setActionMessage('Prestation enregistrée sur cet appareil, en attente de synchronisation.');
+      toast.success('Prestation enregistrée.', 'Elle part en file de synchronisation.');
     } catch (cause) {
-      setActionError(describeError(cause, 'Enregistrement local impossible.'));
+      setActionError(errorText(cause));
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <section className="space-y-6 border-t border-[#232834] pt-6" aria-label="Prestations de la station">
+    <section
+      className="space-y-6 border-t border-[var(--border-subtle)] pt-6"
+      aria-label="Prestations de la station"
+    >
       {/* Title & Actions Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-bold text-white tracking-tight">Suivi des Prestations & File</h2>
-          <p className="text-xs text-slate-400 mt-0.5">Enregistrement des véhicules, ordres de lavage et gestion du flux</p>
+          <h2 className="text-lg font-bold text-[var(--text-primary)] tracking-tight">
+            Suivi des Prestations & File
+          </h2>
+          <p className="text-xs text-[var(--text-secondary)] mt-0.5">
+            Enregistrement des véhicules, ordres de lavage et gestion du flux
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <button
             type="button"
             className={buttonStyles({ variant: 'outline', size: 'sm' })}
-            onClick={() => { setActionError(''); reload(); }}
+            onClick={() => {
+              setActionError('');
+              reload();
+            }}
             disabled={loading || busy}
           >
-            <RotateCw className={`w-3.5 h-3.5 mr-1.5 ${loading ? 'animate-spin' : ''}`} />
+            <RotateCw className={`w-3.5 h-3.5 mr-1.5 ${loading ? 'animate-spin motion-safe-keep' : ''}`} />
             Actualiser
           </button>
           {canManageOrders && (
@@ -183,11 +241,14 @@ export function StationOrders({
           }
         >
           <p className="text-xs">
-            La synchronisation est tentée automatiquement au retour du réseau. Tarif serveur appliqué au moment de l’envoi.
+            La synchronisation est tentée automatiquement au retour du réseau. Tarif serveur appliqué au
+            moment de l’envoi.
           </p>
           <ul className="text-xs mt-1 space-y-0.5 font-mono">
             {queue.pending.map(item => (
-              <li key={item.requestId}>{item.vehicle} · {item.plate || 'Sans immat'}</li>
+              <li key={item.requestId}>
+                {item.vehicle} · {item.plate || 'Sans immat'}
+              </li>
             ))}
           </ul>
         </Alert>
@@ -195,25 +256,32 @@ export function StationOrders({
 
       {cached && (
         <Alert variant="info">
-          Catalogue et clients locaux affichés depuis la mémoire cache : les tarifs serveur définitifs s’appliqueront lors de la synchronisation.
+          Catalogue et clients locaux affichés depuis la mémoire cache : les tarifs serveur définitifs
+          s’appliqueront lors de la synchronisation.
         </Alert>
       )}
 
       {error && (
-        <Alert variant="error" action={
-          <button type="button" className="underline text-xs font-semibold text-rose-300" onClick={() => { setActionError(''); reload(); }}>
-            Actualiser
-          </button>
-        }>
+        <Alert
+          variant="error"
+          action={
+            <button
+              type="button"
+              className="underline text-xs font-semibold text-rose-300"
+              onClick={() => {
+                setActionError('');
+                reload();
+              }}
+            >
+              Actualiser
+            </button>
+          }
+        >
           {error}
         </Alert>
       )}
 
-      {message && (
-        <Alert variant="success">
-          {message}
-        </Alert>
-      )}
+      {message && <Alert variant="success">{message}</Alert>}
 
       {!canManageOrders && (
         <Alert variant="info">
@@ -223,16 +291,17 @@ export function StationOrders({
 
       {/* Orders Table */}
       {loading ? (
-        <div className="p-8 text-center text-sm text-slate-400 rounded-xl bg-[#141720] border border-[#232834]">
+        <div className="p-8 text-center text-sm text-[var(--text-secondary)] rounded-xl bg-[var(--surface-card)] border border-[var(--border-subtle)]">
           Chargement des prestations…
         </div>
       ) : !orders.length ? (
         <EmptyState
-          icon={<Car className="w-6 h-6 text-slate-400" />}
-          title={cached ? "Historique indisponible hors ligne" : "Aucune prestation enregistrée"}
+          icon={<Car className="w-6 h-6 text-[var(--text-secondary)]" />}
+          title={cached ? 'Historique indisponible hors ligne' : 'Aucune prestation enregistrée'}
           description="Créez votre première prestation de lavage pour assigner des laveurs et suivre l'avancement."
           action={
-            canManageOrders && services.length > 0 && (
+            canManageOrders &&
+            services.length > 0 && (
               <button
                 type="button"
                 className={buttonStyles({ variant: 'primary', size: 'sm' })}
@@ -245,7 +314,7 @@ export function StationOrders({
           }
         />
       ) : (
-        <Table>
+        <Table label="Prestations en cours et terminées">
           <TableHeader>
             <TableRow>
               <TableHead>Véhicule & Immat</TableHead>
@@ -260,18 +329,22 @@ export function StationOrders({
           <TableBody>
             {orders.map(order => {
               const orderAssignments = assignments.filter(item => item.order_id === order.id);
-              const availableWashers = washers.filter(washer => !orderAssignments.some(item => item.user_id === washer.user_id));
+              const availableWashers = washers.filter(
+                washer => !orderAssignments.some(item => item.user_id === washer.user_id),
+              );
 
               return (
                 <TableRow key={order.id}>
                   <TableCell>
-                    <div className="font-semibold text-white block">{order.vehicle_info}</div>
+                    <div className="font-semibold text-[var(--text-primary)] block">{order.vehicle_info}</div>
                     {order.plate_number ? (
                       <span className="inline-block mt-0.5 font-mono text-[11px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-200 border border-slate-700">
                         {order.plate_number}
                       </span>
                     ) : (
-                      <span className="text-[11px] text-slate-500 italic">Sans immatriculation</span>
+                      <span className="text-[11px] text-[var(--text-muted)] italic">
+                        Sans immatriculation
+                      </span>
                     )}
                   </TableCell>
                   <TableCell>
@@ -285,7 +358,7 @@ export function StationOrders({
                     </ul>
                   </TableCell>
                   <TableCell align="right">
-                    <span className="font-bold text-white text-sm font-mono tabular-nums">
+                    <span className="font-bold text-[var(--text-primary)] text-sm font-mono tabular-nums">
                       {formatXof(order.total_xof)}
                     </span>
                   </TableCell>
@@ -293,18 +366,24 @@ export function StationOrders({
                     <StatusBadge status={order.status} size="sm" />
                   </TableCell>
                   <TableCell>
-                    <span className="font-mono text-xs text-slate-400 block tabular-nums">
+                    <span className="font-mono text-xs text-[var(--text-secondary)] block tabular-nums">
                       {new Date(order.created_at).toLocaleDateString('fr-FR')}
                     </span>
-                    <span className="font-mono text-[11px] text-slate-500 block tabular-nums">
-                      {new Date(order.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                    <span className="font-mono text-[11px] text-[var(--text-muted)] block tabular-nums">
+                      {new Date(order.created_at).toLocaleTimeString('fr-FR', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
                     </span>
                   </TableCell>
                   {canManageOrders && roleFeaturesReady && (
                     <TableCell>
                       <div className="space-y-1.5 min-w-[140px]">
                         {orderAssignments.map(item => (
-                          <div key={item.user_id} className="flex items-center justify-between text-xs bg-slate-900/60 px-2 py-1 rounded border border-slate-800">
+                          <div
+                            key={item.user_id}
+                            className="flex items-center justify-between text-xs bg-slate-900/60 px-2 py-1 rounded border border-slate-800"
+                          >
                             <span className="font-mono text-[11px] text-slate-300">
                               Laveur {item.user_id.slice(0, 6)}
                             </span>
@@ -312,7 +391,9 @@ export function StationOrders({
                               type="button"
                               disabled={busy}
                               className="text-[10px] text-rose-400 hover:underline ml-1"
-                              onClick={() => void runAction(() => unassign(order.id, item.user_id), 'Affectation retirée.')}
+                              onClick={() =>
+                                void runAction(() => unassign(order.id, item.user_id), 'Affectation retirée.')
+                              }
                             >
                               Retirer
                             </button>
@@ -320,12 +401,16 @@ export function StationOrders({
                         ))}
                         {availableWashers.length > 0 && (
                           <div className="flex gap-1 items-center mt-1">
-                            <label className="sr-only" htmlFor={`washer-${order.id}`}>Laveur à affecter</label>
+                            <label className="sr-only" htmlFor={`washer-${order.id}`}>
+                              Laveur à affecter
+                            </label>
                             <select
                               id={`washer-${order.id}`}
-                              className="w-full text-xs rounded bg-[#181c25] border border-[#2d3444] px-1.5 py-1 text-slate-200 outline-none"
+                              className="w-full text-xs rounded bg-[var(--surface-elevated)] border border-[var(--border-strong)] px-1.5 py-1 text-[var(--text-primary)]"
                               value={assignTarget[order.id] ?? ''}
-                              onChange={event => setAssignTarget(previous => ({ ...previous, [order.id]: event.target.value }))}
+                              onChange={event =>
+                                setAssignTarget(previous => ({ ...previous, [order.id]: event.target.value }))
+                              }
                             >
                               <option value="">+ Affecter</option>
                               {availableWashers.map(washer => (
@@ -338,11 +423,17 @@ export function StationOrders({
                               <button
                                 type="button"
                                 disabled={busy}
-                                className={buttonStyles({ variant: 'primary', size: 'sm', className: 'h-7 px-2 text-xs' })}
-                                onClick={() => void runAction(async () => {
-                                  await assign(order.id, assignTarget[order.id]);
-                                  setAssignTarget(previous => ({ ...previous, [order.id]: '' }));
-                                }, 'Prestation affectée.')}
+                                className={buttonStyles({
+                                  variant: 'primary',
+                                  size: 'sm',
+                                  className: 'h-7 px-2 text-xs',
+                                })}
+                                onClick={() =>
+                                  void runAction(async () => {
+                                    await assign(order.id, assignTarget[order.id]);
+                                    setAssignTarget(previous => ({ ...previous, [order.id]: '' }));
+                                  }, 'Prestation affectée.')
+                                }
                               >
                                 OK
                               </button>
@@ -357,8 +448,12 @@ export function StationOrders({
                       status={order.status}
                       busy={busy}
                       canCancel={canManageOrders}
-                      onStart={() => void runAction(() => transition(order.id, 'en_cours'), 'Statut mis à jour.')}
-                      onFinish={() => void runAction(() => transition(order.id, 'termine'), 'Statut mis à jour.')}
+                      onStart={() =>
+                        void runAction(() => transition(order.id, 'en_cours'), 'Statut mis à jour.')
+                      }
+                      onFinish={() =>
+                        void runAction(() => transition(order.id, 'termine'), 'Statut mis à jour.')
+                      }
                       onCancel={() => setCancelTarget(order.id)}
                       onReceipt={() => setReceiptOrder(toReceiptData(order))}
                     />
@@ -380,11 +475,18 @@ export function StationOrders({
       >
         <form onSubmit={create} className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <FormField label="Véhicule (Marque & Modèle)" required>
+            <FormField
+              label="Véhicule (Marque & Modèle)"
+              required
+              htmlFor="order-vehicle"
+              error={fieldErrors.vehicle}
+            >
               <input
+                id="order-vehicle"
                 className={formControlStyles.input}
                 required
                 maxLength={120}
+                aria-invalid={fieldErrors.vehicle ? true : undefined}
                 value={form.vehicle}
                 onChange={event => setForm({ ...form, vehicle: event.target.value })}
                 placeholder="Ex: Toyota RAV4 Blanc"
@@ -392,38 +494,65 @@ export function StationOrders({
               />
             </FormField>
 
-            <FormField label="Plaque d'immatriculation" hint="Facultatif">
+            <FormField
+              label="Plaque d'immatriculation"
+              hint="Facultatif"
+              htmlFor="order-plate"
+              error={fieldErrors.plate}
+            >
               <input
+                id="order-plate"
                 className={formControlStyles.input}
                 maxLength={40}
+                aria-invalid={fieldErrors.plate ? true : undefined}
+                placeholder="Ex: 1234 AB 01"
                 value={form.plate}
                 onChange={event => setForm({ ...form, plate: event.target.value })}
-                placeholder="Ex: 1234 AB 01"
               />
             </FormField>
           </div>
 
-          <FormField label="Client rattaché" hint="Facultatif — laissez vide pour un client de passage">
+          <FormField
+            label="Client rattaché"
+            hint="Facultatif — laissez vide pour un client de passage"
+            htmlFor="order-customer"
+            error={fieldErrors.customerId}
+          >
             <select
+              id="order-customer"
               className={formControlStyles.select}
               value={form.customerId}
               onChange={event => setForm({ ...form, customerId: event.target.value })}
             >
               <option value="">Client de passage</option>
               {customers.map(customer => (
-                <option key={customer.id} value={customer.id}>{customer.name} · {customer.phone}</option>
+                <option key={customer.id} value={customer.id}>
+                  {customer.name} · {customer.phone}
+                </option>
               ))}
             </select>
           </FormField>
 
-          <div className="space-y-2">
-            <label className="block text-xs font-semibold text-slate-300">
-              Services à réaliser <span className="text-rose-400">*</span>
-            </label>
+          {/*
+            Un groupe de cases à cocher ne se décrit pas par un `<label>` : il
+            faut `role="group"` + `aria-labelledby`, sinon le lecteur d'écran
+            annonce vingt cases sans dire de quoi elles sont la liste.
+          */}
+          <div
+            className="space-y-2"
+            role="group"
+            aria-labelledby="order-services-label"
+            aria-invalid={fieldErrors.serviceIds ? true : undefined}
+            aria-describedby={fieldErrors.serviceIds ? 'order-services-error' : undefined}
+          >
+            <span id="order-services-label" className="block text-xs font-semibold text-slate-300">
+              Services à réaliser{' '}
+              <span className="text-rose-400" aria-hidden="true">
+                *
+              </span>
+            </span>
             {!services.length ? (
-              <p className="text-xs text-amber-300">
-                Aucun service actif configuré dans le catalogue.
-              </p>
+              <p className="text-xs text-amber-300">Aucun service actif configuré dans le catalogue.</p>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-48 overflow-y-auto p-1">
                 {services.map(service => {
@@ -434,20 +563,22 @@ export function StationOrders({
                       className={`flex items-center justify-between p-3 rounded-xl border text-xs cursor-pointer transition-all ${
                         isChecked
                           ? 'border-indigo-500 bg-indigo-500/10 text-white shadow-sm'
-                          : 'border-[#2d3444] bg-[#181c25] text-slate-300 hover:border-slate-500'
+                          : 'border-[var(--border-strong)] bg-[var(--surface-elevated)] text-slate-300 hover:border-slate-500'
                       }`}
                     >
                       <div className="flex items-center gap-2.5">
                         <input
                           type="checkbox"
-                          className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 bg-[#12151c] border-[#32394a]"
+                          className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 bg-[var(--surface-card)] border-[var(--border-strong)]"
                           checked={isChecked}
-                          onChange={event => setForm({
-                            ...form,
-                            serviceIds: event.target.checked
-                              ? [...form.serviceIds, service.id]
-                              : form.serviceIds.filter(id => id !== service.id),
-                          })}
+                          onChange={event =>
+                            setForm({
+                              ...form,
+                              serviceIds: event.target.checked
+                                ? [...form.serviceIds, service.id]
+                                : form.serviceIds.filter(id => id !== service.id),
+                            })
+                          }
                         />
                         <span className="font-medium">{service.name}</span>
                       </div>
@@ -461,14 +592,22 @@ export function StationOrders({
             )}
           </div>
 
-          <div className="p-3.5 rounded-xl bg-[#181c25] border border-[#2d3444] flex items-center justify-between">
-            <span className="text-xs text-slate-300">Total estimé ({form.serviceIds.length} service{form.serviceIds.length > 1 ? 's' : ''}) :</span>
-            <span className="text-base font-bold font-mono tabular-nums text-white">
+          {fieldErrors.serviceIds && (
+            <p id="order-services-error" role="alert" className="text-xs text-rose-400 font-medium">
+              {fieldErrors.serviceIds}
+            </p>
+          )}
+
+          <div className="p-3.5 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-strong)] flex items-center justify-between">
+            <span className="text-xs text-slate-300">
+              Total estimé ({form.serviceIds.length} service{form.serviceIds.length > 1 ? 's' : ''}) :
+            </span>
+            <span className="text-base font-bold font-mono tabular-nums text-[var(--text-primary)]">
               {formatXof(selectedPriceTotal)}
             </span>
           </div>
 
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#232834]">
+          <div className="flex items-center justify-end gap-3 pt-3 border-t border-[var(--border-subtle)]">
             <button
               type="button"
               disabled={busy}
@@ -499,7 +638,13 @@ export function StationOrders({
         size="sm"
         footer={
           <>
-            <button type="button" className={buttonStyles({ variant: 'ghost', size: 'sm' })} onClick={() => setCancelTarget(null)}>Conserver</button>
+            <button
+              type="button"
+              className={buttonStyles({ variant: 'ghost', size: 'sm' })}
+              onClick={() => setCancelTarget(null)}
+            >
+              Conserver
+            </button>
             <button
               type="button"
               disabled={busy}
@@ -515,7 +660,9 @@ export function StationOrders({
           </>
         }
       >
-        <p className="text-xs text-slate-400">Vérifiez qu'aucun lavage n'est en cours sur ce véhicule avant de continuer.</p>
+        <p className="text-xs text-[var(--text-secondary)]">
+          Vérifiez qu'aucun lavage n'est en cours sur ce véhicule avant de continuer.
+        </p>
       </Modal>
 
       {receiptOrder && (

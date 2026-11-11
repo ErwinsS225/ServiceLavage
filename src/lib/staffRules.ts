@@ -47,7 +47,10 @@ export function activeMemberCount(members: readonly MemberRow[]): number {
 }
 
 /** Les invitations encore utilisables, les plus récentes d'abord. */
-export function pendingInvitations(invitations: readonly InvitationRow[], now: Date = new Date()): InvitationRow[] {
+export function pendingInvitations(
+  invitations: readonly InvitationRow[],
+  now: Date = new Date(),
+): InvitationRow[] {
   return invitations
     .filter(invitation => invitationState(invitation, now) === 'en_attente')
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
@@ -59,13 +62,19 @@ export function pendingInvitations(invitations: readonly InvitationRow[], now: D
  * prétend pas vérifier que la boîte existe, seulement écarter une saisie qui
  * serait rejetée par le serveur.
  */
+import { invitationSchema } from './schemas';
+
 export function normalizeInvitationEmail(value: string): string {
   return value.trim().toLowerCase();
 }
 
+/**
+ * Délègue au schéma partagé plutôt que de réécrire la règle : deux expressions
+ * de la même contrainte finissent par diverger, et c'est alors l'une des deux
+ * qui refuse à tort une adresse acceptée par le serveur.
+ */
 export function isValidInvitationEmail(value: string): boolean {
-  const email = normalizeInvitationEmail(value);
-  return email.length >= 3 && email.length <= 254 && /^[^\s@]+@[^\s@]+$/.test(email);
+  return invitationSchema.shape.email.safeParse(value).success;
 }
 
 /** Seules les adresses qui ont réellement accepté apparaissent comme membres. */

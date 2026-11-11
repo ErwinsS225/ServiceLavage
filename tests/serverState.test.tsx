@@ -3,6 +3,7 @@ import test, { afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { render, waitFor, cleanup, screen } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ToastProvider } from '../src/context/ToastContext';
 import { StationCustomers } from '../src/components/StationCustomers';
 import { createQueryClient, queryKeys } from '../src/lib/queryClient';
 import type { StationClient } from '../src/lib/stationApi';
@@ -67,8 +68,15 @@ function countingClient(customers: Array<Record<string, unknown>>) {
 }
 
 function wrapper(client: QueryClient) {
+  // `StationCustomers` émet des toasts de succès : sans provider, le hook lève
+  // et le rendu échoue. Le provider fait partie de l'application réelle, il
+  // doit donc faire partie de l'environnement de test.
   return function Wrapper({ children }: { children: React.ReactNode }) {
-    return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+    return (
+      <ToastProvider>
+        <QueryClientProvider client={client}>{children}</QueryClientProvider>
+      </ToastProvider>
+    );
   };
 }
 
@@ -78,20 +86,30 @@ test('le cache évite une seconde requête, l’invalidation la relance', async 
   const { client, calls } = countingClient(CUSTOMERS);
   const queryClient = newClient();
 
-  const first = render(<StationCustomers stationId="station-1" client={client} />, { wrapper: wrapper(queryClient) });
+  const first = render(<StationCustomers stationId="station-1" client={client} />, {
+    wrapper: wrapper(queryClient),
+  });
   await waitFor(() => assert.match(first.container.textContent ?? '', /Awa Koné/));
   assert.equal(calls.filter(table => table === 'station_customers').length, 1);
   first.unmount();
 
   // Remonter l'onglet relit depuis le cache : aucune requête réseau.
-  const second = render(<StationCustomers stationId="station-1" client={client} />, { wrapper: wrapper(queryClient) });
+  const second = render(<StationCustomers stationId="station-1" client={client} />, {
+    wrapper: wrapper(queryClient),
+  });
   await waitFor(() => assert.match(second.container.textContent ?? '', /Awa Koné/));
-  assert.equal(calls.filter(table => table === 'station_customers').length, 1, 'aucune requête supplémentaire avant staleTime');
+  assert.equal(
+    calls.filter(table => table === 'station_customers').length,
+    1,
+    'aucune requête supplémentaire avant staleTime',
+  );
   second.unmount();
 
   // Une écriture invalide la clé : la requête repart.
   await queryClient.invalidateQueries({ queryKey: queryKeys.customers('station-1') });
-  const third = render(<StationCustomers stationId="station-1" client={client} />, { wrapper: wrapper(queryClient) });
+  const third = render(<StationCustomers stationId="station-1" client={client} />, {
+    wrapper: wrapper(queryClient),
+  });
   await waitFor(() => assert.match(third.container.textContent ?? '', /Awa Koné/));
   assert.equal(calls.filter(table => table === 'station_customers').length, 2);
 });
@@ -115,7 +133,11 @@ test('les réglages par défaut sont ceux du terrain, pas ceux de la librairie',
   assert.equal(defaults?.retry, 1, 'un seul réessai : un gérant attend devant le comptoir');
   assert.equal(defaults?.staleTime, 30_000);
   assert.equal(defaults?.refetchOnWindowFocus, false, 'pas de rafale de requêtes au retour d’écran');
-  assert.equal(createQueryClient().getDefaultOptions().mutations?.retry, 0, 'une mutation rejouée peut créer un doublon');
+  assert.equal(
+    createQueryClient().getDefaultOptions().mutations?.retry,
+    0,
+    'une mutation rejouée peut créer un doublon',
+  );
 });
 
 test('une erreur de lecture remonte un message français, sans écran vide', async () => {
@@ -124,7 +146,8 @@ test('une erreur de lecture remonte un message français, sans écran vide', asy
     select: () => chain,
     eq: () => chain,
     order: () => Promise.resolve(failure),
-    then: (resolve: (value: unknown) => void, reject: (reason: unknown) => void) => Promise.resolve(failure).then(resolve, reject),
+    then: (resolve: (value: unknown) => void, reject: (reason: unknown) => void) =>
+      Promise.resolve(failure).then(resolve, reject),
     catch: (reject: (reason: unknown) => void) => Promise.resolve(failure).catch(reject),
   };
   const failing = { from: () => chain } as unknown as StationClient;

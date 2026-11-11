@@ -39,11 +39,17 @@ export function AuthGate({
   banner: React.ReactNode;
 }) {
   return (
-    <AuthLayout title={TITLES[screen]} screen={screen} scene={screen} footer={
-      <p className="text-center text-xs leading-relaxed text-gray-500">
-        En continuant, vous acceptez que les données de votre station soient hébergées par Supabase. Aucune donnée de paiement n’est stockée par l’application.
-      </p>
-    }>
+    <AuthLayout
+      title={TITLES[screen]}
+      screen={screen}
+      scene={screen}
+      footer={
+        <p className="text-center text-xs leading-relaxed text-gray-500">
+          En continuant, vous acceptez que les données de votre station soient hébergées par Supabase. Aucune
+          donnée de paiement n’est stockée par l’application.
+        </p>
+      }
+    >
       {banner}
       {screen === 'reset' && (
         <AuthResetForm supabase={client} onLeave={onRecoveryLeft} onMessage={onMessage} />

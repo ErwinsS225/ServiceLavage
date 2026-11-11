@@ -1,7 +1,14 @@
 import { Building2, Plus, ShieldCheck } from 'lucide-react';
 import {
-  Card, CardHeader, CardTitle, CardDescription, CardContent,
-  StatusBadge, buttonStyles, formControlStyles, FormField,
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+  StatusBadge,
+  buttonStyles,
+  formControlStyles,
+  FormField,
 } from '../ui/designSystem';
 import { NO_STATION_COPY } from '../auth/authCopy';
 import { ROLE_LABELS, type StationRole } from '../../lib/portalNavigation';
@@ -52,9 +59,8 @@ export function StationPicker({
       <Card>
         <CardHeader
           action={
-            activeStation && stationRole && (
-              <StatusBadge status="info" label={ROLE_LABELS[stationRole]} size="sm" />
-            )
+            activeStation &&
+            stationRole && <StatusBadge status="info" label={ROLE_LABELS[stationRole]} size="sm" />
           }
         >
           <CardTitle as="h2" className="flex items-center gap-2">
@@ -68,8 +74,9 @@ export function StationPicker({
         <CardContent className="space-y-4">
           {stations.length > 0 ? (
             <div className="space-y-3">
-              <FormField label="Station en cours d'exploitation">
+              <FormField label="Station en cours d'exploitation" htmlFor="active-station">
                 <select
+                  id="active-station"
                   className={formControlStyles.select}
                   value={stationId}
                   onChange={event => onSelectStation(event.target.value)}
@@ -84,7 +91,7 @@ export function StationPicker({
               </FormField>
 
               <div className="space-y-2 pt-1">
-                <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block">
+                <span className="text-[11px] font-semibold text-[var(--text-secondary)] uppercase tracking-wider block">
                   Stations rattachées ({stations.length})
                 </span>
                 <ul className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
@@ -101,11 +108,11 @@ export function StationPicker({
                           className={`w-full p-2.5 rounded-xl border text-xs cursor-pointer flex items-center justify-between transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-400 ${
                             isSelected
                               ? 'border-indigo-500 bg-indigo-500/10 text-white font-semibold shadow-sm'
-                              : 'border-[#242936] bg-[#161a23] text-slate-300 hover:border-slate-600'
+                              : 'border-[#242936] bg-[var(--surface-elevated)] text-slate-300 hover:border-slate-600'
                           }`}
                         >
                           <span className="truncate">{station.name}</span>
-                          <span className="text-[10px] font-mono text-slate-500 shrink-0 ml-2">
+                          <span className="text-[10px] font-mono text-[var(--text-muted)] shrink-0 ml-2">
                             {station.owner_id === userId ? 'Propriétaire' : 'Membre'}
                           </span>
                         </button>
@@ -116,9 +123,9 @@ export function StationPicker({
               </div>
             </div>
           ) : (
-            <div className="space-y-1 p-3 rounded-xl bg-[#161a23] border border-[#242936]">
-              <p className="text-xs font-semibold text-white">{NO_STATION_COPY.title}</p>
-              <p className="text-xs text-slate-400">{NO_STATION_COPY.body}</p>
+            <div className="space-y-1 p-3 rounded-xl bg-[var(--surface-elevated)] border border-[#242936]">
+              <p className="text-xs font-semibold text-[var(--text-primary)]">{NO_STATION_COPY.title}</p>
+              <p className="text-xs text-[var(--text-secondary)]">{NO_STATION_COPY.body}</p>
             </div>
           )}
         </CardContent>
@@ -139,8 +146,9 @@ export function StationPicker({
             </CardHeader>
             <CardContent>
               <form onSubmit={onCreateStation} className="space-y-3">
-                <FormField label="Nom commercial de la station" required>
+                <FormField label="Nom commercial de la station" required htmlFor="new-station-name">
                   <input
+                    id="new-station-name"
                     className={formControlStyles.input}
                     value={newStationName}
                     onChange={event => onChangeNewStationName(event.target.value)}
@@ -174,8 +182,14 @@ export function StationPicker({
             </CardHeader>
             <CardContent>
               <form onSubmit={onAcceptInvitation} className="space-y-3">
-                <FormField label="Référence d’invitation" required hint="Identifiant à 36 caractères transmis par le gérant">
+                <FormField
+                  label="Référence d’invitation"
+                  required
+                  hint="Identifiant à 36 caractères transmis par le gérant"
+                  htmlFor="invitation-reference"
+                >
                   <input
+                    id="invitation-reference"
                     className={formControlStyles.input}
                     value={invitationCode}
                     onChange={event => onChangeInvitationCode(event.target.value)}

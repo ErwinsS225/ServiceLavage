@@ -18,14 +18,7 @@
 export type StationRole = 'owner' | 'gerant' | 'caissier' | 'laveur';
 
 export type StationTabId =
-  | 'dashboard'
-  | 'orders'
-  | 'services'
-  | 'customers'
-  | 'inventory'
-  | 'staff'
-  | 'reports'
-  | 'subscription';
+  'dashboard' | 'orders' | 'services' | 'customers' | 'inventory' | 'staff' | 'reports' | 'subscription';
 
 export interface StationTab {
   id: StationTabId;

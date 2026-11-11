@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { jsPDF } from 'jspdf';
 import { X, Printer, Share2, Download, CheckCircle2 } from 'lucide-react';
 import { formatXof } from '../lib/money';
@@ -42,6 +42,57 @@ export function ReceiptModal({
   const [feedback, setFeedback] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const ticketRef = useRef<HTMLDivElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const titleId = useId();
+
+  /**
+   * Le reçu est une modale : il doit se comporter comme celle de `ui/Modal`.
+   * Il en duplique le strict nécessaire (focus à l'ouverture, restitution à la
+   * fermeture, `Échap`) parce que sa mise en page est un ticket imprimable et
+   * non une boîte de dialogue standard.
+   *
+   * Ce qui manquait avant : le focus restait sur le bouton « Reçu » de la
+   * liste, derrière l'écran, et un lecteur d'écran continuait d'annoncer les
+   * prestations pendant que le reçu s'affichait.
+   */
+  useEffect(() => {
+    const origin = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const frame = requestAnimationFrame(() => dialogRef.current?.focus());
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.stopPropagation();
+        onClose();
+        return;
+      }
+      if (event.key !== 'Tab' || !dialogRef.current) return;
+      // Boucle de tabulation : le reçu n'a pas de contenu en arrière-plan
+      // atteignable, donc le focus doit tourner entre ses propres boutons.
+      const focusable = Array.from(
+        dialogRef.current.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])',
+        ),
+      ).filter(element => element.offsetParent !== null || element.style.position === 'fixed');
+      if (focusable.length === 0) {
+        event.preventDefault();
+        return;
+      }
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener('keydown', onKeyDown, true);
+    return () => {
+      cancelAnimationFrame(frame);
+      document.removeEventListener('keydown', onKeyDown, true);
+      if (origin && document.contains(origin)) origin.focus();
+    };
+  }, [onClose]);
 
   const code = receiptTicketCode(order);
   const fileName = receiptFileName(code);
@@ -108,30 +159,41 @@ export function ReceiptModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
-        aria-label={`Reçu de la prestation ${code}`}
-        className="bg-[#181c24] border border-[#2b3343] rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl text-slate-200"
+        aria-labelledby={titleId}
+        tabIndex={-1}
+        className="bg-[var(--surface-card)] border border-[var(--border-strong)] rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl text-slate-200"
       >
-        <div className="p-3.5 border-b border-[#262e3d] flex items-center justify-between bg-[#1f2430]">
+        <div className="p-3.5 border-b border-[var(--border-subtle)] flex items-center justify-between bg-[var(--surface-elevated)]">
           <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse" />
-            <span className="text-xs font-bold text-white uppercase tracking-wider">
+            <span
+              className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse motion-safe-keep"
+              aria-hidden="true"
+            />
+            <h2
+              id={titleId}
+              className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider"
+            >
               Reçu de prestation · ServiceLavage
-            </span>
+            </h2>
           </div>
           <button
             type="button"
             onClick={onClose}
             aria-label="Fermer"
-            className="p-1 rounded-lg bg-[#272e3d] text-slate-400 hover:text-white transition-colors cursor-pointer"
+            className="p-1 rounded-lg bg-[var(--surface-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
           >
-            <X className="w-4 h-4" />
+            <X className="w-4 h-4" aria-hidden="true" />
           </button>
         </div>
 
         {feedback && (
-          <div role="status" className="px-4 py-2 bg-emerald-500/10 border-b border-emerald-500/20 text-emerald-400 text-xs flex items-center gap-2">
+          <div
+            role="status"
+            className="px-4 py-2 bg-emerald-500/10 border-b border-emerald-500/20 text-emerald-400 text-xs flex items-center gap-2"
+          >
             <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
             <span>{feedback}</span>
           </div>
@@ -139,7 +201,7 @@ export function ReceiptModal({
 
         <ReceiptPaper ref={ticketRef} order={order} stationName={stationName} qrPayload={qrPayload} />
 
-        <div className="p-3.5 bg-[#141820] border-t border-[#262e3d] flex flex-col gap-2">
+        <div className="p-3.5 bg-[var(--surface-canvas)] border-t border-[var(--border-subtle)] flex flex-col gap-2">
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -156,7 +218,7 @@ export function ReceiptModal({
               type="button"
               disabled={isProcessing}
               onClick={() => void handleDownloadPdf()}
-              className="py-2 px-3 rounded-xl bg-[#202532] hover:bg-[#2b3343] disabled:opacity-50 border border-[#2e3748] text-slate-200 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors shadow-sm cursor-pointer"
+              className="py-2 px-3 rounded-xl bg-[var(--surface-elevated)] hover:bg-[#2b3343] disabled:opacity-50 border border-[var(--border-strong)] text-slate-200 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors shadow-sm cursor-pointer"
               title="Télécharger le reçu en PDF"
             >
               <Download className="w-3.5 h-3.5 text-cyan-400" />
@@ -173,7 +235,7 @@ export function ReceiptModal({
               <span>Imprimer</span>
             </button>
           </div>
-          <p className="text-[10px] text-slate-500 text-center">
+          <p className="text-[10px] text-[var(--text-muted)] text-center">
             Document interne : la prestation est attestée, le règlement n’est pas suivi par l’application.
           </p>
         </div>

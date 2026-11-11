@@ -45,35 +45,66 @@ const member = (overrides: Partial<MemberRow> = {}): MemberRow => ({
 
 test('l’état d’une invitation suit l’ordre acceptée > annulée > expirée', () => {
   assert.equal(invitationState(invitation(), now), 'en_attente');
-  assert.equal(invitationState(invitation({ expires_at: new Date(now.getTime() - HOUR).toISOString() }), now), 'expiree');
-  assert.equal(invitationState(invitation({ cancelled_at: now.toISOString(), expires_at: new Date(now.getTime() - HOUR).toISOString() }), now), 'annulee');
-  assert.equal(invitationState(invitation({
-    accepted_at: now.toISOString(),
-    cancelled_at: now.toISOString(),
-  }), now), 'acceptee');
+  assert.equal(
+    invitationState(invitation({ expires_at: new Date(now.getTime() - HOUR).toISOString() }), now),
+    'expiree',
+  );
+  assert.equal(
+    invitationState(
+      invitation({
+        cancelled_at: now.toISOString(),
+        expires_at: new Date(now.getTime() - HOUR).toISOString(),
+      }),
+      now,
+    ),
+    'annulee',
+  );
+  assert.equal(
+    invitationState(
+      invitation({
+        accepted_at: now.toISOString(),
+        cancelled_at: now.toISOString(),
+      }),
+      now,
+    ),
+    'acceptee',
+  );
 });
 
 test('seule une invitation en attente peut être annulée', () => {
   assert.equal(canCancelInvitation(invitation(), now), true);
   assert.equal(canCancelInvitation(invitation({ accepted_at: now.toISOString() }), now), false);
   assert.equal(canCancelInvitation(invitation({ cancelled_at: now.toISOString() }), now), false);
-  assert.equal(canCancelInvitation(invitation({ expires_at: new Date(now.getTime() - HOUR).toISOString() }), now), false);
+  assert.equal(
+    canCancelInvitation(invitation({ expires_at: new Date(now.getTime() - HOUR).toISOString() }), now),
+    false,
+  );
 });
 
 test('les compteurs de membres ne comptent que les accès non révoqués', () => {
-  const members = [member(), member({ user_id: 'b', revoked_at: now.toISOString() }), member({ user_id: 'c' })];
+  const members = [
+    member(),
+    member({ user_id: 'b', revoked_at: now.toISOString() }),
+    member({ user_id: 'c' }),
+  ];
   assert.equal(activeMemberCount(members), 2);
   assert.equal(activeMemberCount([]), 0);
   assert.deepEqual(members.map(canRevokeMember), [true, false, true]);
 });
 
 test('les invitations en attente sont triées de la plus récente à la plus ancienne', () => {
-  const pending = pendingInvitations([
-    invitation({ id: 'vieille', created_at: new Date(now.getTime() - 5 * HOUR).toISOString() }),
-    invitation({ id: 'expiree', expires_at: new Date(now.getTime() - HOUR).toISOString() }),
-    invitation({ id: 'recente', created_at: new Date(now.getTime() - HOUR).toISOString() }),
-  ], now);
-  assert.deepEqual(pending.map(item => item.id), ['recente', 'vieille']);
+  const pending = pendingInvitations(
+    [
+      invitation({ id: 'vieille', created_at: new Date(now.getTime() - 5 * HOUR).toISOString() }),
+      invitation({ id: 'expiree', expires_at: new Date(now.getTime() - HOUR).toISOString() }),
+      invitation({ id: 'recente', created_at: new Date(now.getTime() - HOUR).toISOString() }),
+    ],
+    now,
+  );
+  assert.deepEqual(
+    pending.map(item => item.id),
+    ['recente', 'vieille'],
+  );
 });
 
 test('l’adresse est validée selon la même règle que le serveur', () => {
@@ -116,9 +147,13 @@ function fakeClient(responses: Record<string, { data: unknown; error: { message:
     const response = responses[table] ?? { data: [], error: null };
     const chain = {
       select: () => chain,
-      eq: (column: string, value: unknown) => { calls.push(`${table}.eq(${column}=${String(value)})`); return chain; },
+      eq: (column: string, value: unknown) => {
+        calls.push(`${table}.eq(${column}=${String(value)})`);
+        return chain;
+      },
       order: () => chain,
-      then: (resolve: (value: unknown) => void, reject: (reason: unknown) => void) => Promise.resolve(response).then(resolve, reject),
+      then: (resolve: (value: unknown) => void, reject: (reason: unknown) => void) =>
+        Promise.resolve(response).then(resolve, reject),
     };
     return chain;
   };
@@ -155,10 +190,16 @@ test('fetchStaff ne lit les invitations que si le rôle le permet', async () => 
 test('les erreurs d’invitation et de révocation remontent le message du serveur', async () => {
   const { client } = fakeClient({
     'rpc:create_station_invitation': { data: null, error: { message: 'Adresse ou rôle invalide' } },
-    'rpc:cancel_station_invitation': { data: null, error: { message: 'Invitation introuvable ou non autorisée' } },
+    'rpc:cancel_station_invitation': {
+      data: null,
+      error: { message: 'Invitation introuvable ou non autorisée' },
+    },
     'rpc:revoke_station_membership': { data: null, error: { message: 'Station non autorisée' } },
   });
-  await assert.rejects(() => createInvitation(client, 'station-1', 'a@b.ci', 'laveur'), /Adresse ou rôle invalide/);
+  await assert.rejects(
+    () => createInvitation(client, 'station-1', 'a@b.ci', 'laveur'),
+    /Adresse ou rôle invalide/,
+  );
   await assert.rejects(() => cancelInvitation(client, 'inv-1'), /Invitation introuvable ou non autorisée/);
   await assert.rejects(() => revokeMembership(client, 'station-1', 'user-2'), /Station non autorisée/);
 });
@@ -168,5 +209,8 @@ test('createInvitation renvoie la référence d’invitation, pas un booléen', 
   const { client, calls } = fakeClient({ 'rpc:create_station_invitation': { data: reference, error: null } });
   const returned = await createInvitation(client, 'station-1', 'laveur@exemple.ci', 'laveur');
   assert.equal(returned, reference);
-  assert.ok(calls.some(call => call.includes('"p_role":"laveur"')), 'le rôle est transmis tel quel à la RPC');
+  assert.ok(
+    calls.some(call => call.includes('"p_role":"laveur"')),
+    'le rôle est transmis tel quel à la RPC',
+  );
 });

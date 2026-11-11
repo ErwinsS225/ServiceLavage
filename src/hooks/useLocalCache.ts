@@ -16,10 +16,7 @@ export interface LocalCache<T> {
   clear: () => void;
 }
 
-export function useLocalCache<T>(
-  key: string | null,
-  isValid: (value: unknown) => value is T,
-): LocalCache<T> {
+export function useLocalCache<T>(key: string | null, isValid: (value: unknown) => value is T): LocalCache<T> {
   const read = useCallback((): T | null => {
     if (!key) return null;
     const raw = localStorage.getItem(key);
@@ -29,10 +26,13 @@ export function useLocalCache<T>(
     return parsed;
   }, [key, isValid]);
 
-  const write = useCallback((value: T) => {
-    if (!key) return;
-    localStorage.setItem(key, JSON.stringify(value));
-  }, [key]);
+  const write = useCallback(
+    (value: T) => {
+      if (!key) return;
+      localStorage.setItem(key, JSON.stringify(value));
+    },
+    [key],
+  );
 
   const clear = useCallback(() => {
     if (key) localStorage.removeItem(key);

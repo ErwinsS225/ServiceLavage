@@ -9,9 +9,11 @@ import { dumpLocalSchema, type SchemaSnapshot } from '../scripts/dumpLocalSchema
  * Pourquoi ce test existe : `supabase db push` compare des *versions* de
  * migration, pas des schémas. Les cinq dernières migrations ont été appliquées
  * via le connecteur Supabase, qui horodate à l'exécution : leurs versions
- * distantes (`20261109182442` … `20261109184205`) diffèrent des noms de
- * fichiers locaux (`20261109140000` … `20261109160000`). Le CLI les considère
- * donc comme non appliquées et `db push` tenterait de les rejouer.
+ * distantes (`20261109182442` … `20261109184205`) différaient des noms de
+ * fichiers locaux (`20261109140000` … `20261109160000`). Les fichiers ont été
+ * renommés le 10/11/2026 (étape 3), donc l'écart de versions n'existe plus ;
+ * ce test garde son rôle : prouver que le **schéma** produit par les fichiers
+ * est celui de la production.
  *
  * Avant de réparer l'historique ou de déployer quoi que ce soit, il faut
  * prouver que le **schéma** distant correspond bien au contenu des fichiers.
@@ -29,7 +31,12 @@ interface Reference extends SchemaSnapshot {
   _projet: Record<string, string>;
   _capture: Record<string, string>;
   _migrations_distantes: Array<{ version: string; name: string }>;
-  _migrations_locales: Array<{ fichier: string; version_distante: string; identique: boolean }>;
+  _migrations_locales: Array<{
+    fichier: string;
+    fichier_origine?: string;
+    version_distante: string;
+    identique: boolean;
+  }>;
   schema: SchemaSnapshot;
 }
 
@@ -63,6 +70,14 @@ test('the reference snapshot describes a deployed project, not a draft', () => {
   assert.equal(new Set(files).size, files.length);
   const versions = reference._migrations_locales.map(item => item.version_distante);
   assert.equal(new Set(versions).size, versions.length);
+  // Après le renommage, le nom de fichier doit porter sa propre version ; un
+  // décalage résiduel signalerait un fichier oublié lors de l'étape 3.
+  for (const item of reference._migrations_locales) {
+    assert.ok(
+      item.fichier.startsWith(item.version_distante),
+      `${item.fichier} ne porte pas sa version distante ${item.version_distante}`,
+    );
+  }
 });
 
 test('the schema produced by the migrations equals the deployed schema', () => {
@@ -80,12 +95,16 @@ test('the schema produced by the migrations equals the deployed schema', () => {
 test('the deployed database still satisfies the runbook checks', () => {
   const prod = reference.schema;
   // 1. RLS activée partout.
-  assert.deepEqual(prod.tables.filter(table => !table.rls), []);
-  // 2. Les trois déclencheurs de quota sont présents.
   assert.deepEqual(
-    prod.triggers.map(trigger => trigger.name).sort(),
-    ['enforce_monthly_order_limit', 'enforce_station_limit', 'owner_subscription_lock'],
+    prod.tables.filter(table => !table.rls),
+    [],
   );
+  // 2. Les trois déclencheurs de quota sont présents.
+  assert.deepEqual(prod.triggers.map(trigger => trigger.name).sort(), [
+    'enforce_monthly_order_limit',
+    'enforce_station_limit',
+    'owner_subscription_lock',
+  ]);
   // 3. Aucun droit d'écriture métier pour `authenticated` hors catalogue/clients :
   //    les prestations passent exclusivement par des fonctions SECURITY DEFINER.
   const writeGrants = prod.grants
@@ -95,16 +114,20 @@ test('the deployed database still satisfies the runbook checks', () => {
   assert.deepEqual(writeGrants, ['station_customers', 'station_services']);
 });
 
-test('the five late migrations are recorded under execution-time versions', () => {
-  // C'est la cause du faux « pending » : le schéma est identique, seules les
-  // versions diffèrent. Ce test fige la correspondance pour la commande
-  // `supabase migration repair` du runbook.
-  const divergent = reference._migrations_locales.filter(item => !item.identique);
-  assert.equal(divergent.length, 5);
-  for (const item of divergent) {
+test('the five late migrations keep the trace of their execution-time versions', () => {
+  // Elles ont été appliquées par le connecteur, qui horodate à l'exécution :
+  // `20261109140000` est enregistrée en base sous `20261109182442`. Les
+  // fichiers portent désormais la version réelle ; l'ancien nom reste consigné
+  // dans `fichier_origine`, pour que la trace ne disparaisse pas.
+  const renamed = reference._migrations_locales.filter(item => item.fichier_origine);
+  assert.equal(renamed.length, 5, 'cinq fichiers ont été renommés');
+  for (const item of renamed) {
     assert.ok(
-      item.version_distante > item.fichier.slice(0, 14),
-      `${item.fichier} doit être enregistrée sous une version postérieure`,
+      item.version_distante > item.fichier_origine!.slice(0, 14),
+      `${item.fichier_origine} doit être enregistrée sous une version postérieure`,
     );
+    assert.ok(item.fichier.startsWith(item.version_distante));
+    // Le contenu n'a pas bougé : c'est `npm run db:content` qui le prouve.
+    assert.equal(item.identique, true);
   }
 });

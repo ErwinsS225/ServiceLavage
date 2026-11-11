@@ -88,29 +88,34 @@
       "identique": true
     },
     {
-      "fichier": "20261109140000_station_memberships.sql",
+      "fichier": "20261109182442_station_memberships.sql",
       "version_distante": "20261109182442",
-      "identique": false
+      "identique": true,
+      "fichier_origine": "20261109140000_station_memberships.sql"
     },
     {
-      "fichier": "20261109141000_subscription_limits.sql",
+      "fichier": "20261109182456_subscription_limits.sql",
       "version_distante": "20261109182456",
-      "identique": false
+      "identique": true,
+      "fichier_origine": "20261109141000_subscription_limits.sql"
     },
     {
-      "fichier": "20261109142000_station_inventory.sql",
+      "fichier": "20261109182509_station_inventory.sql",
       "version_distante": "20261109182509",
-      "identique": false
+      "identique": true,
+      "fichier_origine": "20261109142000_station_inventory.sql"
     },
     {
-      "fichier": "20261109150000_station_role_permissions.sql",
+      "fichier": "20261109182534_station_role_permissions.sql",
       "version_distante": "20261109182534",
-      "identique": false
+      "identique": true,
+      "fichier_origine": "20261109150000_station_role_permissions.sql"
     },
     {
-      "fichier": "20261109160000_revoke_legacy_order_rpc.sql",
+      "fichier": "20261109184205_revoke_legacy_order_rpc.sql",
       "version_distante": "20261109184205",
-      "identique": false
+      "identique": true,
+      "fichier_origine": "20261109160000_revoke_legacy_order_rpc.sql"
     }
   ],
   "schema": {
@@ -1283,5 +1288,6 @@
         "privs": "SELECT"
       }
     ]
-  }
+  },
+  "_migrations_locales_note": "Depuis le renommage du 10/11/2026 (étape 3), chaque fichier porte la version réellement enregistrée en base : `fichier` == `version_distante`. `fichier_origine` conserve l'ancien nom ; `identique` est passé à true parce que `npm run db:content` a prouvé l'égalité de contenu pour les 11 fichiers."
 }

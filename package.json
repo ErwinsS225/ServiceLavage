@@ -8,7 +8,10 @@
     "build": "vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist",
-    "lint": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . --max-warnings=0",
+    "format": "prettier --write \"src/**/*.{ts,tsx}\" \"tests/**/*.{ts,tsx}\" \"scripts/**/*.mjs\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx}\" \"tests/**/*.{ts,tsx}\" \"scripts/**/*.mjs\"",
     "test": "tsx --test \"tests/*.test.ts\" \"tests/*.test.tsx\"",
     "test:integration": "RUN_LOCAL_SUPABASE_INTEGRATION=1 tsx --test tests/supabaseLocalIntegration.test.ts",
     "check:reachability": "node scripts/checkReachability.mjs",
@@ -16,7 +19,10 @@
     "db:login": "npx --yes supabase@latest login --no-browser",
     "db:link": "npx --yes supabase@latest link --project-ref avvkzliysacpyavmetsx",
     "db:status": "npx --yes supabase@latest migration list",
-    "db:drift": "tsx --test tests/productionSchemaDrift.test.ts"
+    "db:drift": "tsx --test tests/productionSchemaDrift.test.ts",
+    "db:content": "node scripts/checkMigrationContent.mjs",
+    "check:contrast": "node scripts/checkContrast.mjs",
+    "quality": "npm run typecheck && npm run lint && npm run format:check && npm run check:reachability && npm run check:contrast && npm test && npm run build"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.119.0",
@@ -26,10 +32,12 @@
     "lucide-react": "^0.546.0",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
-    "recharts": "^3.10.1"
+    "recharts": "^3.10.1",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.15",
+    "@eslint/js": "^10.0.1",
     "@tailwindcss/vite": "^4.3.3",
     "@testing-library/dom": "^10.4.2",
     "@testing-library/react": "^16.3.3",
@@ -39,14 +47,24 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.1",
+    "eslint": "^10.14.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-security": "^4.2.1",
+    "globals": "^16.5.0",
     "jsdom": "^31.0.0",
+    "prettier": "^3.9.10",
     "qrcode-generator": "^2.0.4",
+    "supabase": "^3.1.0",
     "tailwindcss": "^4.3.3",
     "tsx": "^4.21.0",
-    "typescript": "^7.0.2",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.72.2",
     "vite": "^8.3.0"
   },
   "engines": {
     "node": ">=22.12.0"
+  },
+  "optionalDependencies": {
+    "typescript": "^7.0.2"
   }
 }

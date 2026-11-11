@@ -17,7 +17,9 @@ export function PortalHeader({ email, onSignOut }: { email: string; onSignOut: (
 
       <div className="flex items-center gap-3">
         <div className="text-right hidden sm:block">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-muted)] block">Compte actif</span>
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-muted)] block">
+            Compte actif
+          </span>
           <span className="text-xs font-mono text-[var(--text-secondary)] font-medium">{email}</span>
         </div>
         <button
@@ -26,7 +28,11 @@ export function PortalHeader({ email, onSignOut }: { email: string; onSignOut: (
           className={buttonStyles({ variant: 'outline', size: 'sm' })}
           onClick={toggleDarkMode}
         >
-          {isDarkMode ? <Sun className="w-3.5 h-3.5 mr-1.5 text-amber-300" /> : <Moon className="w-3.5 h-3.5 mr-1.5 text-indigo-400" />}
+          {isDarkMode ? (
+            <Sun className="w-3.5 h-3.5 mr-1.5 text-amber-300" />
+          ) : (
+            <Moon className="w-3.5 h-3.5 mr-1.5 text-indigo-400" />
+          )}
           {isDarkMode ? 'Clair' : 'Sombre'}
         </button>
         <button

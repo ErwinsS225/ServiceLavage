@@ -25,7 +25,10 @@ major_version = 17
 enabled = true
 port = 54323
 
-[inbucket]
+# Depuis la CLI 3.x, `[inbucket]` est refusé et bloque toutes les commandes
+# (`migration list`, `db push --dry-run` inclus) sur un simple avertissement
+# devenu erreur. `[local_smtp]` est le nom accepté pour le même service.
+[local_smtp]
 enabled = true
 port = 54324
 
@@ -42,7 +45,9 @@ jwt_expiry = 3600
 enable_signup = true
 
 [auth.email]
-enable_signup = true
+# `enable_signup` s'appelait ainsi jusqu'à la CLI 2.x ; 3.x ne lit plus que
+# `enabled`. Laisser l'ancienne clé donnait un réglage silencieusement ignoré.
+enabled = true
 # La production exige une confirmation d'e-mail ; on garde le même réglage en
 # local pour ne pas tester un parcours que l'utilisateur ne vivra jamais.
 enable_confirmations = true
@@ -51,10 +56,9 @@ enable_confirmations = true
 enabled = true
 file_size_limit = "5MiB"
 
-[migration]
-# Déclencheurs de quota créés par les migrations ; le contenu n'est pas
-# versionné (aucune donnée métier).
-enabled = false
+# `[migration]` a été retiré : la CLI 3.x ne reconnaît plus cette clé et
+# l'ignore en le signalant. La valeur `enabled = false` n'avait donc plus
+# d'effet ; la garder laissait croire à un réglage actif.
 
 [analytics]
 enabled = false

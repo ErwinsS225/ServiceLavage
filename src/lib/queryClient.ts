@@ -1,4 +1,15 @@
-import { QueryClient } from '@tanstack/react-query';
+import { QueryCache, QueryClient } from '@tanstack/react-query';
+import { track } from './telemetry';
+import { readServerCode } from './errorMessages';
+
+/**
+ * Ce qu'un échec doit produire à l'écran. Injecté plutôt qu'importé : le cache
+ * est créé hors de React, et un `useToast()` ne peut pas y être appelé.
+ * `main.tsx` branche ces deux fonctions sur le contexte de toasts.
+ */
+export interface QueryErrorHandlers {
+  onQueryError?: (message: string, detail?: string) => void;
+}
 
 /**
  * Client de cache pour les données serveur.
@@ -16,8 +27,27 @@ import { QueryClient } from '@tanstack/react-query';
  * Aucune donnée n'est montrée avant d'être chargée : le cache évite des
  * allers-retours, il ne fabrique jamais un écran plausible.
  */
-export function createQueryClient(): QueryClient {
+export function createQueryClient(handlers: QueryErrorHandlers = {}): QueryClient {
   return new QueryClient({
+    // Seules les lectures sont signalées globalement. Une écriture ratée est
+    // déjà expliquée par l'écran qui l'a déclenchée (message précis sous le
+    // champ ou dans l'alerte d'action) : la doubler d'un toast donnerait deux
+    // textes différents pour un seul échec.
+    queryCache: new QueryCache({
+      onError: (error, query) => {
+        // La clé de requête identifie la ressource (`['station', id, 'orders']`).
+        // Elle est journalisée sans l'identifiant de station : le premier
+        // segment et la ressource suffisent à savoir quel écran a échoué.
+        const key = Array.isArray(query.queryKey) ? query.queryKey : [];
+        track.error(
+          'data.lecture_echouee',
+          error,
+          { ressource: String(key[2] ?? key[0] ?? 'inconnue') },
+          { message: 'Chargement impossible', code: readServerCode(error) },
+        );
+        handlers.onQueryError?.('Chargement impossible.', error instanceof Error ? error.message : undefined);
+      },
+    }),
     defaultOptions: {
       queries: {
         retry: 1,
@@ -40,7 +70,8 @@ export const queryKeys = {
   customers: (stationId: string) => ['station', stationId, 'customers'] as const,
   orders: (stationId: string) => ['station', stationId, 'orders'] as const,
   inventory: (stationId: string) => ['station', stationId, 'inventory'] as const,
-  staff: (stationId: string, canManageRoles: boolean) => ['station', stationId, 'staff', canManageRoles] as const,
+  staff: (stationId: string, canManageRoles: boolean) =>
+    ['station', stationId, 'staff', canManageRoles] as const,
   subscription: () => ['subscription'] as const,
   reports: (stationId: string) => ['station', stationId, 'reports'] as const,
 } as const;

@@ -13,7 +13,7 @@ export interface PdfExportOptions {
  */
 export async function generatePdfFromElement(
   element: HTMLElement,
-  options: PdfExportOptions = {}
+  options: PdfExportOptions = {},
 ): Promise<{ doc: jsPDF; blob: Blob }> {
   // Capture the rendered DOM including styles, fonts, and borders
   const canvas = await html2canvas(element, {
@@ -53,14 +53,14 @@ export async function generatePdfFromElement(
 
   // First page
   doc.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight, undefined, 'FAST');
-  heightLeft -= (pageHeight - 20);
+  heightLeft -= pageHeight - 20;
 
   // Additional pages if report content spans multiple A4 pages
   while (heightLeft > 0) {
     position = heightLeft - imgHeight + 10;
     doc.addPage();
     doc.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight, undefined, 'FAST');
-    heightLeft -= (pageHeight - 20);
+    heightLeft -= pageHeight - 20;
   }
 
   const blob = doc.output('blob');
@@ -90,7 +90,7 @@ export async function sharePdfToMessaging(
   filename: string,
   title: string,
   text: string,
-  phone?: string
+  phone?: string,
 ): Promise<'shared' | 'downloaded'> {
   const pdfFile = new File([blob], filename, { type: 'application/pdf' });
 
@@ -113,8 +113,12 @@ export async function sharePdfToMessaging(
   // Fallback: download the file locally and open WhatsApp direct conversation
   downloadPdfBlob(blob, filename);
   const cleanPhone = (phone || '').replace(/[^0-9]/g, '');
-  const encodedMsg = encodeURIComponent(`${text} (Le fichier PDF "${filename}" a été téléchargé sur votre appareil).`);
-  const waUrl = cleanPhone ? `https://wa.me/${cleanPhone}?text=${encodedMsg}` : `https://api.whatsapp.com/send?text=${encodedMsg}`;
+  const encodedMsg = encodeURIComponent(
+    `${text} (Le fichier PDF "${filename}" a été téléchargé sur votre appareil).`,
+  );
+  const waUrl = cleanPhone
+    ? `https://wa.me/${cleanPhone}?text=${encodedMsg}`
+    : `https://api.whatsapp.com/send?text=${encodedMsg}`;
   window.open(waUrl, '_blank');
   return 'downloaded';
 }

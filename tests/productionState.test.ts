@@ -37,13 +37,24 @@ test('the runbook states the verified state instead of the historical one', asyn
     ['20261109150000_station_role_permissions.sql', '20261109182534'],
     ['20261109160000_revoke_legacy_order_rpc.sql', '20261109184205'],
   ]) {
-    assert.ok(runbook.includes(pair[0]) && runbook.includes(pair[1]), `correspondance manquante : ${pair[0]}`);
+    assert.ok(
+      runbook.includes(pair[0]) && runbook.includes(pair[1]),
+      `correspondance manquante : ${pair[0]}`,
+    );
   }
-  // Repair may only happen after the schema proof.
-  const proof = runbook.indexOf('tests/productionSchemaDrift.test.ts');
-  const repair = runbook.indexOf('supabase migration repair', proof);
-  assert.ok(proof > 0 && repair > proof, 'la preuve de schéma doit précéder `migration repair`');
-  assert.match(runbook, /Ne jamais lancer `migration repair` avant l'étape 1/);
+  // Depuis l'étape 3, le runbook ne prescrit plus `migration repair` : il
+  // l'exclut explicitement. Le test qui figeait la commande de réparation est
+  // devenu un test de l'inverse — sinon la documentation continuerait de
+  // recommander une écriture d'historique devenue inutile et risquée.
+  assert.doesNotMatch(
+    runbook,
+    /supabase migration repair --status/,
+    'aucune commande `migration repair` ne doit rester',
+  );
+  assert.match(runbook, /n'est pas dans ce chemin/);
+  // La correspondance ancien → nouveau reste documentée : c'est la trace de
+  // ce qui a été fait, et elle explique pourquoi les versions ont changé.
+  assert.match(runbook, /Étape 3 — noms de fichiers alignés/);
   // And the additive-migration rule is written down.
   assert.match(runbook, /Nouvelle migration : la seule voie autorisée/);
   assert.match(runbook, /Aucune migration\s+appliquée n'est éditée, jamais/);
@@ -64,9 +75,11 @@ test('the backup taken before any future migration exists and has no secret', as
 });
 
 test('the applied migrations were not modified to match the remote versions', async () => {
-  // Les noms de fichiers ne doivent pas être renommés après coup : le runbook
-  // documente le décalage, il ne le maquille pas. Ce test empêche la tentation
-  // de « corriger » un fichier déjà appliqué.
+  // Renommé le 10 novembre 2026 (réconciliation, étape 3) : le fichier porte
+  // désormais la version que la base a réellement enregistrée. Ce que ce test
+  // protège reste le même — le **contenu** n'a pas été retouché. C'est
+  // `npm run db:content` qui le prouve, en comparant l'empreinte de chaque
+  // fichier au SQL stocké dans `schema_migrations`.
   const files = (await readdir('supabase/migrations')).filter(name => name.endsWith('.sql')).sort();
   assert.deepEqual(files, [
     '20261109121406_owner_stations.sql',
@@ -75,10 +88,17 @@ test('the applied migrations were not modified to match the remote versions', as
     '20261109123327_station_orders.sql',
     '20261109130303_order_idempotency.sql',
     '20261109130602_restrict_station_privileges.sql',
-    '20261109140000_station_memberships.sql',
-    '20261109141000_subscription_limits.sql',
-    '20261109142000_station_inventory.sql',
-    '20261109150000_station_role_permissions.sql',
-    '20261109160000_revoke_legacy_order_rpc.sql',
+    '20261109182442_station_memberships.sql',
+    '20261109182456_subscription_limits.sql',
+    '20261109182509_station_inventory.sql',
+    '20261109182534_station_role_permissions.sql',
+    '20261109184205_revoke_legacy_order_rpc.sql',
   ]);
+  // Aucun fichier ne doit conserver un préfixe qui n'existe pas en base : ce
+  // serait une migration fantôme, que `db push` rejouerait.
+  const history = JSON.parse(
+    await readFile('docs/sauvegardes/prod-migration-historique-2026-11-10.json', 'utf8'),
+  ) as { migrations: Array<{ version: string }> };
+  const applied = new Set(history.migrations.map(item => item.version));
+  for (const file of files) assert.ok(applied.has(file.slice(0, 14)), `${file} : version non appliquée`);
 });

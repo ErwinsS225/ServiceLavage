@@ -79,11 +79,18 @@ test('a wash that is only quoted is not billed until it is completed', () => {
 test('the seven-day series contains exactly the real per-day amounts, oldest first', () => {
   const series = dailyBilledSeries(FIXTURE, REFERENCE);
   assert.equal(series.length, 7);
-  assert.deepEqual(series.map(point => point.iso), [
-    '2026-11-04', '2026-11-05', '2026-11-06', '2026-11-07', '2026-11-08', '2026-11-09', '2026-11-10',
-  ]);
-  assert.deepEqual(series.map(point => point.billedXof), [4000, 0, 0, 0, 0, 12000, 8500]);
-  assert.deepEqual(series.map(point => point.count), [1, 0, 0, 0, 0, 1, 2]);
+  assert.deepEqual(
+    series.map(point => point.iso),
+    ['2026-11-04', '2026-11-05', '2026-11-06', '2026-11-07', '2026-11-08', '2026-11-09', '2026-11-10'],
+  );
+  assert.deepEqual(
+    series.map(point => point.billedXof),
+    [4000, 0, 0, 0, 0, 12000, 8500],
+  );
+  assert.deepEqual(
+    series.map(point => point.count),
+    [1, 0, 0, 0, 0, 1, 2],
+  );
   assert.equal(series.at(-1)?.label, 'Mar', '10 novembre 2026 est un mardi');
   assert.equal(isSeriesEmpty(series), false);
 });
@@ -110,7 +117,12 @@ test('the status distribution counts the four real statuses', () => {
   // 6 terminés: o1, o2, o6, o7, o8, o9
   assert.deepEqual(
     statusDistribution(FIXTURE).map(slice => [slice.status, slice.value]),
-    [['termine', 6], ['en_cours', 1], ['en_attente', 1], ['annule', 1]],
+    [
+      ['termine', 6],
+      ['en_cours', 1],
+      ['en_attente', 1],
+      ['annule', 1],
+    ],
   );
 });
 
@@ -164,7 +176,12 @@ test('an empty report period is all zeros and its average is not NaN', () => {
 });
 
 test('a queued offline order contributes a count but never an amount', () => {
-  const queuedAsRow: MetricOrder = { id: 'local-1', status: 'en_attente', total_xof: 0, created_at: at(0, 16) };
+  const queuedAsRow: MetricOrder = {
+    id: 'local-1',
+    status: 'en_attente',
+    total_xof: 0,
+    created_at: at(0, 16),
+  };
   const metrics = dashboardMetrics([...FIXTURE, queuedAsRow], REFERENCE, { queuedCount: 1 });
   assert.equal(metrics.billedTodayXof, 8500, 'aucun montant inventé pour la file locale');
   assert.equal(metrics.queuedCount, 1);

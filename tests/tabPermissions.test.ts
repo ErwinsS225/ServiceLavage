@@ -22,9 +22,10 @@ import {
 const roles: StationRole[] = ['owner', 'gerant', 'caissier', 'laveur'];
 
 test('la matrice couvre les huit modules, une fois chacun', () => {
-  assert.deepEqual(STATION_TABS.map(tab => tab.id), [
-    'dashboard', 'orders', 'services', 'customers', 'inventory', 'staff', 'reports', 'subscription',
-  ]);
+  assert.deepEqual(
+    STATION_TABS.map(tab => tab.id),
+    ['dashboard', 'orders', 'services', 'customers', 'inventory', 'staff', 'reports', 'subscription'],
+  );
 });
 
 test('aucun rôle ne reste sans aucun module', () => {
@@ -52,7 +53,10 @@ test('les abonnements restent réservés au propriétaire', async () => {
     assert.equal(canOpenTab(other, 'subscription'), false);
   }
   // Même règle côté module : le panneau n'est rendu que si canOpenTab passe.
-  assert.match(await readFile('src/components/portal/StationModulePanel.tsx', 'utf8'), /canOpenTab\(role, tab\)/);
+  assert.match(
+    await readFile('src/components/portal/StationModulePanel.tsx', 'utf8'),
+    /canOpenTab\(role, tab\)/,
+  );
 });
 
 test('un changement de station ne peut pas laisser un onglet interdit ouvert', () => {

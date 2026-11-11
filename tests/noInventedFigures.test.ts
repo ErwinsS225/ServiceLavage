@@ -15,9 +15,10 @@ const orders = await readFile('src/components/StationOrders.tsx', 'utf8');
 // The receipt was split in P1: wording lives in `receiptDocument`, the paper in
 // `receipt/ReceiptPaper`, the QR in `receipt/ReceiptQrCode`.
 const receiptModal = await readFile('src/components/ReceiptModal.tsx', 'utf8');
-const receipt = await readFile('src/lib/receiptDocument.ts', 'utf8')
-  + await readFile('src/components/receipt/ReceiptPaper.tsx', 'utf8')
-  + receiptModal;
+const receipt =
+  (await readFile('src/lib/receiptDocument.ts', 'utf8')) +
+  (await readFile('src/components/receipt/ReceiptPaper.tsx', 'utf8')) +
+  receiptModal;
 const metrics = await readFile('src/lib/stationMetrics.ts', 'utf8');
 const receiptPayload = await readFile('src/lib/receiptPayload.ts', 'utf8');
 
@@ -59,7 +60,11 @@ test('no expense ratio or payment split is invented', () => {
     assert.doesNotMatch(source, /0\.22|0\.52|0\.26|0\.12/, `${name} contient un ratio en dur`);
     assert.doesNotMatch(source, /22\s*%|52\s*%|26\s*%|12\s*%/, `${name} affiche un pourcentage non mesuré`);
   }
-  assert.doesNotMatch(reports, /Wave\s*(CI|Money)|Orange\s*Money|MTN\s*Mobile/i, 'aucune répartition par opérateur');
+  assert.doesNotMatch(
+    reports,
+    /Wave\s*(CI|Money)|Orange\s*Money|MTN\s*Mobile/i,
+    'aucune répartition par opérateur',
+  );
   assert.match(reports, /Moyens de paiement non enregistrés|aucun moyen de paiement n’est stocké/);
 });
 
@@ -110,7 +115,10 @@ test('the CSV export neutralises spreadsheet formulas', async () => {
   // pas relue au regex dans le JSX.
   const { readFile: read } = await import('node:fs/promises');
   const source = await read('src/lib/csvExport.ts', 'utf8');
-  const cell = source.slice(source.indexOf('export function csvCell'), source.indexOf('export interface CsvOrderRow'));
+  const cell = source.slice(
+    source.indexOf('export function csvCell'),
+    source.indexOf('export interface CsvOrderRow'),
+  );
   // A leading =, +, -, @, tab or CR must be prefixed so Excel keeps it as text.
   assert.match(cell, /\/\^\[=\+/);
   // Quotes inside a value must be doubled, otherwise the column escapes.
