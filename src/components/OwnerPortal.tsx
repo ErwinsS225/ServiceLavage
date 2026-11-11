@@ -6,6 +6,7 @@ import { PortalHeader } from './portal/PortalHeader';
 import { StationPicker } from './portal/StationPicker';
 import { StationModuleNav } from './portal/StationModuleNav';
 import { StationModulePanel } from './portal/StationModulePanel';
+import { DiagnosticPanel } from './DiagnosticPanel';
 import { usePortalSession } from '../hooks/usePortalSession';
 import { useStations } from '../hooks/useStations';
 import { useStationRole } from '../hooks/useStationRole';
@@ -67,6 +68,7 @@ export function OwnerPortal({ client }: { client?: SupabaseClient | null }) {
   const [message, setMessage] = useState('');
   const [actionError, setActionError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [diagnosticOpen, setDiagnosticOpen] = useState(false);
   const [newStationName, setNewStationName] = useState('');
   const [invitationCode, setInvitationCode] = useState('');
   const [tab, setTab] = useState<StationTabId>('dashboard');
@@ -285,10 +287,34 @@ export function OwnerPortal({ client }: { client?: SupabaseClient | null }) {
           )}
         </div>
 
-        <footer className="pt-2 text-center text-[11px] text-[var(--text-muted)]">
-          ServiceLavage · Les compteurs affichés proviennent des prestations enregistrées sur le serveur,
-          jamais d’une estimation.
+        <footer className="relative flex flex-col items-center gap-2 pt-2 text-center text-[11px] text-[var(--text-muted)]">
+          <button
+            type="button"
+            onClick={() => setDiagnosticOpen(true)}
+            className="cursor-pointer underline decoration-dotted underline-offset-2 hover:text-[var(--text-secondary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] rounded-[var(--radius-sm)] px-1"
+          >
+            Diagnostic de cet appareil
+          </button>
+          <span>
+            ServiceLavage · Les compteurs affichés proviennent des prestations enregistrées sur le serveur,
+            jamais d’une estimation.
+          </span>
         </footer>
+
+        <DiagnosticPanel
+          isOpen={diagnosticOpen}
+          onClose={() => setDiagnosticOpen(false)}
+          perimeter={
+            stationId && session
+              ? {
+                  userId: session.user.id,
+                  stationId,
+                  stationName: activeStation?.name ?? stationId,
+                }
+              : null
+          }
+          appVersion={import.meta.env.VITE_APP_VERSION ?? 'développement'}
+        />
       </div>
     </div>
   );

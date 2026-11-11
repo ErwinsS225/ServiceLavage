@@ -15,6 +15,15 @@ interface StationDashboardProps {
   onNavigateTab?: (tab: 'orders' | 'customers' | 'services' | 'inventory' | 'reports') => void;
   /** Injected in tests; the application always uses the shared client. */
   client?: SupabaseClient | null;
+  /**
+   * Instant de référence pour « aujourd'hui ».
+   *
+   * Injeté par les tests, jamais par l'application : sans lui, un test de
+   * l'écran dépend de l'horloge de la machine, et il échoue le jour où la
+   * machine change de jour. Ce n'est pas le calcul qui est figé (il reste dans
+   * `lib/stationMetrics`), seulement le « maintenant » du rendu.
+   */
+  referenceNow?: Date;
 }
 
 /**
@@ -34,6 +43,7 @@ export function StationDashboard({
   userId,
   onNavigateTab,
   client = defaultClient,
+  referenceNow,
 }: StationDashboardProps) {
   const {
     queued,
@@ -47,7 +57,7 @@ export function StationDashboard({
     distributionEmpty,
     recentOrders,
     refresh,
-  } = useDashboardMetrics(client, stationId, userId);
+  } = useDashboardMetrics(client, stationId, userId, referenceNow);
 
   return (
     <div className="space-y-6">

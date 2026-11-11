@@ -18,6 +18,8 @@ import {
   type ServiceRow,
   type StationClient,
 } from '../lib/stationApi';
+import { measure } from '../lib/performance';
+import { track } from '../lib/telemetry';
 import { listQueuedOrders, saveQueuedOrder, synchronizeOrders, type QueuedOrder } from '../lib/offlineOrders';
 import { useOfflineQueue } from './useOfflineQueue';
 import { useLocalCache } from './useLocalCache';
@@ -154,11 +156,15 @@ export function useStationOrders({
     }
 
     const stationApi = api();
-    Promise.all([
-      fetchActiveServices(stationApi, stationId),
-      fetchCustomersByName(stationApi, stationId),
-      fetchOrders(stationApi, stationId),
-    ])
+    // Mesuré comme un seul appel : c'est le chargement que l'utilisateur attend
+    // avant de pouvoir créer une prestation, donc celui dont la durée compte.
+    measure('prestations.chargement', () =>
+      Promise.all([
+        fetchActiveServices(stationApi, stationId),
+        fetchCustomersByName(stationApi, stationId),
+        fetchOrders(stationApi, stationId),
+      ]),
+    )
       .then(([serviceList, customerList, orderList]) => {
         if (!active) return;
         setServices(serviceList);
@@ -232,6 +238,9 @@ export function useStationOrders({
           'Prestation enregistrée localement, mais la file contient une entrée illisible : ne créez pas de doublon.',
         );
       }
+      // Une prestation créée est d'abord locale : la trace dit « enregistrée »,
+      // jamais « envoyée ». La confirmation vient de `offline.synchronise`.
+      track.info('metier.prestation_enregistree', { stationId, services: input.serviceIds.length });
       void queue.sync();
     },
     [queue, stationId, userId],

@@ -458,6 +458,21 @@ function isFrenchSentence(message: string): boolean {
 }
 
 /** Raccourci pour un toast ou une alerte : le texte à afficher, concaténé. */
+/**
+ * Code serveur (`errcode` PostgreSQL / `code` PostgREST), s'il existe.
+ *
+ * Utilisé par la journalisation : le code est la seule information exploitable
+ * pour regrouper des incidents sans stocker de message. Il ne sert jamais à
+ * l'affichage, qui passe par `describeError`.
+ */
+export function readServerCode(error: unknown): string | undefined {
+  if (typeof error === 'object' && error !== null && 'code' in error) {
+    const code = (error as { code?: unknown }).code;
+    if (typeof code === 'string') return code;
+  }
+  return undefined;
+}
+
 export function errorText(error: unknown): string {
   const described = describeError(error);
   if (!described.action) return described.message;

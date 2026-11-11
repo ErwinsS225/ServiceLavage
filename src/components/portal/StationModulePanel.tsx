@@ -1,19 +1,48 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useEffect, type ComponentType } from 'react';
 import { Alert } from '../ui/designSystem';
 import { StationCustomers } from '../StationCustomers';
 import { StationServices } from '../StationServices';
 import { StationOrders } from '../StationOrders';
 import { SubscriptionPlans } from '../SubscriptionPlans';
 import { canManageRoles, canOpenTab, type StationRole, type StationTabId } from '../../lib/portalNavigation';
+import { reportChunkFailure } from '../../lib/globalErrors';
+import { track } from '../../lib/telemetry';
 
-const StationInventory = lazy(() =>
+/**
+ * Enveloppe un import paresseux pour nommer l'échec.
+ *
+ * Le piège à éviter : `import()` qui échoue (module non encore mis en cache,
+ * réseau coupé — le cas normal d'un téléphone en mobilité) produit un rejet dont
+ * seul le message générique du navigateur reste. En nommant le module, le
+ * diagnostic peut dire « Rapports n'a pas pu se charger », ce qui indique quoi
+ * faire (recharger une fois en ligne) au lieu de laisser un écran de secours
+ * muet.
+ */
+function lazyModule(name: string, load: () => Promise<unknown>) {
+  return lazy(async () => {
+    try {
+      // Le type est celui de `lazy` lui-même. Écrire ici les props de chaque
+      // écran obligerait à les répéter une seconde fois, et c'est exactement
+      // comme cela qu'une signature dérive de son composant.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- voir ci-dessus
+      return (await load()) as { default: ComponentType<any> };
+    } catch (cause) {
+      reportChunkFailure(name, cause);
+      throw cause;
+    }
+  });
+}
+
+const StationInventory = lazyModule('StationInventory', () =>
   import('../StationInventory').then(module => ({ default: module.StationInventory })),
 );
-const StationStaff = lazy(() => import('../StationStaff').then(module => ({ default: module.StationStaff })));
-const StationDashboard = lazy(() =>
+const StationStaff = lazyModule('StationStaff', () =>
+  import('../StationStaff').then(module => ({ default: module.StationStaff })),
+);
+const StationDashboard = lazyModule('StationDashboard', () =>
   import('../StationDashboard').then(module => ({ default: module.StationDashboard })),
 );
-const StationReports = lazy(() =>
+const StationReports = lazyModule('StationReports', () =>
   import('../StationReports').then(module => ({ default: module.StationReports })),
 );
 
@@ -43,6 +72,14 @@ export function StationModulePanel({
   stationName: string;
   userId: string;
 }) {
+  // Tracking d'usage volontairement minimal : quel module est ouvert, par quel
+  // rôle, sur quelle station. Pas de frappe clavier, pas de contenu de champ. Le
+  // `useEffect` porte sur la station et le module ; changer de station ne compte
+  // donc pas comme une seconde ouverture.
+  useEffect(() => {
+    track.info('ui.module_ouvert', { module: tab, role, stationId });
+  }, [tab, role, stationId, userId]);
+
   if (!canOpenTab(role, tab)) {
     return <Alert variant="warning">Ce module n’est pas ouvert à votre rôle sur cette station.</Alert>;
   }

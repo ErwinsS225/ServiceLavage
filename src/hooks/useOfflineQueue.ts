@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { describeError } from '../lib/queryResult';
+import { measure } from '../lib/performance';
+import { track } from '../lib/telemetry';
 
 /**
  * File hors ligne + synchronisation, extraites de StationOrders.
@@ -83,7 +85,9 @@ export function useOfflineQueue<T>({
     syncing.current = true;
     setError('');
     try {
-      const result = await current.synchronize(current.deliver);
+      // La synchronisation est mesurée : c'est l'opération dont la lenteur est
+      // la plus visible au comptoir, et celle dont on n'avait aucune donnée.
+      const result = await measure('offline.synchronisation', () => current.synchronize(current.deliver));
       try {
         refresh();
       } catch {
@@ -92,14 +96,24 @@ export function useOfflineQueue<T>({
       if (result.completed > 0) {
         setMessage(`${result.completed} élément(s) confirmé(s) par le serveur.`);
         current.onDelivered?.(result.completed);
+        track.info('offline.synchronise', { confirmes: result.completed });
       }
       if (result.error) throw result.error;
     } catch (cause) {
+      let remaining = -1;
       try {
-        refresh();
+        remaining = refresh().length;
       } catch {
         /* keep the original error */
       }
+      // Le nombre restant en file est l'information qui manquait : « l'envoi a
+      // échoué » ne dit pas si quelque chose a été confirmé au passage.
+      track.error(
+        'offline.synchronisation_echouee',
+        cause,
+        { restants: remaining },
+        { message: 'Synchronisation de la file locale impossible' },
+      );
       setError(describeError(cause, current.fallback));
     } finally {
       syncing.current = false;
@@ -119,7 +133,13 @@ export function useOfflineQueue<T>({
     const onStorage = () => {
       try {
         refresh();
-      } catch {
+      } catch (cause) {
+        // Une file illisible est grave : les opérations existent toujours dans
+        // `localStorage` mais l'application ne sait plus les lire. Sans trace,
+        // ce cas était indiscernable d'une file vide.
+        track.error('offline.file_illisible', cause, undefined, {
+          message: 'File locale illisible depuis un autre onglet',
+        });
         setError('File locale illisible ; elle a été conservée.');
       }
     };

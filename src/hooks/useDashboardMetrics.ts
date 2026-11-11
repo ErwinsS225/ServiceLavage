@@ -29,7 +29,17 @@ export type QueuedSummary = {
   createdAt: string;
 };
 
-export function useDashboardMetrics(client: SupabaseClient | null, stationId: string, userId: string) {
+export function useDashboardMetrics(
+  client: SupabaseClient | null,
+  stationId: string,
+  userId: string,
+  /**
+   * Instant de référence, injecté uniquement par les tests. En production il
+   * reste `undefined` et l'instant est celui du rendu : c'est ce qui permet à
+   * « aujourd'hui » de désigner le jour de l'utilisateur, pas celui du build.
+   */
+  referenceNow?: Date,
+) {
   const [orders, setOrders] = useState<StationOrderRow[]>([]);
   const [queued, setQueued] = useState<QueuedSummary[]>([]);
   const [customerCount, setCustomerCount] = useState(0);
@@ -86,7 +96,7 @@ export function useDashboardMetrics(client: SupabaseClient | null, stationId: st
   // Instant de référence figé pendant le rendu, recalculé quand les données
   // changent (voir `StationReports`, même motif).
   // eslint-disable-next-line react-hooks/exhaustive-deps -- volontaire : l'instant suit les données
-  const reference = useMemo(() => new Date(), [orders, customerCount, queued]);
+  const reference = useMemo(() => referenceNow ?? new Date(), [orders, customerCount, queued, referenceNow]);
 
   const metrics = useMemo(
     () => dashboardMetrics(orders, reference, { customersCount: customerCount, queuedCount: queued.length }),

@@ -22,6 +22,17 @@ import { createQueryClient } from '../src/lib/queryClient';
 
 afterEach(cleanup);
 
+/**
+ * Instant de référence du test.
+ *
+ * La fixture est datée autour de cette constante, et les deux écrans la
+ * reçoivent explicitement (`referenceNow`). La version précédente laissait les
+ * composants lire l'horloge réelle : le test passait le 10 novembre 2026 et
+ * échouait le lendemain, sans qu'une ligne de code ait changé. Une fixture
+ * datée n'est utile que si le « maintenant » du rendu est figé avec elle.
+ */
+const REFERENCE = new Date(2026, 10, 10, 15, 30, 0); // 10 novembre 2026, 15 h 30
+
 function at(dayOffset: number, hour = 10): string {
   return new Date(2026, 10, 10 + dayOffset, hour, 0, 0).toISOString();
 }
@@ -127,7 +138,9 @@ async function kpiValue(title: string): Promise<string> {
 
 async function renderDashboard(orders: unknown[], customers = 3) {
   const { client, calls } = fakeClient(orders, customers);
-  const view = render(<StationDashboard stationId="station-1" userId="user-1" client={client} />);
+  const view = render(
+    <StationDashboard stationId="station-1" userId="user-1" client={client} referenceNow={REFERENCE} />,
+  );
   await waitFor(() => assert.match(view.container.textContent ?? '', /Facturé aujourd’hui/));
   await waitFor(() => assert.doesNotMatch(view.container.textContent ?? '', /Chargement/));
   // Give the second effect (customers count) one tick to land.
@@ -155,7 +168,14 @@ afterEach(() => {
 async function renderReports(orders: unknown[], customers = 3) {
   const { client } = fakeClient(orders, customers);
   const view = render(
-    withQueryClient(<StationReports stationId="station-1" stationName="Station Test" client={client} />),
+    withQueryClient(
+      <StationReports
+        stationId="station-1"
+        stationName="Station Test"
+        client={client}
+        referenceNow={REFERENCE}
+      />,
+    ),
   );
   await waitFor(() => assert.match(view.container.textContent ?? '', /Rapport d’activité/));
   // La requête passe maintenant par un cache : attendre la fin du chargement,

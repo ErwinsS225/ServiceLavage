@@ -47,6 +47,8 @@ interface StationReportsProps {
   stationName: string;
   /** Injected in tests; the application always uses the shared client. */
   client?: SupabaseClient | null;
+  /** Instant de référence, injecté uniquement par les tests (voir `StationDashboard`). */
+  referenceNow?: Date;
 }
 
 /**
@@ -57,7 +59,12 @@ interface StationReportsProps {
  * washes happened, what was billed and how they ended. It never prints a
  * "bénéfice", a "bilan" or an "encaissement".
  */
-export function StationReports({ stationId, stationName, client = defaultClient }: StationReportsProps) {
+export function StationReports({
+  stationId,
+  stationName,
+  client = defaultClient,
+  referenceNow,
+}: StationReportsProps) {
   const [period, setPeriod] = useState<ReportPeriod>('month');
   const [feedback, setFeedback] = useState<string>('');
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
@@ -66,7 +73,7 @@ export function StationReports({ stationId, stationName, client = defaultClient 
   // La requête vit dans `stationApi`, son cache dans `useStationQueries`. La
   // fenêtre reste déclarée ici : l'année en cours, parce qu'un `select` sans
   // borne grandirait à chaque lavage.
-  const yearStart = useMemo(() => new Date(startOfYear(new Date())), []);
+  const yearStart = useMemo(() => new Date(startOfYear(referenceNow ?? new Date())), [referenceNow]);
   const reportQuery = useReportOrders(stationId, yearStart, client);
   // `data ?? []` construirait un tableau neuf à chaque rendu, invalidant tous
   // les `useMemo` en aval. On le stabilise une fois pour toutes.
@@ -84,7 +91,7 @@ export function StationReports({ stationId, stationName, client = defaultClient 
   // rendu. Elle est recalculée quand la période ou les données changent, pour
   // que « aujourd'hui » ne soit pas celui du premier affichage.
   // eslint-disable-next-line react-hooks/exhaustive-deps -- dépendances volontaires : l'instant suit les données et la période
-  const reference = useMemo(() => new Date(), [orders, period]);
+  const reference = useMemo(() => referenceNow ?? new Date(), [orders, period, referenceNow]);
   const metrics = useMemo(() => reportMetrics(orders, period, reference), [orders, period, reference]);
 
   // Rows of the period, newest first, for the printable detail and the CSV.
