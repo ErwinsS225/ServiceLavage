@@ -1,6 +1,7 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { createHash } from 'node:crypto';
+import { loadEnv } from 'vite';
 import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { defineConfig, type Plugin } from 'vite';
@@ -39,12 +40,12 @@ function devRootAllowList(): Plugin {
  * leaves authentication unusable — the portal already shows an explicit
  * message in that case.
  */
-function cspSupabaseOrigin(): Plugin {
+function cspSupabaseOrigin(supabaseUrl: string): Plugin {
   return {
     name: 'csp-supabase-origin',
     transformIndexHtml(html) {
       let origin = "'self'";
-      const raw = process.env.VITE_SUPABASE_URL;
+      const raw = supabaseUrl;
       if (raw) {
         try {
           const url = new URL(raw);
@@ -88,14 +89,17 @@ function offlineShell(): Plugin {
   };
 }
 
-export default defineConfig(() => ({
-  plugins: [react(), tailwindcss(), cspSupabaseOrigin(), devRootAllowList(), offlineShell()],
-  resolve: { alias: { '@': path.resolve(import.meta.dirname, '.') } },
-  server: {
-    // Arena proxies the app under this preview suffix; keep Vite's host check enabled for other hosts.
-    allowedHosts: ['.e2b.app'],
-    // AI Studio can disable file watching to avoid flickering during edits.
-    hmr: process.env.DISABLE_HMR !== 'true',
-    watch: process.env.DISABLE_HMR === 'true' ? null : {},
-  },
-}));
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), 'VITE_');
+  return {
+    plugins: [react(), tailwindcss(), cspSupabaseOrigin(env.VITE_SUPABASE_URL), devRootAllowList(), offlineShell()],
+    resolve: { alias: { '@': path.resolve(import.meta.dirname, '.') } },
+    server: {
+      // Arena proxies the app under this preview suffix; keep Vite's host check enabled for other hosts.
+      allowedHosts: ['.e2b.app'],
+      // AI Studio can disable file watching to avoid flickering during edits.
+      hmr: process.env.DISABLE_HMR !== 'true',
+      watch: process.env.DISABLE_HMR === 'true' ? null : {},
+    },
+  };
+});
