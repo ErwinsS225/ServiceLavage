@@ -16,6 +16,7 @@ import { invitationReferenceSchema, parseForm, stationNameFormSchema } from '../
 import { errorText } from '../lib/errorMessages';
 import { describeError } from '../lib/queryResult';
 import { resolveTab, type StationTabId } from '../lib/portalNavigation';
+import { isMockMode } from '../lib/supabase';
 
 /**
  * Portail propriétaire / gérant / caissier / laveur.
@@ -201,6 +202,12 @@ export function OwnerPortal({ client }: { client?: SupabaseClient | null }) {
       </a>
       <div className="max-w-6xl mx-auto space-y-5">
         <PortalHeader email={session.user.email ?? ''} onSignOut={() => void handleSignOut()} />
+
+        {isMockMode && (
+          <Alert variant="info" title="Mode démo actif">
+            Les données créées sont conservées localement dans votre navigateur. Pour connecter votre projet Supabase en production, définissez <code className="mx-1">VITE_SUPABASE_URL</code> et <code className="mx-1">VITE_SUPABASE_ANON_KEY</code>.
+          </Alert>
+        )}
 
         {!online && (
           <Alert variant="warning" title="Hors ligne">

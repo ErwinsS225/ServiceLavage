@@ -91,12 +91,15 @@ function offlineShell(): Plugin {
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), 'VITE_');
+  const supabaseUrl = process.env.VITE_SUPABASE_URL ?? env.VITE_SUPABASE_URL;
   return {
-    plugins: [react(), tailwindcss(), cspSupabaseOrigin(env.VITE_SUPABASE_URL), devRootAllowList(), offlineShell()],
+    plugins: [react(), tailwindcss(), cspSupabaseOrigin(supabaseUrl), devRootAllowList(), offlineShell()],
     resolve: { alias: { '@': path.resolve(import.meta.dirname, '.') } },
     server: {
+      host: '0.0.0.0',
+      port: 3000,
       // Arena proxies the app under this preview suffix; keep Vite's host check enabled for other hosts.
-      allowedHosts: ['.e2b.app'],
+      allowedHosts: true,
       // AI Studio can disable file watching to avoid flickering during edits.
       hmr: process.env.DISABLE_HMR !== 'true',
       watch: process.env.DISABLE_HMR === 'true' ? null : {},

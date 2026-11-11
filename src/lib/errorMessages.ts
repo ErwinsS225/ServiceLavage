@@ -363,6 +363,19 @@ function describeAuthMessage(message: string): UserFacingError | null {
       retryable: true,
     };
   }
+  if (
+    lower.includes('error sending confirmation email') ||
+    lower.includes('error sending email') ||
+    lower.includes('sending confirmation email')
+  ) {
+    return {
+      kind: 'limit',
+      title: 'Envoi d’e-mail impossible',
+      message: 'Le serveur n’a pas pu envoyer l’e-mail de confirmation (quota d’e-mails atteint ou SMTP non configuré).',
+      action: 'Patientez quelques minutes avant de réessayer, ou utilisez le compte propriétaire préconfiguré.',
+      retryable: true,
+    };
+  }
   return null;
 }
 
